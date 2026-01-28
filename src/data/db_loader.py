@@ -158,7 +158,8 @@ ON CONFLICT (game_id, team_id) DO UPDATE SET is_home=excluded.is_home, wl=exclud
                      int(r["PLUS_MINUS"]) if pd.notna(r.get("PLUS_MINUS")) else None],
                 )
 
-    # 3) Players + player_game_logs
+    # 3) Players + player_game_logs (bulk for speed)
+    all_player_dfs: list[pd.DataFrame] = []
     for path in player_paths:
         df = _read_raw(path)
         if df.empty:
@@ -167,29 +168,48 @@ ON CONFLICT (game_id, team_id) DO UPDATE SET is_home=excluded.is_home, wl=exclud
         for m in ("PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "GAME_ID", "MIN", "PTS", "REB", "AST", "STL", "BLK", "TOV", "FGM", "FGA", "FG3M", "FG3A", "FTM", "FTA", "OREB", "DREB", "PLUS_MINUS"):
             if m not in df.columns:
                 df[m] = None
-        for _, r in df.iterrows():
-            pid = r.get("PLAYER_ID")
-            if pd.isna(pid):
-                continue
-            pid = int(pid)
+        all_player_dfs.append(df)
+
+    if all_player_dfs:
+        combined = pd.concat(all_player_dfs, ignore_index=True)
+        # Unique players
+        up = combined[["PLAYER_ID", "PLAYER_NAME"]].dropna(subset=["PLAYER_ID"]).drop_duplicates(subset=["PLAYER_ID"])
+        for _, r in up.iterrows():
             con.execute(
                 "INSERT INTO players (player_id, player_name) VALUES (?, ?) ON CONFLICT (player_id) DO UPDATE SET player_name=excluded.player_name",
-                [pid, str(r.get("PLAYER_NAME") or "")],
+                [int(r["PLAYER_ID"]), str(r.get("PLAYER_NAME") or "")],
             )
-            gid = str(r.get("GAME_ID") or "")
-            tid = int(r["TEAM_ID"]) if pd.notna(r.get("TEAM_ID")) else None
-            if not gid or tid is None:
-                continue
-            con.execute(
-                """INSERT INTO player_game_logs (game_id, player_id, team_id, min, pts, reb, ast, stl, blk, tov, fgm, fga, fg3m, fg3a, ftm, fta, oreb, dreb, plus_minus)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT (game_id, player_id) DO UPDATE SET team_id=excluded.team_id, min=excluded.min, pts=excluded.pts, reb=excluded.reb, ast=excluded.ast, stl=excluded.stl, blk=excluded.blk, tov=excluded.tov, fgm=excluded.fgm, fga=excluded.fga, fg3m=excluded.fg3m, fg3a=excluded.fg3a, ftm=excluded.ftm, fta=excluded.fta, oreb=excluded.oreb, dreb=excluded.dreb, plus_minus=excluded.plus_minus""",
-                [gid, pid, tid, _min_int(r.get("MIN")), int(r["PTS"]) if pd.notna(r.get("PTS")) else None, int(r["REB"]) if pd.notna(r.get("REB")) else None,
-                 int(r["AST"]) if pd.notna(r.get("AST")) else None, int(r["STL"]) if pd.notna(r.get("STL")) else None, int(r["BLK"]) if pd.notna(r.get("BLK")) else None,
-                 int(r["TOV"]) if pd.notna(r.get("TOV")) else None, int(r["FGM"]) if pd.notna(r.get("FGM")) else None, int(r["FGA"]) if pd.notna(r.get("FGA")) else None,
-                 int(r["FG3M"]) if pd.notna(r.get("FG3M")) else None, int(r["FG3A"]) if pd.notna(r.get("FG3A")) else None, int(r["FTM"]) if pd.notna(r.get("FTM")) else None,
-                 int(r["FTA"]) if pd.notna(r.get("FTA")) else None, int(r["OREB"]) if pd.notna(r.get("OREB")) else None, int(r["DREB"]) if pd.notna(r.get("DREB")) else None,
-                 int(r["PLUS_MINUS"]) if pd.notna(r.get("PLUS_MINUS")) else None],
-            )
+        # player_game_logs: filter and build bulk df
+        pgl = combined.dropna(subset=["PLAYER_ID", "GAME_ID", "TEAM_ID"])
+        pgl = pgl[pgl["GAME_ID"].astype(str).str.len() > 0]
+        if not pgl.empty:
+            pgl_df = pd.DataFrame({
+                "game_id": pgl["GAME_ID"].astype(str),
+                "player_id": pgl["PLAYER_ID"].astype(int),
+                "team_id": pgl["TEAM_ID"].astype(int),
+                "min": pgl["MIN"].apply(_min_int),
+                "pts": pgl["PTS"],
+                "reb": pgl["REB"],
+                "ast": pgl["AST"],
+                "stl": pgl["STL"],
+                "blk": pgl["BLK"],
+                "tov": pgl["TOV"],
+                "fgm": pgl["FGM"],
+                "fga": pgl["FGA"],
+                "fg3m": pgl["FG3M"],
+                "fg3a": pgl["FG3A"],
+                "ftm": pgl["FTM"],
+                "fta": pgl["FTA"],
+                "oreb": pgl["OREB"],
+                "dreb": pgl["DREB"],
+                "plus_minus": pgl["PLUS_MINUS"],
+            })
+            con.register("_pgl", pgl_df)
+            con.execute("""
+                INSERT INTO player_game_logs (game_id, player_id, team_id, min, pts, reb, ast, stl, blk, tov, fgm, fga, fg3m, fg3a, ftm, fta, oreb, dreb, plus_minus)
+                SELECT game_id, player_id, team_id, min, pts, reb, ast, stl, blk, tov, fgm, fga, fg3m, fg3a, ftm, fta, oreb, dreb, plus_minus FROM _pgl
+                ON CONFLICT (game_id, player_id) DO UPDATE SET team_id=excluded.team_id, min=excluded.min, pts=excluded.pts, reb=excluded.reb, ast=excluded.ast, stl=excluded.stl, blk=excluded.blk, tov=excluded.tov, fgm=excluded.fgm, fga=excluded.fga, fg3m=excluded.fg3m, fg3a=excluded.fg3a, ftm=excluded.ftm, fta=excluded.fta, oreb=excluded.oreb, dreb=excluded.dreb, plus_minus=excluded.plus_minus
+            """)
+            con.unregister("_pgl")
 
     con.close()

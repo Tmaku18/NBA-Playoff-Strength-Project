@@ -1,8 +1,13 @@
 {
-  "processed": "100560859776055d6185480a485d64da7d56220fffb11725ce26bd32461b0cdd",
   "raw": {
-    "player_logs_2023_24.csv": "16ebd3166d29f92098f7be6918b16e008335c6313f657e689ff44d39e819125f",
-    "team_logs_2023_24.csv": "6b05d5a1225c3736b432fff0c46fb7ed68ec734f44ae482c384b25ee27649f84"
+    "team_logs_2022_23.parquet": "d217aac24ae30f23fe3cbc210fe6b6cbc42f6dc15a2a427db2641a6ed443e54d",
+    "player_logs_2022_23.parquet": "2003444104cd93bbc1d2a1611640c5edbb264e8922072e756f7391be58dd9d49",
+    "team_logs_2023_24.parquet": "fb48d11c66accd775653cebc3f97dea2cd8cffa746093c5ee867ada6c16eab39",
+    "player_logs_2023_24.parquet": "a46a3ee06e070e77e44983b3382b5bccbc2bed74ba222bf6bd777f3218e184e2"
   },
-  "db_path": "data\\processed\\nba.duckdb"
+  "timestamps": {
+    "download": "1769587674.6839597"
+  },
+  "processed": "ca753ed9bb53aea977abb796be40937a96ec739125bdbdf7309980db6371d68d",
+  "db_path": "data\\processed\\nba_b.duckdb"
 }
