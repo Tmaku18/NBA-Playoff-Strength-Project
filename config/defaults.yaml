@@ -1,0 +1,51 @@
+# NBA True Strength — runtime config
+# Source of truth: .cursor/plans/Plan.md
+
+# Season boundaries (hard-coded to avoid play-in ambiguity)
+seasons:
+  "2015-16": { start: "2015-10-01", end: "2016-04-15" }
+  "2016-17": { start: "2016-10-01", end: "2017-04-15" }
+  "2017-18": { start: "2017-10-01", end: "2018-04-15" }
+  "2018-19": { start: "2018-10-01", end: "2019-04-15" }
+  "2019-20": { start: "2019-10-01", end: "2020-04-15" }
+  "2020-21": { start: "2020-12-01", end: "2021-05-15" }
+  "2021-22": { start: "2021-10-01", end: "2022-04-15" }
+  "2022-23": { start: "2022-10-01", end: "2023-04-15" }
+  "2023-24": { start: "2023-10-01", end: "2024-04-15" }
+  "2024-25": { start: "2024-10-01", end: "2025-04-15" }
+  "2025-26": { start: "2025-10-01", end: "2026-04-15" }
+
+paths:
+  db: "data/processed/nba.duckdb"
+  raw: "data/raw"
+  processed: "data/processed"
+  outputs: "outputs"
+
+repro:
+  seed: 42
+
+model_a:
+  num_embeddings: 500
+  embedding_dim: 32
+  encoder_hidden: [128, 64]
+  attention_heads: 4
+  dropout: 0.2
+
+model_b:
+  xgb:
+    n_estimators: 500
+    max_depth: 6
+    learning_rate: 0.05
+    early_stopping_rounds: 20
+  rf:
+    n_estimators: 200
+    max_depth: 12
+    min_samples_leaf: 5
+
+training:
+  n_folds: 5
+  rolling_windows: [10, 30]
+  roster_size: 15
+
+output:
+  true_strength_scale: "percentile"  # or softmax, platt
