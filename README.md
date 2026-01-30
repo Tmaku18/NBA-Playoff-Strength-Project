@@ -63,10 +63,10 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 **Run order (production, real data only):**
 
 1. **Setup:** `pip install -r requirements.txt`
-2. **Config:** Edit `config/defaults.yaml` if needed (seasons, paths, model params). DB path: `data/processed/nba_build_run.duckdb`.
+2. **Config:** Edit `config/defaults.yaml` if needed (seasons, paths, model params, `build_db.skip_if_exists`). DB path: `data/processed/nba_build_run.duckdb`.
 3. **Data:**  
-   - `python -m scripts.1_download_raw` — fetch player/team logs via nba_api (writes to `data/raw/` as parquet).  
-   - `python -m scripts.2_build_db` — build DuckDB from raw → `data/processed/nba_build_run.duckdb`, update `data/manifest.json`.
+   - `python -m scripts.1_download_raw` — fetch regular-season and playoff logs via nba_api (writes to `data/raw/`; reuses existing files when present).  
+   - `python -m scripts.2_build_db` — build DuckDB from raw → `data/processed/nba_build_run.duckdb`, update `data/manifest.json`. If `build_db.skip_if_exists: true` (default) and the DB file already exists, the build is skipped to keep the current DB.
 4. **Training (real DB):**  
    - `python -m scripts.3_train_model_a` — K-fold OOF → `outputs/oof_model_a.parquet`, then final model → `outputs/best_deep_set.pt`.  
    - `python -m scripts.4_train_model_b` — K-fold OOF → `outputs/oof_model_b.parquet`, then XGB + RF → `outputs/xgb_model.joblib`, `outputs/rf_model.joblib`.  
@@ -76,6 +76,8 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 7. **Explainability:** `python -m scripts.5b_explain` — SHAP on real team-context X, attention ablation on real list batch → `outputs/shap_summary.png`.
 
 **Optional:** `python -m scripts.run_manifest` (run manifest); `python -m scripts.run_leakage_tests` (before training).
+
+**Pipeline behavior:** Script 1 reuses raw files that already exist (no re-download). Script 2 skips rebuilding the DB when `build_db.skip_if_exists` is true and the DB file exists; set it to false to force a full rebuild from raw.
 
 ---
 
@@ -93,9 +95,12 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 
 All paths under `outputs/` (or `config.paths.outputs`). Produced from real data when DB and models exist.
 
-- `outputs/eval_report.json` — NDCG, Spearman, MRR (top_k=2), ROC-AUC upset, and `notes` (definitions) from script 5.
-- `outputs/run_001/predictions.json` — per-team predicted league rank (1–30), actual conference rank (1–15), true strength score, delta, classification, ensemble diagnostics.
-- `outputs/run_001/pred_vs_actual.png` — two panels (East and West): x = actual conference rank (1–15), y = predicted league rank (1–30); grid lines, team-colored points, and legend (script 6).
+- `outputs/eval_report.json` — NDCG, Spearman, MRR (top_k=2), ROC-AUC upset, `notes`; when playoff data exists, `playoff_metrics` (Spearman vs playoff rank, NDCG@4, Brier championship).
+- `outputs/run_001/predictions.json` — per-team `global_rank` (1–30), `conference_rank` (1–15), `championship_odds`, `true_strength_score`, `playoff_rank`/`rank_delta_playoffs` (when available), classification, ensemble diagnostics.
+- `outputs/run_001/pred_vs_actual.png` — two panels (East/West): predicted vs actual conference rank (1–15); grid lines, team-colored points, legend.
+- `outputs/run_001/pred_vs_playoff_rank.png` — predicted global rank (1–30) vs playoff performance rank (1–30).
+- `outputs/run_001/title_contender_scatter.png` — championship odds vs regular-season wins (proxy).
+- `outputs/run_001/odds_top10.png` — top-10 championship odds bar chart.
 - `outputs/shap_summary.png` — Model B (RF) SHAP summary on real team-context features (script 5b).
 - `outputs/oof_pooled.parquet`, `outputs/ridgecv_meta.joblib` — stacking meta-learner and pooled OOF (script 4b).
 - `outputs/oof_model_a.parquet`, `outputs/oof_model_b.parquet` — OOF from scripts 3 and 4 (Option A: K-fold, real data).
