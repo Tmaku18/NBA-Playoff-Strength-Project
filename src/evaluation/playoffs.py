@@ -71,7 +71,7 @@ def compute_playoff_performance_rank(
     Phase 1: Rank playoff teams by total playoff wins (desc).
     Phase 2: Tie-break by regular-season win % (desc).
     Phase 3: Teams with 0 playoff wins ranked 17-30 by regular-season win %.
-    Returns team_id -> rank (1-30).
+    Returns team_id -> rank (1-30) for the top 30 teams by this scheme.
     """
     pw = get_playoff_wins(playoff_games, playoff_tgl, season)
     reg_wp = get_reg_season_win_pct(games, tgl, season)
@@ -88,10 +88,13 @@ def compute_playoff_performance_rank(
     lottery = [tid for tid in all_team_ids if pw.get(tid, 0) == 0]
     lottery.sort(key=lambda t: -reg_wp.get(t, 0.0))
 
+    playoff_top = playoff_teams[:16]
+    lottery_top = lottery[:14]
+
     out: dict[int, int] = {}
-    for r, tid in enumerate(playoff_teams, start=1):
+    for r, tid in enumerate(playoff_top, start=1):
         out[tid] = r
-    for r, tid in enumerate(lottery, start=17):
+    for r, tid in enumerate(lottery_top, start=17):
         out[tid] = r
     return out
 

@@ -122,11 +122,11 @@ All paths under `outputs/` (or `config.paths.outputs`). Produced from real data 
 
 ## Full Plan
 
-See `.cursor/plans/Plan.md`. Planned extension: [.cursor/plans/Update1.md](.cursor/plans/Update1.md).
+See `.cursor/plans/Plan.md`. Planned extensions: [.cursor/plans/Update1.md](.cursor/plans/Update1.md), [.cursor/plans/Update2.md](.cursor/plans/Update2.md).
 
 ---
 
 ## Implementation Roadmap
 The full phased development plan and file-by-file checklist are in
 `.cursor/plans/Plan.md` under **Development and Implementation Plan**.
-Update1 roadmap: `.cursor/plans/Update1.md`.
+Update1 roadmap: `.cursor/plans/Update1.md`. Update2 roadmap: `.cursor/plans/Update2.md`.

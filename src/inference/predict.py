@@ -42,12 +42,20 @@ def load_models(
     if xgb_path and Path(xgb_path).exists():
         import joblib
         xgb = joblib.load(xgb_path)
+        if isinstance(xgb, dict) or not callable(getattr(xgb, "predict", None)):
+            xgb = None
     if rf_path and Path(rf_path).exists():
         import joblib
         rf = joblib.load(rf_path)
+        if isinstance(rf, dict) or not callable(getattr(rf, "predict", None)):
+            rf = None
     if meta_path and Path(meta_path).exists():
         import joblib
         meta = joblib.load(meta_path)
+        if isinstance(meta, dict):
+            meta = meta.get("model") or meta.get("meta")
+        if meta is None or not callable(getattr(meta, "predict", None)):
+            meta = None
 
     return model_a, xgb, rf, meta
 
@@ -90,7 +98,7 @@ def predict_teams(
     sr = np.nan_to_num(sr, nan=0.0, posinf=0.0, neginf=0.0)
 
     X = np.column_stack([sa, sx, sr])
-    if meta_model is not None:
+    if meta_model is not None and not isinstance(meta_model, dict) and callable(getattr(meta_model, "predict", None)):
         ens = meta_model.predict(X).ravel()
     else:
         ens = (sa + sx + sr) / 3.0
