@@ -145,7 +145,7 @@ def run_inference_from_db(
 
     from src.data.db_loader import load_training_data
     from src.features.team_context import TEAM_CONTEXT_FEATURE_COLS, build_team_context_as_of_dates
-    from src.training.build_lists import build_lists
+    from src.training.build_lists import TEAM_CONFERENCE, build_lists
     from src.training.data_model_a import build_batches_from_lists
     from src.training.train_model_a import predict_batches
 
@@ -239,17 +239,54 @@ def run_inference_from_db(
     with open(pj, "w", encoding="utf-8") as f:
         json.dump({"teams": preds}, f, indent=2)
 
-    fig, ax = plt.subplots()
-    pr = [t["prediction"]["predicted_rank"] for t in preds]
-    ar = [t["analysis"]["actual_rank"] for t in preds]
-    ar = [a if a is not None else 0 for a in ar]
-    ax.scatter(ar, pr, label="teams")
-    max_r = max(max(ar or [1]), max(pr or [1]), 1) + 1
-    ax.plot([0, max_r], [0, max_r], "k--", alpha=0.5, label="identity")
-    ax.set_xlabel("Actual rank")
-    ax.set_ylabel("Predicted rank")
-    ax.legend()
-    ax.set_title("Predicted vs actual rank")
+    # Resolve conference per team: from teams.conference or TEAM_CONFERENCE by abbreviation
+    team_id_to_conf: dict[int, str] = {}
+    abbr_col = "abbreviation" if "abbreviation" in teams.columns else "ABBREVIATION"
+    conf_col = "conference" if "conference" in teams.columns else "CONFERENCE"
+    for _, row in teams.iterrows():
+        tid = int(row["team_id"])
+        c = row.get(conf_col)
+        if c is not None and str(c).strip():
+            c = str(c).strip().upper()
+            team_id_to_conf[tid] = "E" if c in ("E", "EAST") else "W" if c in ("W", "WEST") else c[0]
+        else:
+            abbr = row.get(abbr_col)
+            team_id_to_conf[tid] = TEAM_CONFERENCE.get(str(abbr).strip() if abbr is not None else "", "E")
+    east_preds = [t for t in preds if team_id_to_conf.get(t["team_id"], "E") == "E"]
+    west_preds = [t for t in preds if team_id_to_conf.get(t["team_id"], "W") == "W"]
+
+    fig, (ax_east, ax_west) = plt.subplots(1, 2, figsize=(14, 6))
+
+    def _draw_panel(ax, pred_list, title):
+        if not pred_list:
+            ax.text(0.5, 0.5, f"No {title} teams", ha="center", va="center", transform=ax.transAxes)
+            ax.set_title(title)
+            ax.set_xlabel("Actual rank")
+            ax.set_ylabel("Predicted rank")
+            ax.grid(True, linestyle="--", alpha=0.7)
+            return
+        pr = [t["prediction"]["predicted_rank"] for t in pred_list]
+        ar = [t["analysis"]["actual_rank"] for t in pred_list]
+        ar = [a if a is not None else 0 for a in ar]
+        names = [t["team_name"] for t in pred_list]
+        max_r = max(max(ar or [1]), max(pr or [1]), 1) + 1
+        ax.plot([0, max_r], [0, max_r], "k--", alpha=0.5, label="identity")
+        cmap = plt.get_cmap("tab20")
+        for i, (a, p) in enumerate(zip(ar, pr)):
+            color = cmap(i % 20)
+            ax.scatter(a, p, c=[color], label=names[i], s=60, edgecolors="k", linewidths=0.5)
+        ax.set_xlabel("Actual rank")
+        ax.set_ylabel("Predicted rank")
+        ax.set_title(title)
+        ax.grid(True, linestyle="--", alpha=0.7)
+        ax.legend(loc="best", fontsize=7, ncol=2)
+        ax.set_xlim(-0.5, max_r)
+        ax.set_ylim(-0.5, max_r)
+
+    _draw_panel(ax_east, east_preds, "East")
+    _draw_panel(ax_west, west_preds, "West")
+    fig.suptitle("Predicted vs actual rank", fontsize=12)
+    fig.tight_layout()
     fig.savefig(out / "pred_vs_actual.png", bbox_inches="tight")
     plt.close()
     return pj

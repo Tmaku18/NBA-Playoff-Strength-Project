@@ -48,7 +48,7 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 - Classification: **Sleeper** (under-ranked by standings), **Paper Tiger** (over-ranked), **Aligned**.
 - Delta (actual rank − predicted rank) and ensemble agreement (Model A / XGB / RF ranks).
 - Roster dependence (attention weights when available).
-- `pred_vs_actual.png`: predicted vs actual rank scatter.
+- `pred_vs_actual.png`: two panels (East and West) with predicted vs actual rank scatter, grid lines, team-colored points, and legend.
 
 ---
 
@@ -89,7 +89,7 @@ All paths under `outputs/` (or `config.paths.outputs`). Produced from real data 
 
 - `outputs/eval_report.json` — NDCG, Spearman, MRR (top_k=2), ROC-AUC upset, and `notes` (definitions) from script 5.
 - `outputs/run_001/predictions.json` — per-team predicted rank, true strength score, delta, classification (Sleeper/Paper Tiger/Aligned), ensemble diagnostics.
-- `outputs/run_001/pred_vs_actual.png` — predicted vs actual rank scatter (from script 6).
+- `outputs/run_001/pred_vs_actual.png` — two panels (East and West): predicted vs actual rank scatter with grid lines, team-colored points, and legend (script 6).
 - `outputs/shap_summary.png` — Model B (RF) SHAP summary on real team-context features (script 5b).
 - `outputs/oof_pooled.parquet`, `outputs/ridgecv_meta.joblib` — stacking meta-learner and pooled OOF (script 4b).
 - `outputs/oof_model_a.parquet`, `outputs/oof_model_b.parquet` — OOF from scripts 3 and 4 (Option A: K-fold, real data).
