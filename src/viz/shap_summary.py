@@ -30,11 +30,15 @@ def shap_summary(
     except Exception:
         explainer = shap.TreeExplainer(model, data=X)
     sv = explainer.shap_values(X)
-    exp = shap.Explanation(sv, data=X, feature_names=feature_names)
+    if sv is None:
+        raise ValueError("TreeExplainer.shap_values returned None")
+    if isinstance(sv, list):
+        sv = sv[0] if len(sv) else np.zeros_like(X)
     if out_path:
         Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-        shap.summary_plot(exp, X, feature_names=feature_names, max_display=max_display, show=False)
         import matplotlib.pyplot as plt
+        plt.figure()
+        shap.summary_plot(sv, X, feature_names=feature_names, max_display=max_display, show=False)
         plt.savefig(out_path, bbox_inches="tight")
         plt.close()
-    return exp
+    return sv

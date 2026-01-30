@@ -53,3 +53,45 @@ def compute_rolling_stats(
                 out_cols.append(f"availability_L{w}")
 
     return df
+
+
+# Default 7 stat cols for DeepSetRank stat_dim=7 (build_roster_set default)
+PLAYER_STAT_COLS_L10: list[str] = [
+    "pts_L10", "reb_L10", "ast_L10", "stl_L10", "blk_L10", "tov_L10", "availability_L10",
+]
+
+
+def get_player_stats_as_of_date(
+    pgl: pd.DataFrame,
+    as_of_date: str | pd.Timestamp,
+    *,
+    player_id_col: str = "player_id",
+    date_col: str = "game_date",
+    windows: list[int] | None = None,
+    stat_cols: list[str] | None = None,
+) -> pd.DataFrame:
+    """
+    Rolling stats as-of a date: one row per player with L10 (or first window) stats.
+    Uses compute_rolling_stats then keeps the latest row per player (game_date < as_of_date).
+    stat_cols default matches DeepSetRank stat_dim=7 (pts_L10, reb_L10, ..., availability_L10).
+    """
+    if windows is None:
+        windows = [10]
+    rolled = compute_rolling_stats(
+        pgl,
+        player_id_col=player_id_col,
+        date_col=date_col,
+        as_of_date=as_of_date,
+        windows=windows,
+    )
+    if rolled.empty:
+        return pd.DataFrame(columns=[player_id_col] + (stat_cols or PLAYER_STAT_COLS_L10))
+    cols = stat_cols or PLAYER_STAT_COLS_L10
+    rolled = rolled.sort_values([player_id_col, date_col])
+    # Latest row per player (last game before as_of_date)
+    out = rolled.groupby(player_id_col, as_index=False).last()
+    out = out[[player_id_col] + [c for c in cols if c in out.columns]].copy()
+    for c in cols:
+        if c not in out.columns:
+            out[c] = 0.0
+    return out[[player_id_col] + cols]

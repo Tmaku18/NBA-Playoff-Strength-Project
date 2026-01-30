@@ -80,6 +80,9 @@ def predict_teams(
         sr = np.asarray(rf_scores).ravel()
     else:
         sr = np.zeros(n)
+    sa = np.nan_to_num(sa, nan=0.0, posinf=0.0, neginf=0.0)
+    sx = np.nan_to_num(sx, nan=0.0, posinf=0.0, neginf=0.0)
+    sr = np.nan_to_num(sr, nan=0.0, posinf=0.0, neginf=0.0)
 
     X = np.column_stack([sa, sx, sr])
     if meta_model is not None:
@@ -129,51 +132,146 @@ def predict_teams(
     return out
 
 
-def run_inference(output_dir: str | Path, config: dict, run_id: str | None = None) -> Path:
-    """Dummy: 3 teams, placeholder scores. Writes predictions.json and a scatter plot."""
+def run_inference_from_db(
+    output_dir: str | Path,
+    config: dict,
+    db_path: str | Path,
+    run_id: str | None = None,
+) -> Path:
+    """Run inference using real DB: load data, build lists for target date, run Model A/B, write predictions."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+
+    from src.data.db_loader import load_training_data
+    from src.features.team_context import TEAM_CONTEXT_FEATURE_COLS, build_team_context_as_of_dates
+    from src.training.build_lists import build_lists
+    from src.training.data_model_a import build_batches_from_lists
+    from src.training.train_model_a import predict_batches
 
     out = Path(output_dir)
     if run_id:
         out = out / run_id
     out.mkdir(parents=True, exist_ok=True)
-
-    paths = config.get("paths", {})
+    # Load models from the outputs directory (same as script 3/4/4b)
+    outputs_path = Path(output_dir).resolve()
     model_a, xgb, rf, meta = load_models(
-        model_a_path=Path(paths.get("outputs", "outputs")) / "best_deep_set.pt",
-        xgb_path=Path(paths.get("outputs", "outputs")) / "xgb_model.joblib",
-        rf_path=Path(paths.get("outputs", "outputs")) / "rf_model.joblib",
-        meta_path=Path(paths.get("outputs", "outputs")) / "ridgecv_meta.joblib",
+        model_a_path=outputs_path / "best_deep_set.pt",
+        xgb_path=outputs_path / "xgb_model.joblib",
+        rf_path=outputs_path / "rf_model.joblib",
+        meta_path=outputs_path / "ridgecv_meta.joblib",
         config=config,
     )
 
-    team_ids = [1, 2, 3]
-    team_names = ["Team A", "Team B", "Team C"]
-    sa = np.array([0.5, 0.3, 0.8])
-    sx = np.array([0.4, 0.5, 0.6])
-    sr = np.array([0.6, 0.4, 0.5])
-    actual = {1: 2, 2: 3, 3: 1}
+    games, tgl, teams, pgl = load_training_data(db_path)
+    if games.empty or tgl.empty:
+        raise ValueError("DB has no games/tgl. Run 2_build_db with raw data first.")
+    lists = build_lists(tgl, games, teams)
+    if not lists:
+        raise ValueError("No lists from build_lists.")
+    # Target: latest date in DB (or last list date)
+    dates_sorted = sorted(set(lst["as_of_date"] for lst in lists))
+    target_date = dates_sorted[-1] if dates_sorted else None
+    target_lists = [lst for lst in lists if lst["as_of_date"] == target_date]
+    if not target_lists:
+        target_lists = lists[-2:] if len(lists) >= 2 else lists
+    # Flatten to one list of (team_id, as_of_date) across target lists; keep unique team_id for naming/rank
+    team_id_to_as_of: dict[int, str] = {}
+    team_id_to_actual_rank: dict[int, int] = {}
+    team_id_to_win_rate: dict[int, float] = {}
+    for lst in target_lists:
+        for r, tid in enumerate(lst["team_ids"], start=1):
+            tid = int(tid)
+            team_id_to_as_of[tid] = lst["as_of_date"]
+            team_id_to_actual_rank[tid] = r
+            team_id_to_win_rate[tid] = lst["win_rates"][lst["team_ids"].index(tid)] if tid in lst["team_ids"] else 0.0
+    unique_team_ids = list(dict.fromkeys(tid for lst in target_lists for tid in lst["team_ids"]))
+    unique_team_ids = [int(t) for t in unique_team_ids]
+    if not unique_team_ids:
+        raise ValueError("No teams in target lists.")
+    team_dates = [(tid, team_id_to_as_of.get(tid, target_date or "")) for tid in unique_team_ids]
+    as_of_date = target_date or team_dates[0][1]
 
-    preds = predict_teams(team_ids, team_names, sa, sx, sr, meta, actual_ranks=actual, true_strength_scale=config.get("output", {}).get("true_strength_scale", "percentile"))
+    device = torch.device("cpu")  # Match load_models map_location="cpu"
+    tid_to_score_a: dict[int, float] = {}
+    if model_a is not None:
+        batches_a, _ = build_batches_from_lists(target_lists, games, tgl, teams, pgl, config, device=device)
+        if batches_a:
+            scores_list = predict_batches(model_a, batches_a, device)
+            for lst, score_tensor in zip(target_lists, scores_list):
+                for k, tid in enumerate(lst["team_ids"]):
+                    tid_to_score_a[int(tid)] = float(score_tensor[0, k].item())
+    sa = np.array([tid_to_score_a.get(tid, 0.0) for tid in unique_team_ids], dtype=np.float32)
 
+    sx = np.zeros(len(unique_team_ids), dtype=np.float32)
+    sr = np.zeros(len(unique_team_ids), dtype=np.float32)
+    feat_df = build_team_context_as_of_dates(tgl, games, team_dates)
+    if not feat_df.empty and xgb is not None and rf is not None:
+        feat_cols = [c for c in TEAM_CONTEXT_FEATURE_COLS if c in feat_df.columns]
+        if feat_cols:
+            for i, tid in enumerate(unique_team_ids):
+                row = feat_df[(feat_df["team_id"] == tid) & (feat_df["as_of_date"] == team_id_to_as_of.get(tid, as_of_date))]
+                if not row.empty:
+                    X_row = row[feat_cols].values.astype(np.float32)
+                    if xgb is not None:
+                        sx[i] = float(xgb.predict(X_row)[0])
+                    if rf is not None:
+                        sr[i] = float(rf.predict(X_row)[0])
+
+    actual_ranks = {tid: team_id_to_actual_rank.get(tid) for tid in unique_team_ids}
+    team_names = []
+    for tid in unique_team_ids:
+        r = teams[teams["team_id"] == tid]
+        name = r["name"].iloc[0] if not r.empty and "name" in r.columns else f"Team_{tid}"
+        team_names.append(str(name))
+
+    preds = predict_teams(
+        unique_team_ids,
+        team_names,
+        model_a_scores=sa,
+        xgb_scores=sx,
+        rf_scores=sr,
+        meta_model=meta,
+        actual_ranks=actual_ranks,
+        true_strength_scale=config.get("output", {}).get("true_strength_scale", "percentile"),
+    )
     pj = out / "predictions.json"
     with open(pj, "w", encoding="utf-8") as f:
         json.dump({"teams": preds}, f, indent=2)
 
-    # predicted vs actual scatter
     fig, ax = plt.subplots()
     pr = [t["prediction"]["predicted_rank"] for t in preds]
     ar = [t["analysis"]["actual_rank"] for t in preds]
     ar = [a if a is not None else 0 for a in ar]
     ax.scatter(ar, pr, label="teams")
-    ax.plot([0, 4], [0, 4], "k--", alpha=0.5, label="identity")
+    max_r = max(max(ar or [1]), max(pr or [1]), 1) + 1
+    ax.plot([0, max_r], [0, max_r], "k--", alpha=0.5, label="identity")
     ax.set_xlabel("Actual rank")
     ax.set_ylabel("Predicted rank")
     ax.legend()
     ax.set_title("Predicted vs actual rank")
     fig.savefig(out / "pred_vs_actual.png", bbox_inches="tight")
     plt.close()
-
     return pj
+
+
+def run_inference(output_dir: str | Path, config: dict, run_id: str | None = None) -> Path:
+    """Run inference: from DB if present and has data, else exit with message (real run only)."""
+    out = Path(output_dir)
+    if run_id:
+        out = out / run_id
+    out.mkdir(parents=True, exist_ok=True)
+    paths_cfg = config.get("paths", {})
+    db_path = Path(paths_cfg.get("db", "data/processed/nba_build.duckdb"))
+    if not db_path.is_absolute():
+        from pathlib import Path as P
+        root = P(__file__).resolve().parents[2]
+        db_path = root / db_path
+    if db_path.exists():
+        try:
+            return run_inference_from_db(output_dir, config, db_path, run_id=run_id)
+        except Exception as e:
+            raise RuntimeError(f"Inference from DB failed: {e}") from e
+    raise FileNotFoundError(
+        f"Database not found at {db_path}. Run scripts 1_download_raw and 2_build_db first."
+    )

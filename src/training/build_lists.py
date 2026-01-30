@@ -91,10 +91,17 @@ def build_lists(
     dates = sorted(games["game_date"].dt.date.unique())
     if not dates:
         return []
+    # Subsample dates when very many to keep runtime reasonable
+    max_dates = 200
+    if len(dates) > max_dates:
+        step = max(1, len(dates) // max_dates)
+        dates = dates[::step]
 
     conferences = ["E", "W"]
-    if "conference" in teams.columns:
+    if "conference" in teams.columns and teams["conference"].notna().any():
         conferences = [c for c in teams["conference"].dropna().unique() if c]
+    if not conferences:
+        conferences = ["E", "W"]
 
     out: list[dict[str, Any]] = []
     for d in dates:

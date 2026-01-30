@@ -67,10 +67,63 @@ def train_epoch(
     return total / n if n else 0.0
 
 
+def predict_batches(
+    model: nn.Module,
+    batches: list[dict],
+    device: torch.device,
+) -> list[torch.Tensor]:
+    """Run model in eval mode on batches; return list of score tensors (1, K) per batch."""
+    model.eval()
+    scores_list: list[torch.Tensor] = []
+    with torch.no_grad():
+        for batch in batches:
+            B, K, P, S = batch["embedding_indices"].shape[0], batch["embedding_indices"].shape[1], batch["embedding_indices"].shape[2], batch["player_stats"].shape[-1]
+            embs = batch["embedding_indices"].to(device).reshape(B * K, P)
+            stats = batch["player_stats"].to(device).reshape(B * K, P, S)
+            minutes = batch["minutes"].to(device).reshape(B * K, P)
+            mask = batch["key_padding_mask"].to(device).reshape(B * K, P)
+            score, _, _ = model(embs, stats, minutes, mask)
+            score = score.reshape(B, K)
+            scores_list.append(score.cpu())
+    return scores_list
+
+
+def _build_model(config: dict, device: torch.device) -> nn.Module:
+    ma = config.get("model_a", {})
+    num_emb = ma.get("num_embeddings", 500)
+    emb_dim = ma.get("embedding_dim", 32)
+    stat_dim = 7
+    enc_h = ma.get("encoder_hidden", [128, 64])
+    heads = ma.get("attention_heads", 4)
+    drop = ma.get("dropout", 0.2)
+    return DeepSetRank(num_emb, emb_dim, stat_dim, enc_h, heads, drop).to(device)
+
+
+def train_model_a_on_batches(
+    config: dict,
+    batches: list[dict],
+    device: torch.device,
+    max_epochs: int = 3,
+) -> nn.Module:
+    """Train Model A on given batches; return the model (do not save). For OOF fold training."""
+    stat_dim = 7
+    ma = config.get("model_a", {})
+    num_emb = ma.get("num_embeddings", 500)
+    if not batches:
+        model = _build_model(config, device)
+        return model
+    model = _build_model(config, device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    for epoch in range(max_epochs):
+        train_epoch(model, batches, optimizer, device)
+    return model
+
+
 def train_model_a(
     config: dict,
     output_dir: str | Path,
     device: str | torch.device | None = None,
+    batches: list[dict] | None = None,
 ) -> Path:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -81,18 +134,16 @@ def train_model_a(
     else:
         device = torch.device(device) if isinstance(device, str) else device
 
+    stat_dim = 7
     ma = config.get("model_a", {})
     num_emb = ma.get("num_embeddings", 500)
-    emb_dim = ma.get("embedding_dim", 32)
-    stat_dim = 7
-    enc_h = ma.get("encoder_hidden", [128, 64])
-    heads = ma.get("attention_heads", 4)
-    drop = ma.get("dropout", 0.2)
-
-    model = DeepSetRank(num_emb, emb_dim, stat_dim, enc_h, heads, drop).to(device)
+    model = _build_model(config, device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    batches = [get_dummy_batch(4, 10, 15, stat_dim, num_emb, device) for _ in range(5)]
+    if batches is None:
+        batches = [get_dummy_batch(4, 10, 15, stat_dim, num_emb, device) for _ in range(5)]
+    if not batches:
+        batches = [get_dummy_batch(4, 10, 15, stat_dim, num_emb, device) for _ in range(5)]
     for epoch in range(3):
         loss = train_epoch(model, batches, optimizer, device)
         print(f"epoch {epoch+1} loss={loss:.4f}")

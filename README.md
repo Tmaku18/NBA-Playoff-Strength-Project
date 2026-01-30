@@ -42,32 +42,33 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 
 ---
 
-## Outputs
-- Predicted rank (1–15)
-- True strength score (0–1)
-- Fraud/Sleeper delta
-- Ensemble agreement
-- Roster dependence (attention weights)
-- **Sleeper Timeline** chart: true_strength_score vs actual rank over time (e.g. by week)
+## Outputs (per run)
+- Predicted rank (1–30, league-wide) and true strength score (0–1).
+- Classification: **Sleeper** (under-ranked by standings), **Paper Tiger** (over-ranked), **Aligned**.
+- Delta (actual rank − predicted rank) and ensemble agreement (Model A / XGB / RF ranks).
+- Roster dependence (attention weights when available).
+- `pred_vs_actual.png`: predicted vs actual rank scatter.
 
 ---
 
 ## How to Run the Pipeline
 
+**Run order (production, real data only):**
+
 1. **Setup:** `pip install -r requirements.txt`
-2. **Config:** Edit `config/defaults.yaml` if needed (seasons, paths, model params).
-3. **Repro manifest:** `python -m scripts.run_manifest` — writes `outputs/run_manifest.json` (config snapshot, git hash, data manifest hash).
-4. **Leakage tests:** `python -m scripts.run_leakage_tests` — run before training.
-5. **Data:**  
-   - `python -m scripts.1_download_raw` — fetch player/team logs via nba_api (optional; place CSVs in `data/raw/` as `team_logs_YYYY_YY.csv`, `player_logs_YYYY_YY.csv` to skip).  
-   - `python -m scripts.2_build_db` — build `data/processed/nba.duckdb` and `data/manifest.json`.
-6. **Models:**  
-   - `python -m scripts.3_train_model_a` — Deep Set + ListMLE → `outputs/best_deep_set.pt`.  
-   - `python -m scripts.4_train_model_b` — XGB + RF → `outputs/xgb_model.joblib`, `outputs/rf_model.joblib` (requires `xgboost`).  
-   - `python -m scripts.4b_train_stacking` — RidgeCV on OOF → `outputs/ridgecv_meta.joblib`, `outputs/oof_pooled.parquet`.
-7. **Eval:** `python -m scripts.5_evaluate` → `outputs/eval_report.json`.  
-   **Explainability:** `python -m scripts.5b_explain` → SHAP summary (Model B), attention ablation (Model A).
-8. **Inference:** `python -m scripts.6_run_inference` → `outputs/run_001/predictions.json`, `pred_vs_actual.png`.
+2. **Config:** Edit `config/defaults.yaml` if needed (seasons, paths, model params). DB path: `data/processed/nba_build_run.duckdb`.
+3. **Data:**  
+   - `python -m scripts.1_download_raw` — fetch player/team logs via nba_api (writes to `data/raw/` as parquet).  
+   - `python -m scripts.2_build_db` — build DuckDB from raw → `data/processed/nba_build_run.duckdb`, update `data/manifest.json`.
+4. **Training (real DB):**  
+   - `python -m scripts.3_train_model_a` — K-fold OOF → `outputs/oof_model_a.parquet`, then final model → `outputs/best_deep_set.pt`.  
+   - `python -m scripts.4_train_model_b` — K-fold OOF → `outputs/oof_model_b.parquet`, then XGB + RF → `outputs/xgb_model.joblib`, `outputs/rf_model.joblib`.  
+   - `python -m scripts.4b_train_stacking` — merge OOF parquets, RidgeCV → `outputs/ridgecv_meta.joblib`, `outputs/oof_pooled.parquet` (requires OOF from 3 and 4).
+5. **Inference:** `python -m scripts.6_run_inference` — load DB and models, run Model A/B + meta → `outputs/run_001/predictions.json`, `outputs/run_001/pred_vs_actual.png`.
+6. **Evaluation:** `python -m scripts.5_evaluate` — uses predictions from step 5 → `outputs/eval_report.json` (NDCG, Spearman, MRR, ROC-AUC upset).
+7. **Explainability:** `python -m scripts.5b_explain` — SHAP on real team-context X, attention ablation on real list batch → `outputs/shap_summary.png`.
+
+**Optional:** `python -m scripts.run_manifest` (run manifest); `python -m scripts.run_leakage_tests` (before training).
 
 ---
 
@@ -81,13 +82,17 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 
 ---
 
-## Report Assets
+## Report Assets (deliverables)
 
-- `outputs/eval_report.json` — NDCG, Spearman, MRR, ROC-AUC upset.
-- `outputs/run_001/predictions.json` — per-team predicted rank, true strength, delta, ensemble diagnostics.
-- `outputs/run_001/pred_vs_actual.png` — predicted vs actual rank scatter.
-- `outputs/shap_summary.png` — Model B SHAP summary (after `5b_explain` with RF).
-- `outputs/oof_pooled.parquet` — pooled OOF for stacking diagnostics.
+All paths under `outputs/` (or `config.paths.outputs`). Produced from real data when DB and models exist.
+
+- `outputs/eval_report.json` — NDCG, Spearman, MRR, ROC-AUC upset (from script 5, using inference output).
+- `outputs/run_001/predictions.json` — per-team predicted rank, true strength score, delta, classification (Sleeper/Paper Tiger/Aligned), ensemble diagnostics.
+- `outputs/run_001/pred_vs_actual.png` — predicted vs actual rank scatter (from script 6).
+- `outputs/shap_summary.png` — Model B (RF) SHAP summary on real team-context features (script 5b).
+- `outputs/oof_pooled.parquet`, `outputs/ridgecv_meta.joblib` — stacking meta-learner and pooled OOF (script 4b).
+- `outputs/oof_model_a.parquet`, `outputs/oof_model_b.parquet` — OOF from scripts 3 and 4 (Option A: K-fold, real data).
+- `outputs/best_deep_set.pt`, `outputs/xgb_model.joblib`, `outputs/rf_model.joblib` — trained Model A and Model B.
 
 ---
 

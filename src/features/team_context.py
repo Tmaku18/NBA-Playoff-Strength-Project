@@ -52,3 +52,45 @@ def build_team_context(
             raise ValueError(f"Model B must not include net_rating; found: {c}")
 
     return out
+
+
+# Model B feature column names (no net_rating)
+TEAM_CONTEXT_FEATURE_COLS: list[str] = ["eFG", "TOV_pct", "FT_rate", "ORB_pct", "pace"]
+
+
+def build_team_context_as_of_dates(
+    tgl: pd.DataFrame,
+    games: pd.DataFrame,
+    team_dates: list[tuple[int, str]],
+    *,
+    date_col: str = "game_date",
+    team_id_col: str = "team_id",
+) -> pd.DataFrame:
+    """
+    Build Model B features per (team_id, as_of_date): season-to-date mean of eFG, TOV_pct, FT_rate, ORB_pct, pace.
+    tgl must have game_date (e.g. from load_training_data join). team_dates = [(team_id, as_of_date), ...].
+    """
+    if not team_dates:
+        return pd.DataFrame(columns=[team_id_col, "as_of_date"] + TEAM_CONTEXT_FEATURE_COLS)
+    ctx = build_team_context(tgl, games)
+    if "game_date" not in ctx.columns and "game_id" in games.columns and "game_date" in games.columns:
+        ctx = ctx.merge(games[["game_id", "game_date"]].drop_duplicates(), on="game_id", how="left")
+    ctx[date_col] = pd.to_datetime(ctx[date_col]).dt.date
+    feat_cols = [c for c in TEAM_CONTEXT_FEATURE_COLS if c in ctx.columns]
+    rows = []
+    for tid, as_of in team_dates:
+        ad = pd.to_datetime(as_of).date() if isinstance(as_of, str) else as_of
+        past = ctx[(ctx[team_id_col] == tid) & (ctx[date_col] < ad)]
+        if past.empty or not feat_cols:
+            rows.append({team_id_col: tid, "as_of_date": as_of, **{c: 0.0 for c in TEAM_CONTEXT_FEATURE_COLS}})
+            continue
+        agg = past[feat_cols].mean()
+        row = {team_id_col: tid, "as_of_date": as_of, **{c: 0.0 for c in TEAM_CONTEXT_FEATURE_COLS}}
+        for c in feat_cols:
+            row[c] = float(agg[c]) if pd.notna(agg[c]) else 0.0
+        rows.append(row)
+    out = pd.DataFrame(rows)
+    for c in TEAM_CONTEXT_FEATURE_COLS:
+        if c not in out.columns:
+            out[c] = 0.0
+    return out[[team_id_col, "as_of_date"] + TEAM_CONTEXT_FEATURE_COLS]

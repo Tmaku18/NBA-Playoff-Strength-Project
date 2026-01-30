@@ -213,3 +213,37 @@ ON CONFLICT (game_id, team_id) DO UPDATE SET is_home=excluded.is_home, wl=exclud
             con.unregister("_pgl")
 
     con.close()
+
+
+def load_training_data(db_path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Load games, team_game_logs (with game_date), teams, player_game_logs (with game_date)
+    from DuckDB for training. Raises if db_path does not exist.
+    Returns (games, tgl, teams, pgl) with snake_case columns.
+    """
+    path = Path(db_path)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Database not found: {path}. Run scripts 1_download_raw and 2_build_db first."
+        )
+    con = get_connection(path, read_only=True)
+    games = con.execute("SELECT * FROM games").df()
+    teams = con.execute("SELECT * FROM teams").df()
+    if games.empty:
+        con.close()
+        return games, pd.DataFrame(), teams, pd.DataFrame()
+    games["game_date"] = pd.to_datetime(games["game_date"]).dt.date
+    tgl = con.execute("""
+        SELECT tgl.*, g.game_date
+        FROM team_game_logs tgl
+        JOIN games g ON tgl.game_id = g.game_id
+    """).df()
+    tgl["game_date"] = pd.to_datetime(tgl["game_date"]).dt.date
+    pgl = con.execute("""
+        SELECT pgl.*, g.game_date
+        FROM player_game_logs pgl
+        JOIN games g ON pgl.game_id = g.game_id
+    """).df()
+    pgl["game_date"] = pd.to_datetime(pgl["game_date"]).dt.date
+    con.close()
+    return games, tgl, teams, pgl

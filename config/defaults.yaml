@@ -16,7 +16,7 @@ seasons:
   "2025-26": { start: "2025-10-01", end: "2026-04-15" }
 
 paths:
-  db: "data/processed/nba_build.duckdb"
+  db: "data/processed/nba_build_run.duckdb"
   raw: "data/raw"
   processed: "data/processed"
   outputs: "outputs"
