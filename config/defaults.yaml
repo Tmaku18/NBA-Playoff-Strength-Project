@@ -55,3 +55,7 @@ training:
 output:
   true_strength_scale: "percentile"  # or softmax, platt
   odds_temperature: 1.0  # softmax temperature for championship odds
+
+# null = auto-increment run (run_002, run_003, ... from existing run_* dirs); set e.g. "run_001" to fix
+inference:
+  run_id: null

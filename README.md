@@ -63,7 +63,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 **Run order (production, real data only):**
 
 1. **Setup:** `pip install -r requirements.txt`
-2. **Config:** Edit `config/defaults.yaml` if needed (seasons, paths, model params, `build_db.skip_if_exists`). DB path: `data/processed/nba_build_run.duckdb`.
+2. **Config:** Edit `config/defaults.yaml` if needed (seasons, paths, model params, `build_db.skip_if_exists`, `inference.run_id`). DB path: `data/processed/nba_build_run.duckdb`. Set `inference.run_id: null` (default) to auto-increment runs (run_002, run_003, …); set e.g. `"run_001"` to fix a single run folder.
 3. **Data:**  
    - `python -m scripts.1_download_raw` — fetch regular-season and playoff logs via nba_api (writes to `data/raw/`; reuses existing files when present).  
    - `python -m scripts.2_build_db` — build DuckDB from raw → `data/processed/nba_build_run.duckdb`, update `data/manifest.json`. If `build_db.skip_if_exists: true` (default) and the DB file already exists, the build is skipped to keep the current DB.
@@ -71,13 +71,13 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
    - `python -m scripts.3_train_model_a` — K-fold OOF → `outputs/oof_model_a.parquet`, then final model → `outputs/best_deep_set.pt`.  
    - `python -m scripts.4_train_model_b` — K-fold OOF → `outputs/oof_model_b.parquet`, then XGB + RF → `outputs/xgb_model.joblib`, `outputs/rf_model.joblib`.  
    - `python -m scripts.4b_train_stacking` — merge OOF parquets, RidgeCV → `outputs/ridgecv_meta.joblib`, `outputs/oof_pooled.parquet` (requires OOF from 3 and 4).
-5. **Inference:** `python -m scripts.6_run_inference` — load DB and models, run Model A/B + meta → `outputs/run_001/predictions.json`, `pred_vs_actual.png`, `pred_vs_playoff_rank.png`, `odds_top10.png`, `title_contender_scatter.png`.
-6. **Evaluation:** `python -m scripts.5_evaluate` — uses predictions from step 6 (inference) → `outputs/eval_report.json` (NDCG, Spearman, MRR, ROC-AUC upset).
+5. **Inference:** `python -m scripts.6_run_inference` — load DB and models, run Model A/B + meta → `outputs/<run_id>/predictions.json`, plots. With `inference.run_id: null`, run_id auto-increments (run_002, run_003, …) so each full pipeline run gets a new folder.
+6. **Evaluation:** `python -m scripts.5_evaluate` — uses predictions from the latest (or configured) run_id → `outputs/eval_report.json` (NDCG, Spearman, MRR, ROC-AUC upset).
 7. **Explainability:** `python -m scripts.5b_explain` — SHAP on real team-context X, attention ablation on real list batch → `outputs/shap_summary.png`.
 
 **Optional:** `python -m scripts.run_manifest` (run manifest); `python -m scripts.run_leakage_tests` (before training).
 
-**Pipeline behavior:** Script 1 reuses raw files that already exist (no re-download). Script 2 skips rebuilding the DB when `build_db.skip_if_exists` is true and the DB file exists; set it to false to force a full rebuild from raw.
+**Pipeline behavior:** Script 1 reuses raw files that already exist (no re-download). Script 2 skips rebuilding the DB when `build_db.skip_if_exists` is true and the DB file exists; set it to false to force a full rebuild from raw. With `inference.run_id: null`, inference writes to the next run folder (run_002, run_003, …) and evaluation uses the latest run.
 
 ---
 
@@ -93,7 +93,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 
 ## Report Assets (deliverables)
 
-All paths under `outputs/` (or `config.paths.outputs`). Produced from real data when DB and models exist.
+All paths under `outputs/` (or `config.paths.outputs`). Produced from real data when DB and models exist. With `inference.run_id: null`, each pipeline run writes to a new folder (`outputs/run_002/`, `outputs/run_003/`, …); evaluation uses the latest run.
 
 - `outputs/eval_report.json` — NDCG, Spearman, MRR (top_k=2), ROC-AUC upset, `notes`; when playoff data exists, `playoff_metrics` (Spearman vs playoff rank, NDCG@4, Brier championship).
 - `outputs/run_001/predictions.json` — per-team `global_rank` (1–30), `conference_rank` (1–15), `championship_odds`, `true_strength_score`, `playoff_rank`/`rank_delta_playoffs` (when available), classification, ensemble diagnostics.

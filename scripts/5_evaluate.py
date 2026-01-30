@@ -1,5 +1,6 @@
 """Run evaluation on real predictions; write outputs/eval_report.json. Requires predictions.json from script 6."""
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -13,13 +14,33 @@ from src.evaluation.evaluate import evaluate_ranking, evaluate_upset
 from src.evaluation.metrics import brier_champion, ndcg_at_4, spearman
 
 
+def _latest_run_id(outputs_dir: Path) -> str | None:
+    """Return the latest run_NNN (highest number) present in outputs_dir, or None."""
+    outputs_dir = Path(outputs_dir)
+    if not outputs_dir.exists():
+        return None
+    pattern = re.compile(r"^run_(\d+)$", re.I)
+    numbers = []
+    for p in outputs_dir.iterdir():
+        if p.is_dir() and pattern.match(p.name):
+            if (p / "predictions.json").exists():
+                numbers.append(int(pattern.match(p.name).group(1)))
+    if not numbers:
+        return None
+    return f"run_{max(numbers):03d}"
+
+
 def main():
     with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     out_dir = Path(config["paths"]["outputs"])
     if not out_dir.is_absolute():
         out_dir = ROOT / out_dir
-    run_id = "run_001"
+    run_id = config.get("inference", {}).get("run_id")
+    if run_id is None or (isinstance(run_id, str) and run_id.strip().lower() in ("null", "")):
+        run_id = _latest_run_id(out_dir) or "run_001"
+    else:
+        run_id = str(run_id).strip()
     pred_path = out_dir / run_id / "predictions.json"
     if not pred_path.exists():
         print("Predictions not found. Run inference (script 6) first.", file=sys.stderr)
