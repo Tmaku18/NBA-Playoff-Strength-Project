@@ -48,6 +48,6 @@
   "timestamps": {
     "download": "1769747778.081988"
   },
-  "processed": "a151707550396873fa7a7c0a3c3be21c6649aa158b577cb4c774a05a7c1fb742",
+  "processed": "4b1ba9f7a15c8debb8562f37be2bac859829b8b0eb25e0970354fd6a6e616dc1",
   "db_path": "data\\processed\\nba_build_run.duckdb"
 }
