@@ -58,12 +58,15 @@ def train_epoch(
 
         score, _, _ = model(embs, stats, minutes, mask)
         score = score.reshape(B, K)
+        score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
         loss = listmle_loss(score, rel)
         optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        total += loss.item()
-        n += 1
+        if torch.isfinite(loss).all():
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
+            total += loss.item()
+            n += 1
     return total / n if n else 0.0
 
 

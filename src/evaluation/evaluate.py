@@ -19,7 +19,7 @@ def evaluate_ranking(
     return {
         "ndcg": ndcg_score(y_true, y_score, k=k),
         "spearman": spearman(y_true, y_score),
-        "mrr": mrr(y_true, y_score, top_k=1),
+        "mrr": mrr(y_true, y_score, top_k=2),
     }
 
 

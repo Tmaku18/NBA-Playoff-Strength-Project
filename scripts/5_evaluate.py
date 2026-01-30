@@ -60,6 +60,10 @@ def main():
         m.update(m2)
     else:
         m["roc_auc_upset"] = 0.5
+    m["notes"] = {
+        "upset_definition": "sleeper = actual_rank > predicted_rank (under-ranked by standings)",
+        "mrr": "top_k=2; 1/rank of first max-relevance item in predicted order (two conferences).",
+    }
     out = out_dir / "eval_report.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:

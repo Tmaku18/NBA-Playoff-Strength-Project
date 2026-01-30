@@ -4,7 +4,7 @@
 
 Tanaka Makuvaza  
 Georgia State University — Advanced Machine Learning  
-January 27, 2026
+January 28, 2026
 
 ---
 
@@ -18,7 +18,7 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 - **True Strength:** Latent **Z** from Deep Set penultimate layer; score mapped to percentile within conference.
 - **No Net Rating leakage:** `net_rating` is excluded as a model input and never used as a target or evaluation metric (allowed only in baselines).
 - **Stacking:** K-fold **OOF** across **all training seasons**; level-2 **RidgeCV** on pooled OOF (not Logistic Regression).
-- **Game-level ListMLE:** lists per conference-date/week; **torch.logsumexp** for numerical stability; hash-trick embeddings for new players.
+- **Game-level ListMLE:** lists per conference-date/week; **torch.logsumexp** and input clamping for numerical stability; gradient clipping in Model A training; hash-trick embeddings for new players.
 - **Season config:** Hard-coded season date ranges in `defaults.yaml` to avoid play-in ambiguity.
 - **Explainability:** SHAP on Model B only; Integrated Gradients or permutation ablation for Model A.
 
@@ -35,9 +35,10 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 ---
 
 ## Evaluation
-- **Ranking:** NDCG, Spearman, MRR.
+- **Ranking:** NDCG, Spearman, MRR (MRR uses top_k=2 for two-conference “rank 1”).
 - **Future outcomes:** Brier score.
-- **Sleeper detection:** ROC-AUC on playoff upsets.
+- **Sleeper detection:** ROC-AUC on upsets (sleeper = actual_rank > predicted_rank); constant-label guard returns 0.5.
+- **Report:** `eval_report.json` includes a `notes` field (upset definition, MRR description).
 - **Baselines:** rank-by-SRS, rank-by-Net-Rating, **Dummy** (e.g. previous-season rank or rank-by-net-rating).
 
 ---
@@ -65,7 +66,7 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
    - `python -m scripts.4_train_model_b` — K-fold OOF → `outputs/oof_model_b.parquet`, then XGB + RF → `outputs/xgb_model.joblib`, `outputs/rf_model.joblib`.  
    - `python -m scripts.4b_train_stacking` — merge OOF parquets, RidgeCV → `outputs/ridgecv_meta.joblib`, `outputs/oof_pooled.parquet` (requires OOF from 3 and 4).
 5. **Inference:** `python -m scripts.6_run_inference` — load DB and models, run Model A/B + meta → `outputs/run_001/predictions.json`, `outputs/run_001/pred_vs_actual.png`.
-6. **Evaluation:** `python -m scripts.5_evaluate` — uses predictions from step 5 → `outputs/eval_report.json` (NDCG, Spearman, MRR, ROC-AUC upset).
+6. **Evaluation:** `python -m scripts.5_evaluate` — uses predictions from step 6 (inference) → `outputs/eval_report.json` (NDCG, Spearman, MRR, ROC-AUC upset).
 7. **Explainability:** `python -m scripts.5b_explain` — SHAP on real team-context X, attention ablation on real list batch → `outputs/shap_summary.png`.
 
 **Optional:** `python -m scripts.run_manifest` (run manifest); `python -m scripts.run_leakage_tests` (before training).
@@ -86,7 +87,7 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 
 All paths under `outputs/` (or `config.paths.outputs`). Produced from real data when DB and models exist.
 
-- `outputs/eval_report.json` — NDCG, Spearman, MRR, ROC-AUC upset (from script 5, using inference output).
+- `outputs/eval_report.json` — NDCG, Spearman, MRR (top_k=2), ROC-AUC upset, and `notes` (definitions) from script 5.
 - `outputs/run_001/predictions.json` — per-team predicted rank, true strength score, delta, classification (Sleeper/Paper Tiger/Aligned), ensemble diagnostics.
 - `outputs/run_001/pred_vs_actual.png` — predicted vs actual rank scatter (from script 6).
 - `outputs/shap_summary.png` — Model B (RF) SHAP summary on real team-context features (script 5b).
