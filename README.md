@@ -37,18 +37,19 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 ## Evaluation
 - **Ranking:** NDCG, Spearman, MRR (MRR uses top_k=2 for two-conference “rank 1”).
 - **Future outcomes:** Brier score.
-- **Sleeper detection:** ROC-AUC on upsets (sleeper = actual_rank > predicted_rank); constant-label guard returns 0.5.
+- **Sleeper detection:** ROC-AUC on upsets (sleeper = actual conference rank > predicted league rank); constant-label guard returns 0.5.
 - **Report:** `eval_report.json` includes a `notes` field (upset definition, MRR description).
 - **Baselines:** rank-by-SRS, rank-by-Net-Rating, **Dummy** (e.g. previous-season rank or rank-by-net-rating).
 
 ---
 
 ## Outputs (per run)
-- Predicted rank (1–30, league-wide) and true strength score (0–1).
+- **Predicted rank** (1–30, league-wide) and true strength score (0–1).
+- **Actual rank** in outputs and plots is conference standing (1–15 within East or West), from standings-to-date at the inference target date.
 - Classification: **Sleeper** (under-ranked by standings), **Paper Tiger** (over-ranked), **Aligned**.
-- Delta (actual rank − predicted rank) and ensemble agreement (Model A / XGB / RF ranks).
+- Delta (actual conference rank − predicted league rank) and ensemble agreement (Model A / XGB / RF ranks).
 - Roster dependence (attention weights when available).
-- `pred_vs_actual.png`: two panels (East and West) with predicted vs actual rank scatter, grid lines, team-colored points, and legend.
+- `pred_vs_actual.png`: two panels (East and West); x-axis = actual conference rank (1–15), y-axis = predicted league rank (1–30); grid lines, team-colored points, and legend.
 
 ---
 
@@ -88,8 +89,8 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 All paths under `outputs/` (or `config.paths.outputs`). Produced from real data when DB and models exist.
 
 - `outputs/eval_report.json` — NDCG, Spearman, MRR (top_k=2), ROC-AUC upset, and `notes` (definitions) from script 5.
-- `outputs/run_001/predictions.json` — per-team predicted rank, true strength score, delta, classification (Sleeper/Paper Tiger/Aligned), ensemble diagnostics.
-- `outputs/run_001/pred_vs_actual.png` — two panels (East and West): predicted vs actual rank scatter with grid lines, team-colored points, and legend (script 6).
+- `outputs/run_001/predictions.json` — per-team predicted league rank (1–30), actual conference rank (1–15), true strength score, delta, classification, ensemble diagnostics.
+- `outputs/run_001/pred_vs_actual.png` — two panels (East and West): x = actual conference rank (1–15), y = predicted league rank (1–30); grid lines, team-colored points, and legend (script 6).
 - `outputs/shap_summary.png` — Model B (RF) SHAP summary on real team-context features (script 5b).
 - `outputs/oof_pooled.parquet`, `outputs/ridgecv_meta.joblib` — stacking meta-learner and pooled OOF (script 4b).
 - `outputs/oof_model_a.parquet`, `outputs/oof_model_b.parquet` — OOF from scripts 3 and 4 (Option A: K-fold, real data).
