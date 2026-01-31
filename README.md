@@ -39,6 +39,7 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 - **Future outcomes:** Brier score.
 - **Sleeper detection:** ROC-AUC on playoff upsets.
 - **Baselines:** rank-by-SRS, rank-by-Net-Rating, **Dummy** (e.g. previous-season rank or rank-by-net-rating).
+- **Note:** `scripts/5_evaluate.py` currently uses synthetic data; replace with real predictions for production evaluation.
 
 ---
 
@@ -60,14 +61,15 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 4. **Leakage tests:** `python -m scripts.run_leakage_tests` — run before training.
 5. **Data:**  
    - `python -m scripts.1_download_raw` — fetch player/team logs via nba_api (optional; place CSVs in `data/raw/` as `team_logs_YYYY_YY.csv`, `player_logs_YYYY_YY.csv` to skip).  
-   - `python -m scripts.2_build_db` — build `data/processed/nba.duckdb` and `data/manifest.json`.
+   - `python -m scripts.2_build_db` — build `data/processed/nba_build.duckdb` and `data/manifest.json`.
 6. **Models:**  
-   - `python -m scripts.3_train_model_a` — Deep Set + ListMLE → `outputs/best_deep_set.pt`.  
-   - `python -m scripts.4_train_model_b` — XGB + RF → `outputs/xgb_model.joblib`, `outputs/rf_model.joblib` (requires `xgboost`).  
+   - `python -m scripts.3_train_model_a` — Deep Set + ListMLE (DuckDB lists + roster features) → `outputs/best_deep_set.pt`.  
+   - `python -m scripts.4_train_model_b` — XGB + RF (team-context features as-of date) → `outputs/xgb_model.joblib`, `outputs/rf_model.joblib` (requires `xgboost`).  
    - `python -m scripts.4b_train_stacking` — RidgeCV on OOF → `outputs/ridgecv_meta.joblib`, `outputs/oof_pooled.parquet`.
-7. **Eval:** `python -m scripts.5_evaluate` → `outputs/eval_report.json`.  
+7. **Eval (placeholder):** `python -m scripts.5_evaluate` → `outputs/eval_report.json` (synthetic data; replace with real evaluation).  
    **Explainability:** `python -m scripts.5b_explain` → SHAP summary (Model B), attention ablation (Model A).
-8. **Inference:** `python -m scripts.6_run_inference` → `outputs/run_001/predictions.json`, `pred_vs_actual.png`.
+8. **Inference (placeholder):** `python -m scripts.6_run_inference` → `outputs/run_001/predictions.json`, `pred_vs_actual.png` (dummy teams).  
+9. **Sweeps (optional):** `python -m scripts.sweep_hparams --batch epochs_plus_model_b --epochs 8,9,... --xgb-grid "<grid>" --rf-grid "<grid>" --val-frac 0.25 --batch-id batch_XXX`.
 
 ---
 
@@ -83,9 +85,9 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 
 ## Report Assets
 
-- `outputs/eval_report.json` — NDCG, Spearman, MRR, ROC-AUC upset.
-- `outputs/run_001/predictions.json` — per-team predicted rank, true strength, delta, ensemble diagnostics.
-- `outputs/run_001/pred_vs_actual.png` — predicted vs actual rank scatter.
+- `outputs/eval_report.json` — NDCG, Spearman, MRR, ROC-AUC upset (synthetic until wired).
+- `outputs/run_001/predictions.json` — per-team predicted rank, true strength, delta, ensemble diagnostics (dummy until wired).
+- `outputs/run_001/pred_vs_actual.png` — predicted vs actual rank scatter (dummy until wired).
 - `outputs/shap_summary.png` — Model B SHAP summary (after `5b_explain` with RF).
 - `outputs/oof_pooled.parquet` — pooled OOF for stacking diagnostics.
 

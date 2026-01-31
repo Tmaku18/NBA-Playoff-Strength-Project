@@ -7,6 +7,7 @@ import pandas as pd
 from .four_factors import four_factors_from_team_logs
 
 FORBIDDEN = {"net_rating", "NET_RATING", "net rating"}
+TEAM_CONTEXT_FEATURE_COLS = ["eFG", "TOV_pct", "FT_rate", "ORB_pct", "pace", "sos", "srs"]
 
 
 def build_team_context(
@@ -52,3 +53,42 @@ def build_team_context(
             raise ValueError(f"Model B must not include net_rating; found: {c}")
 
     return out
+
+
+def build_team_context_as_of_dates(
+    tgl: pd.DataFrame,
+    games: pd.DataFrame,
+    team_dates: list[tuple[int, str]],
+) -> pd.DataFrame:
+    """Build team-context features aggregated up to each as_of_date."""
+    if not team_dates:
+        return pd.DataFrame(columns=["team_id", "as_of_date"] + TEAM_CONTEXT_FEATURE_COLS)
+
+    g = games.copy()
+    g["game_date"] = pd.to_datetime(g["game_date"])
+    t = tgl.copy()
+    t["game_date"] = pd.to_datetime(t["game_date"])
+
+    out_rows: list[pd.DataFrame] = []
+    for as_of in sorted({d for _, d in team_dates}):
+        ad = pd.to_datetime(as_of)
+        g_sub = g[g["game_date"] < ad]
+        t_sub = t[t["game_date"] < ad]
+        feats = build_team_context(t_sub, g_sub)
+        if feats.empty:
+            continue
+        agg = feats.groupby("team_id", as_index=False).mean(numeric_only=True)
+        agg["as_of_date"] = str(pd.to_datetime(as_of).date())
+        out_rows.append(agg)
+
+    if not out_rows:
+        return pd.DataFrame(columns=["team_id", "as_of_date"] + TEAM_CONTEXT_FEATURE_COLS)
+
+    df = pd.concat(out_rows, ignore_index=True)
+    # ensure all expected columns exist
+    for c in TEAM_CONTEXT_FEATURE_COLS:
+        if c not in df.columns:
+            df[c] = 0.0
+
+    keep = ["team_id", "as_of_date"] + TEAM_CONTEXT_FEATURE_COLS
+    return df[keep].copy()

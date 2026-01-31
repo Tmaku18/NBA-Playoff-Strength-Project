@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import torch
 import torch.nn as nn
@@ -67,9 +67,41 @@ def train_epoch(
     return total / n if n else 0.0
 
 
+def eval_epoch(
+    model: nn.Module,
+    batches: Iterable[dict],
+    device: torch.device,
+) -> float:
+    model.eval()
+    total = 0.0
+    n = 0
+    with torch.no_grad():
+        for batch in batches:
+            B, K, P, S = (
+                batch["embedding_indices"].shape[0],
+                batch["embedding_indices"].shape[1],
+                batch["embedding_indices"].shape[2],
+                batch["player_stats"].shape[-1],
+            )
+            embs = batch["embedding_indices"].to(device).reshape(B * K, P)
+            stats = batch["player_stats"].to(device).reshape(B * K, P, S)
+            minutes = batch["minutes"].to(device).reshape(B * K, P)
+            mask = batch["key_padding_mask"].to(device).reshape(B * K, P)
+            rel = batch["rel"].to(device)
+
+            score, _, _ = model(embs, stats, minutes, mask)
+            score = score.reshape(B, K)
+            loss = listmle_loss(score, rel)
+            total += loss.item()
+            n += 1
+    return total / n if n else 0.0
+
+
 def train_model_a(
     config: dict,
     output_dir: str | Path,
+    train_batches: list[dict] | None = None,
+    val_batches: list[dict] | None = None,
     device: str | torch.device | None = None,
 ) -> Path:
     output_dir = Path(output_dir)
@@ -92,10 +124,36 @@ def train_model_a(
     model = DeepSetRank(num_emb, emb_dim, stat_dim, enc_h, heads, drop).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    batches = [get_dummy_batch(4, 10, 15, stat_dim, num_emb, device) for _ in range(5)]
-    for epoch in range(3):
-        loss = train_epoch(model, batches, optimizer, device)
-        print(f"epoch {epoch+1} loss={loss:.4f}")
+    if train_batches is None:
+        train_batches = [get_dummy_batch(4, 10, 15, stat_dim, num_emb, device) for _ in range(5)]
+    epochs = int(ma.get("epochs", 3))
+    patience = int(ma.get("early_stopping_patience", 0) or 0)
+    min_delta = float(ma.get("early_stopping_min_delta", 0.0) or 0.0)
+
+    best_val = None
+    best_state = None
+    bad_epochs = 0
+
+    for epoch in range(epochs):
+        loss = train_epoch(model, train_batches, optimizer, device)
+        msg = f"epoch {epoch+1} loss={loss:.4f}"
+        if val_batches:
+            val_loss = eval_epoch(model, val_batches, device)
+            msg += f" val_loss={val_loss:.4f}"
+            if best_val is None or val_loss < (best_val - min_delta):
+                best_val = val_loss
+                best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+                bad_epochs = 0
+            else:
+                bad_epochs += 1
+        print(msg)
+
+        if patience and bad_epochs >= patience:
+            print(f"early stopping after {epoch+1} epochs (patience={patience})")
+            break
+
+    if best_state is not None:
+        model.load_state_dict(best_state)
 
     path = output_dir / "best_deep_set.pt"
     torch.save({"model_state": model.state_dict(), "config": config}, path)

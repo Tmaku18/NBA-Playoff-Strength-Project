@@ -10,6 +10,24 @@ from .db import get_connection
 from .db_schema import create_schema
 
 
+def load_training_data(db_path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Load core tables from DuckDB and attach game_date to logs."""
+    con = get_connection(db_path, read_only=True)
+    games = con.execute("SELECT * FROM games").df()
+    tgl = con.execute("SELECT * FROM team_game_logs").df()
+    teams = con.execute("SELECT * FROM teams").df()
+    pgl = con.execute("SELECT * FROM player_game_logs").df()
+    con.close()
+
+    if not games.empty:
+        if "game_date" not in tgl.columns:
+            tgl = tgl.merge(games[["game_id", "game_date", "season"]], on="game_id", how="left")
+        if "game_date" not in pgl.columns:
+            pgl = pgl.merge(games[["game_id", "game_date", "season"]], on="game_id", how="left")
+
+    return games, tgl, teams, pgl
+
+
 def _read_raw(path: Path) -> pd.DataFrame:
     if path.suffix.lower() == ".parquet":
         return pd.read_parquet(path)

@@ -30,22 +30,28 @@ model_a:
   encoder_hidden: [128, 64]
   attention_heads: 4
   dropout: 0.2
+  epochs: 15
+  early_stopping_patience: 3
+  early_stopping_min_delta: 0.0
+  early_stopping_val_frac: 0.25
 
 model_b:
   xgb:
-    n_estimators: 500
-    max_depth: 6
-    learning_rate: 0.05
+    n_estimators: 300
+    max_depth: 4
+    learning_rate: 0.1
     early_stopping_rounds: 20
   rf:
-    n_estimators: 200
+    n_estimators: 150
     max_depth: 12
-    min_samples_leaf: 5
+    min_samples_leaf: 4
 
 training:
   n_folds: 5
-  rolling_windows: [10, 30]
+  rolling_windows: [10]
   roster_size: 15
+  max_lists_oof: 30
+  model_a_history_days: 120
 
 output:
   true_strength_scale: "percentile"  # or softmax, platt
