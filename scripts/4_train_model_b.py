@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.data.db_loader import load_training_data
-from src.features.team_context import TEAM_CONTEXT_FEATURE_COLS, build_team_context_as_of_dates
+from src.features.team_context import TEAM_CONTEXT_FEATURE_COLS, build_team_context_as_of_dates, get_team_context_feature_cols
 from src.training.build_lists import build_lists
 from src.training.train_model_b import train_model_b
 from src.utils.split import load_split_info

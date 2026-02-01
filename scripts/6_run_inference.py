@@ -1,4 +1,5 @@
 """Run inference pipeline: predictions.json and figures."""
+import argparse
 import re
 import sys
 from pathlib import Path

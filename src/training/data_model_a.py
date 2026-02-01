@@ -125,8 +125,9 @@ def build_batches_from_lists(
                 roster,
                 player_stats_df,
                 n_pad=roster_size,
-                stat_cols=PLAYER_STAT_COLS_L10_L30,
+                stat_cols=PLAYER_STAT_COLS_WITH_ON_OFF,
                 num_embeddings=num_emb,
+                team_continuity_scalar=continuity.get(int(tid), 0.0),
             )
             embs_list.append(emb)
             stats_list.append(rows)

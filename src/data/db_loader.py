@@ -362,14 +362,25 @@ ON CONFLICT (game_id, team_id) DO UPDATE SET is_home=excluded.is_home, wl=exclud
     con.close()
 
 
+# Cache for load_playoff_data / load_training_data: (resolved_path, mtime) -> result.
+# Avoids reloading the same DB in the same process when the file has not changed.
+_playoff_cache: dict[tuple[Path, float], tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]] = {}
+_training_cache: dict[tuple[Path, float], tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]] = {}
+
+
 def load_playoff_data(db_path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Load playoff_games, playoff_team_game_logs (with game_date), playoff_player_game_logs (with game_date).
     Returns (playoff_games, playoff_tgl, playoff_pgl). Snake_case columns.
+    Uses in-process cache: same db_path (unchanged mtime) returns cached result without re-reading.
     """
-    path = Path(db_path)
+    path = Path(db_path).resolve()
     if not path.exists():
         raise FileNotFoundError(f"Database not found: {path}")
+    mtime = path.stat().st_mtime
+    key = (path, mtime)
+    if key in _playoff_cache:
+        return _playoff_cache[key]
     con = get_connection(path, read_only=True)
     try:
         pg = con.execute("SELECT * FROM playoff_games").df()
@@ -393,7 +404,9 @@ def load_playoff_data(db_path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame, 
     """).df()
     ppgl["game_date"] = pd.to_datetime(ppgl["game_date"]).dt.date
     con.close()
-    return pg, ptgl, ppgl
+    result = (pg, ptgl, ppgl)
+    _playoff_cache[key] = result
+    return result
 
 
 def load_training_data(db_path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -401,18 +414,25 @@ def load_training_data(db_path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame,
     Load games, team_game_logs (with game_date), teams, player_game_logs (with game_date)
     from DuckDB for training. Raises if db_path does not exist.
     Returns (games, tgl, teams, pgl) with snake_case columns.
+    Uses in-process cache: same db_path (unchanged mtime) returns cached result without re-reading.
     """
-    path = Path(db_path)
+    path = Path(db_path).resolve()
     if not path.exists():
         raise FileNotFoundError(
             f"Database not found: {path}. Run scripts 1_download_raw and 2_build_db first."
         )
+    mtime = path.stat().st_mtime
+    key = (path, mtime)
+    if key in _training_cache:
+        return _training_cache[key]
     con = get_connection(path, read_only=True)
     games = con.execute("SELECT * FROM games").df()
     teams = con.execute("SELECT * FROM teams").df()
     if games.empty:
         con.close()
-        return games, pd.DataFrame(), teams, pd.DataFrame()
+        result = (games, pd.DataFrame(), teams, pd.DataFrame())
+        _training_cache[key] = result
+        return result
     games["game_date"] = pd.to_datetime(games["game_date"]).dt.date
     tgl = con.execute("""
         SELECT tgl.*, g.game_date
@@ -427,4 +447,6 @@ def load_training_data(db_path: str | Path) -> tuple[pd.DataFrame, pd.DataFrame,
     """).df()
     pgl["game_date"] = pd.to_datetime(pgl["game_date"]).dt.date
     con.close()
-    return games, tgl, teams, pgl
+    result = (games, tgl, teams, pgl)
+    _training_cache[key] = result
+    return result

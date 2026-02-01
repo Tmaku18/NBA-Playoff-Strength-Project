@@ -1,7 +1,7 @@
 """Hyperparameter sweep: Model A epochs, Model B grid, rolling windows.
 
 Runs in the foreground (no background/daemon mode). Writes results to
-<config.paths.outputs>/sweeps/<batch_id>/ (e.g. outputs2/sweeps/<batch_id>/).
+<config.paths.outputs>/sweeps/<batch_id>/ (e.g. outputs3/sweeps/<batch_id>/).
 No artificial timeout.
 
 Usage:

@@ -1,4 +1,5 @@
-"""Build DuckDB from raw logs; update data/manifest.json (processed, raw hashes)."""
+"""Build DuckDB from raw logs; update data/manifest.json (processed, raw hashes).
+If raw file hashes match manifest and DB exists, skip rebuild. If raw changed, rebuild."""
 from __future__ import annotations
 
 import hashlib
@@ -8,6 +9,30 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _hash_if_exists(path: Path) -> str | None:
+    """Return SHA256 hex digest of file if it exists, else None."""
+    if path.exists():
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    return None
+
+
+def _current_raw_hashes(raw_dir: Path, seasons: list[str]) -> dict[str, str]:
+    """Build filename -> hash for all raw files we would load (regular + playoff)."""
+    out: dict[str, str] = {}
+    for season in seasons:
+        y1, y2 = season.split("-")[0], season.split("-")[1]
+        for stem, ext in [
+            ("team_logs", "parquet"), ("player_logs", "parquet"),
+            ("playoffs_team_logs", "parquet"), ("playoffs_player_logs", "parquet"),
+        ]:
+            for suffix in (".parquet", ".csv"):
+                path = raw_dir / f"{stem}_{y1}_{y2}{suffix}"
+                h = _hash_if_exists(path)
+                if h is not None:
+                    out[path.name] = h
+    return out
 
 
 def main():
@@ -25,12 +50,23 @@ def main():
     seasons = list(cfg.get("seasons", {}).keys())
     skip_if_exists = cfg.get("build_db", {}).get("skip_if_exists", False)
 
+    manifest_path = ROOT / "data" / "manifest.json"
+    manifest = {}
+    if manifest_path.exists():
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+    current_raw = _current_raw_hashes(raw_dir, seasons)
+    stored_raw = manifest.get("raw") or {}
+    raw_unchanged = current_raw == stored_raw and len(current_raw) > 0
+    if raw_unchanged and db_path.exists():
+        print("Raw files unchanged; skipping DB rebuild.")
+        return
+
     from src.data.db_loader import load_playoff_into_db, load_raw_into_db
 
     if skip_if_exists and db_path.exists():
         print(f"Skipping main build (DB exists and build_db.skip_if_exists=true): {db_path}")
-        # Always load playoff data when DB exists so playoff tables get populated/updated
-        # (e.g. if DB was built before playoff support, or new playoff raw files were added)
         load_playoff_into_db(raw_dir, db_path, seasons=seasons)
     else:
         load_raw_into_db(raw_dir, db_path, seasons=seasons)

@@ -11,6 +11,8 @@ January 28, 2026
 ## Overview
 This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Team Strength** using a Deep Set roster model plus a Hybrid tabular ensemble (XGBoost + Random Forest). The system targets **future outcomes** and identifies **Sleepers** versus **Paper Tigers** without circular evaluation.
 
+**Run 21 is the first real success:** Model A contributes (attention/contributors), ensemble ranking vs playoff outcome improved (NDCG, Spearman, MRR). From here on, **hyperparameter sweeps** and future test runs write to **`outputs3/`** (sweeps → `outputs3/sweeps/<batch_id>/`). See `outputs2/ANALYSIS.md` for run_020 vs run_021 comparison.
+
 ---
 
 ## Key Design Choices
@@ -56,7 +58,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 - Delta (actual conference rank − predicted league rank) and ensemble agreement (Model A / XGB / RF ranks).
 - Roster dependence (attention weights; IG contributors when enabled via `output.ig_inference_top_k` and Captum). `contributors_are_fallback` indicates when attention weights were not usable.
 - **Plots:** `pred_vs_actual.png` — two panels (East/West), Predicted Conference Rank vs Actual Conference Rank (1–15); `pred_vs_playoff_rank.png` — predicted strength (global rank) vs playoff performance rank (1–30); `title_contender_scatter.png` — championship odds vs regular-season wins; `odds_top10.png` — top-10 championship odds bar chart.
-- **Report assets:** outputs directory `ANALYSIS.md` (e.g. `outputs2/ANALYSIS.md`) — human-readable analysis of pipeline outputs, interpretations, and known issues.
+- **Report assets:** `outputs2/ANALYSIS.md` (run_020/021 analysis); **outputs3/** used for sweeps and future test runs.
 
 ---
 
@@ -65,7 +67,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 **Run order (production, real data only):**
 
 1. **Setup:** `pip install -r requirements.txt`
-2. **Config:** Edit `config/defaults.yaml` if needed (seasons, paths, model params, `build_db.skip_if_exists`, `inference.run_id`). DB path: `data/processed/nba_build_run.duckdb`. Outputs go to the configured outputs directory (e.g. `outputs2/` via `config.paths.outputs`). The first run in an empty outputs folder can start at `run_019` when `inference.run_id_base: 19` is set; with `inference.run_id: null` (default) runs auto-increment (run_019, run_020, … or run_001, run_002, … depending on existing dirs and `run_id_base`).
+2. **Config:** Edit `config/defaults.yaml` if needed (seasons, paths, model params, `build_db.skip_if_exists`, `inference.run_id`). DB path: `data/processed/nba_build_run.duckdb`. **Future runs and sweeps use `outputs3/`** (`config.paths.outputs`). The first run in an empty outputs folder can start at `run_001` (or use `inference.run_id_base`); with `inference.run_id: null` (default) runs auto-increment.
 3. **Data:**  
    - `python -m scripts.1_download_raw` — fetch regular-season and playoff logs via nba_api (writes to `data/raw/`; reuses existing files when present).  
    - `python -m scripts.2_build_db` — build DuckDB from raw → `data/processed/nba_build_run.duckdb`, update `data/manifest.json`. If `build_db.skip_if_exists: true` (default) and the DB file already exists, the build is skipped to keep the current DB.
@@ -77,7 +79,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 6. **Evaluation:** `python -m scripts.5_evaluate` — uses predictions from the latest (or configured) run_id → outputs dir `eval_report.json` (NDCG, Spearman, MRR, ROC-AUC upset).
 7. **Explainability:** `python -m scripts.5b_explain` — SHAP on Model B (team-context X) → outputs dir `shap_summary.png`; attention ablation and Integrated Gradients (Model A) when Captum is installed → outputs dir `ig_model_a_attributions.txt`. Attention ablation skips padded roster slots and reports clearly when the masked forward yields NaN.
 8. **Clone classifier (optional):** `python -m scripts.4c_train_classifier_clone --config config/clone_classifier.yaml` — XGBoost binary classifier (playoff team vs not) on Train 2015–2022, Val 2023, Holdout 2024; outputs `clone_classifier_report.json` (AUC-ROC, Brier).
-9. **Hyperparameter sweep:** `python -m scripts.sweep_hparams` — Runs full pipeline (3, 4, 4b, 6, 5, 4c) across configurable hyperparameter grid; writes to `outputs/sweeps/<batch_id>/`. Use `--dry-run` to preview combos, `--max-combos N` to limit.
+9. **Hyperparameter sweep:** `python -m scripts.sweep_hparams` — Runs full pipeline (3, 4, 4b, 6, 5, 4c) across configurable hyperparameter grid; writes to **`outputs3/sweeps/<batch_id>/`** (config: `paths.outputs` = `outputs3`). Use `--dry-run` to preview combos, `--max-combos N` to limit.
 
 **Optional:** `python -m scripts.run_manifest` (run manifest); `python -m scripts.run_leakage_tests` (before training); `python -m scripts.1b_download_injuries` (stub for injury data).
 
@@ -99,7 +101,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 
 ## Report Assets (deliverables)
 
-All paths under `outputs/` (or `config.paths.outputs`). Produced from real data when DB and models exist. With `inference.run_id: null`, each pipeline run writes to a new folder (`outputs/run_002/`, `outputs/run_003/`, …); evaluation uses the latest run.
+All paths under the configured outputs dir (`outputs3/` for sweeps and new runs; `outputs2/` holds run_020/021). With `inference.run_id: null`, each pipeline run writes to a new folder (`outputs3/run_001/`, …); evaluation uses the latest run.
 
 - `eval_report.json` — NDCG, Spearman, mrr_top2, mrr_top4, ROC-AUC upset, `notes`; per-model metrics (ensemble, model_a, xgb, rf); per-conference (predicted vs actual conference rank). When playoff data exists, `playoff_metrics`.
 - `outputs/run_001/predictions.json` — per-team `predicted_strength` (rank), `conference_rank` (1–15), `championship_odds`, `ensemble_score` (0–1 percentile), `actual_conference_rank` (Actual Conference Rank), `EOS_global_rank` (1–30 when available), `post_playoff_rank`/`rank_delta_playoffs` (when playoff data exists), classification, ensemble diagnostics (model_agreement: High/Medium/Low), roster_dependence (attention + optional `ig_contributors`).

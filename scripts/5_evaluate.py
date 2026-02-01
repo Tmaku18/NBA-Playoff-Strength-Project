@@ -1,4 +1,5 @@
 """Run evaluation on real predictions; write outputs/eval_report.json. Requires predictions.json from script 6."""
+import argparse
 import json
 import re
 import sys
