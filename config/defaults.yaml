@@ -34,16 +34,19 @@ model_a:
   encoder_hidden: [128, 64]
   attention_heads: 4
   dropout: 0.2
-  epochs: 20
-  early_stopping_patience: 3
+  epochs: 28
+  early_stopping_patience: 0
   early_stopping_min_delta: 0.0
-  early_stopping_val_frac: 0.1
+  early_stopping_val_frac: 0.25
+  minutes_bias_weight: 0.3
+  minutes_sum_min: 1.0e-6
+  attention_debug: false
 
 model_b:
   xgb:
-    n_estimators: 500
-    max_depth: 6
-    learning_rate: 0.05
+    n_estimators: 250
+    max_depth: 4
+    learning_rate: 0.08
     early_stopping_rounds: 20
   rf:
     n_estimators: 200
@@ -55,6 +58,11 @@ training:
   rolling_windows: [10, 30]
   roster_size: 15
   target_rank: "standings"  # or "playoffs" to train meta on playoff performance rank
+  # 75/25 train-test split (script 3 writes split_info.json; 4 and 6 read it)
+  train_seasons: ["2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
+  test_seasons: ["2023-24", "2024-25"]
+  train_test_cutoff: null   # optional date cutoff alternative, e.g. "2023-04-15"
+  train_frac: 0.75          # fallback if seasons/cutoff not provided
   # Model A (script 3): subsample lists for feasible runtime
   max_lists_oof: 30        # max lists for OOF; subsampled when there are more
   max_final_batches: 50    # max lists for final Model A training (script 3)
@@ -66,6 +74,12 @@ output:
   ig_inference_top_k: 1  # per conference; set 0 to disable IG in predictions.json
   ig_inference_steps: 50
 
+logging:
+  roster_debug: false
+  playoff_debug: false
+
 # null = auto-increment run (run_002, run_003, ... from existing run_* dirs); set e.g. "run_001" to fix
 inference:
   run_id: null
+  # If true, also run inference on last train date and write run_id/train_predictions.json
+  also_train_predictions: false

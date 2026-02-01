@@ -22,6 +22,8 @@ def get_roster_as_of_date(
     n: int = 15,
     season_start: str | pd.Timestamp | None = None,
     latest_team_map: dict[int, int] | None = None,
+    debug: bool = False,
+    warn_missing_season: bool = False,
 ) -> pd.DataFrame:
     """
     For one team and as_of_date, select rows with game_date < as_of_date (optionally season-scoped),
@@ -34,8 +36,19 @@ def get_roster_as_of_date(
     if season_start is not None:
         ss = pd.to_datetime(season_start).date() if isinstance(season_start, str) else season_start
         mask &= dates >= ss
+    elif warn_missing_season:
+        print(
+            f"Warning: season_start missing for roster lookup (team_id={team_id}, as_of_date={as_of_date}). "
+            "Using all prior games.",
+            flush=True,
+        )
     past = pgl.loc[mask]
     if past.empty:
+        if debug:
+            print(
+                f"Roster debug: no past games for team_id={team_id} as_of={as_of_date} season_start={season_start}",
+                flush=True,
+            )
         return pd.DataFrame(columns=[player_id_col, "total_min", "rank"])
 
     past_scoped = past
@@ -47,17 +60,30 @@ def get_roster_as_of_date(
             player_id_col=player_id_col,
             team_id_col=team_id_col,
             season_start=season_start,
+            debug=debug,
+            warn_missing_season=warn_missing_season,
         )
     if latest_team_map:
         latest_team = past[player_id_col].map(latest_team_map)
         past = past.loc[latest_team == team_id]
         # Fallback: if latest-team filter yields empty, use season-scoped roster
         if past.empty:
+            if debug:
+                print(
+                    f"Roster debug: latest-team filter empty for team_id={team_id} as_of={as_of_date}; "
+                    "falling back to season-scoped roster.",
+                    flush=True,
+                )
             past = past_scoped
 
     tot = past.groupby(player_id_col, as_index=False)[min_col].sum()
     tot = tot[tot[min_col] > 0].nlargest(n, min_col).reset_index(drop=True)
     tot["rank"] = range(len(tot))
+    if tot.empty and debug:
+        print(
+            f"Roster debug: empty roster for team_id={team_id} as_of={as_of_date} season_start={season_start}",
+            flush=True,
+        )
     return tot.rename(columns={player_id_col: "player_id", min_col: "total_min"})
 
 
@@ -69,6 +95,8 @@ def latest_team_map_as_of(
     player_id_col: str = "player_id",
     team_id_col: str = "team_id",
     season_start: str | pd.Timestamp | None = None,
+    debug: bool = False,
+    warn_missing_season: bool = False,
 ) -> dict[int, int]:
     """Return player_id -> latest team_id as of date (optionally season-scoped)."""
     ad = pd.to_datetime(as_of_date).date() if isinstance(as_of_date, str) else as_of_date
@@ -77,8 +105,15 @@ def latest_team_map_as_of(
     if season_start is not None:
         ss = pd.to_datetime(season_start).date() if isinstance(season_start, str) else season_start
         mask &= dates >= ss
+    elif warn_missing_season:
+        print(
+            f"Warning: season_start missing for latest_team_map (as_of_date={as_of_date}). Using all prior games.",
+            flush=True,
+        )
     past = pgl.loc[mask, [player_id_col, team_id_col, date_col]]
     if past.empty:
+        if debug:
+            print(f"Roster debug: latest_team_map empty as_of={as_of_date} season_start={season_start}", flush=True)
         return {}
     past = past.copy()
     past[date_col] = pd.to_datetime(past[date_col])

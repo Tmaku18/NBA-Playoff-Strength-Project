@@ -1,4 +1,4 @@
-"""Run the full pipeline: download -> build_db -> train A -> train B -> stacking -> evaluate -> explain -> inference."""
+"""Run the full pipeline: download -> build_db -> leakage tests -> train A/B -> stacking -> inference -> evaluate -> explain."""
 from __future__ import annotations
 
 import subprocess
@@ -18,12 +18,13 @@ def main() -> int:
     steps = [
         "1_download_raw.py",
         "2_build_db.py",
+        "run_leakage_tests.py",
         "3_train_model_a.py",
         "4_train_model_b.py",
         "4b_train_stacking.py",
+        "6_run_inference.py",
         "5_evaluate.py",
         "5b_explain.py",
-        "6_run_inference.py",
     ]
     for i, script in enumerate(steps, 1):
         print(f"\n--- Step {i}/{len(steps)}: {script} ---")

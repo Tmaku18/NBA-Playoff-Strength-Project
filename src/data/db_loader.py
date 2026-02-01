@@ -75,8 +75,21 @@ def load_raw_into_db(
     con = get_connection(db_path)
     create_schema(con)
 
-    for t in ("player_game_logs", "team_game_logs", "games", "players", "teams"):
-        con.execute(f"DELETE FROM {t}")
+    # Delete in FK order: playoff child tables first (they reference players/teams/games), then main tables
+    for t in (
+        "playoff_player_game_logs",
+        "playoff_team_game_logs",
+        "playoff_games",
+        "player_game_logs",
+        "team_game_logs",
+        "games",
+        "players",
+        "teams",
+    ):
+        try:
+            con.execute(f"DELETE FROM {t}")
+        except Exception:
+            pass  # table may not exist yet
 
     def _season_from_stem(stem: str) -> str | None:
         m = re.search(r"(\d{4})_(\d{2})", stem)

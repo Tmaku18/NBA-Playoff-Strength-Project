@@ -204,7 +204,18 @@ def _build_model(config: dict, device: torch.device) -> nn.Module:
     enc_h = ma.get("encoder_hidden", [128, 64])
     heads = ma.get("attention_heads", 4)
     drop = ma.get("dropout", 0.2)
-    return DeepSetRank(num_emb, emb_dim, stat_dim, enc_h, heads, drop).to(device)
+    minutes_bias_weight = float(ma.get("minutes_bias_weight", 0.3))
+    minutes_sum_min = float(ma.get("minutes_sum_min", 1e-6))
+    return DeepSetRank(
+        num_emb,
+        emb_dim,
+        stat_dim,
+        enc_h,
+        heads,
+        drop,
+        minutes_bias_weight=minutes_bias_weight,
+        minutes_sum_min=minutes_sum_min,
+    ).to(device)
 
 
 def train_model_a_on_batches(
@@ -299,7 +310,7 @@ def train_model_a(
     if best_state is not None:
         model.load_state_dict(best_state)
 
-    if batches:
+    if batches and bool(ma.get("attention_debug", False)):
         try:
             _log_attention_debug_stats(model, batches[0], device)
         except Exception:
