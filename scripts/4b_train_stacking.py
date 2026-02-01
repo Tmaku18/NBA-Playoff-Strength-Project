@@ -27,7 +27,13 @@ def _season_from_date(as_of_date: str, seasons_config: dict) -> str | None:
 
 
 def main():
-    with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default=None, help="Path to config YAML")
+    args = parser.parse_args()
+    config_path = Path(args.config) if args.config else ROOT / "config" / "defaults.yaml"
+    if not config_path.is_absolute():
+        config_path = ROOT / config_path
+    with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     out = Path(config["paths"]["outputs"])
     if not out.is_absolute():
@@ -73,12 +79,15 @@ def main():
                     rng = seasons_cfg.get(season, {})
                     season_start = rng.get("start")
                     season_end = rng.get("end")
-                    playoff_rank_by_season[season] = compute_playoff_performance_rank(
+                    rank_map = compute_playoff_performance_rank(
                         pg, ptgl, games, tgl, season,
                         all_team_ids=teams["team_id"].astype(int).unique().tolist() if not teams.empty else None,
                         season_start=season_start,
                         season_end=season_end,
+                        debug=False,
                     )
+                    if rank_map:
+                        playoff_rank_by_season[season] = rank_map
                 y_list = []
                 for _, row in merged.iterrows():
                     tid = int(row["team_id"])

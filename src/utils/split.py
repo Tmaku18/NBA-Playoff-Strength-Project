@@ -9,7 +9,7 @@ from typing import Any
 import pandas as pd
 
 
-def _date_to_season(as_of_date: str, seasons_cfg: dict[str, Any]) -> str | None:
+def date_to_season(as_of_date: str, seasons_cfg: dict[str, Any]) -> str | None:
     """Map as_of_date (YYYY-MM-DD) to season key if within any season range."""
     try:
         d = pd.to_datetime(as_of_date).date()
@@ -21,6 +21,61 @@ def _date_to_season(as_of_date: str, seasons_cfg: dict[str, Any]) -> str | None:
         if start <= d <= end:
             return skey
     return None
+
+
+def get_train_seasons_ordered(config: dict[str, Any]) -> list[str]:
+    """Return train_seasons from config, sorted by season start date. For walk-forward."""
+    training_cfg = config.get("training") or {}
+    seasons_cfg = config.get("seasons") or {}
+    train_seasons = training_cfg.get("train_seasons")
+    if not train_seasons or not seasons_cfg:
+        return []
+    # Sort by season start date (chronological order)
+    def _start_date(season: str) -> str:
+        rng = seasons_cfg.get(season, {})
+        return str(rng.get("start", ""))
+    return sorted(train_seasons, key=_start_date)
+
+
+def get_test_seasons_ordered(config: dict[str, Any]) -> list[str]:
+    """Return test_seasons from config, sorted by season start date."""
+    training_cfg = config.get("training") or {}
+    seasons_cfg = config.get("seasons") or {}
+    test_seasons = training_cfg.get("test_seasons")
+    if not test_seasons or not seasons_cfg:
+        return []
+    def _start_date(season: str) -> str:
+        rng = seasons_cfg.get(season, {})
+        return str(rng.get("start", ""))
+    return sorted(test_seasons, key=_start_date)
+
+
+def group_lists_by_season(
+    lists: list[dict[str, Any]],
+    seasons_cfg: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    """Group lists by season key. Returns season -> list of lists."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    for lst in lists:
+        season = date_to_season(lst.get("as_of_date", ""), seasons_cfg)
+        if season is None:
+            continue
+        if season not in out:
+            out[season] = []
+        out[season].append(lst)
+    return out
+
+
+def _derive_seasons_from_dates(dates: list[str], seasons_cfg: dict[str, Any]) -> list[str]:
+    """Map dates to seasons, unique, ordered by first occurrence in dates."""
+    seen: set[str] = set()
+    result: list[str] = []
+    for d in dates:
+        season = date_to_season(d, seasons_cfg)
+        if season and season not in seen:
+            seen.add(season)
+            result.append(season)
+    return result
 
 
 def compute_split(
@@ -52,7 +107,7 @@ def compute_split(
                 f"train_seasons={train_seasons}, test_seasons={test_seasons}"
             )
         for lst in lists:
-            season = _date_to_season(lst.get("as_of_date", ""), seasons_cfg)
+            season = date_to_season(lst.get("as_of_date", ""), seasons_cfg)
             if season in train_set:
                 train_lists.append(lst)
             elif season in test_set:
@@ -102,6 +157,10 @@ def compute_split(
         "n_train_dates": len(train_dates),
         "n_test_dates": len(test_dates),
     }
+    # Add train_seasons and test_seasons when using seasons mode (for walk-forward, per-season inference)
+    if split_mode == "seasons" and seasons_cfg:
+        split_info["train_seasons"] = _derive_seasons_from_dates(train_dates, seasons_cfg)
+        split_info["test_seasons"] = _derive_seasons_from_dates(test_dates, seasons_cfg)
     return train_lists, test_lists, split_info
 
 

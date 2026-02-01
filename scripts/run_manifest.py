@@ -49,7 +49,10 @@ def _config_snapshot() -> dict:
 
 
 def main():
-    out_dir = ROOT / "outputs"
+    with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    out_name = config.get("paths", {}).get("outputs", "outputs")
+    out_dir = Path(out_name) if Path(out_name).is_absolute() else ROOT / out_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     manifest = {

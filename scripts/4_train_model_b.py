@@ -20,7 +20,13 @@ from src.models.rf_model import build_rf, fit_rf
 
 
 def main():
-    with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default=None, help="Path to config YAML (default: config/defaults.yaml)")
+    args = parser.parse_args()
+    config_path = Path(args.config) if args.config else ROOT / "config" / "defaults.yaml"
+    if not config_path.is_absolute():
+        config_path = ROOT / config_path
+    with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     db_path = ROOT / config["paths"]["db"]
     if not db_path.exists():

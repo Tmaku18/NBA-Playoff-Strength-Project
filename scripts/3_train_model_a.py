@@ -1,4 +1,5 @@
 """Train Model A (DeepSet + ListMLE) on real DB data. Option A: K-fold OOF, then final model."""
+import re
 import sys
 from pathlib import Path
 
@@ -8,16 +9,136 @@ sys.path.insert(0, str(ROOT))
 import pandas as pd
 import yaml
 
+
+def _next_run_id(outputs_dir: Path, run_id_base: int | None = None) -> str:
+    """Same logic as script 6: next run_NNN; if no run_* and base set, return run_{base:03d}."""
+    outputs_dir = Path(outputs_dir)
+    pattern = re.compile(r"^run_(\d+)$", re.I)
+    numbers = []
+    if outputs_dir.exists():
+        for p in outputs_dir.iterdir():
+            if p.is_dir() and pattern.match(p.name):
+                numbers.append(int(pattern.match(p.name).group(1)))
+    if not numbers and run_id_base is not None:
+        return f"run_{run_id_base:03d}"
+    next_n = max(numbers, default=0) + 1
+    return f"run_{next_n:03d}"
+
+
+def _reserve_run_id(outputs_dir: Path, config: dict) -> None:
+    """Reserve the next run_id for this pipeline run so script 6 uses the same folder."""
+    run_id_base = config.get("inference", {}).get("run_id_base")
+    run_id = _next_run_id(outputs_dir, run_id_base=run_id_base)
+    path = outputs_dir / ".current_run"
+    path.write_text(run_id.strip(), encoding="utf-8")
+
 from src.data.db_loader import load_training_data
 from src.training.data_model_a import build_batches_from_db, build_batches_from_lists
 from src.training.train_model_a import predict_batches, train_model_a, train_model_a_on_batches
 from src.training.build_lists import build_lists
-from src.utils.split import compute_split, write_split_info
+from src.utils.split import compute_split, get_train_seasons_ordered, group_lists_by_season, write_split_info
+
+
+def _run_walk_forward(config, train_lists, games, tgl, teams, pgl, out, root):
+    """Per-season walk-forward: train on 1..k, validate on k+1; final step trains on all and saves."""
+    import torch
+
+    seasons_cfg = config.get("seasons") or {}
+    train_seasons_ordered = get_train_seasons_ordered(config)
+    if not train_seasons_ordered or not seasons_cfg:
+        print("Walk-forward: no train_seasons in config. Falling back to pooled training.", flush=True)
+        return
+    grouped = group_lists_by_season(train_lists, seasons_cfg)
+    if not grouped:
+        print("Walk-forward: no lists grouped by season. Falling back to pooled.", flush=True)
+        return
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    max_final = int(config.get("training", {}).get("max_final_batches", 50))
+    epochs = int((config.get("model_a") or {}).get("epochs", 20))
+    oof_rows = []
+    n_steps = len(train_seasons_ordered)
+
+    for step, k in enumerate(range(1, n_steps + 1), 1):
+        train_season_set = set(train_seasons_ordered[:k])
+        val_season = train_seasons_ordered[k] if k < n_steps else None
+        step_train_lists = [lst for s in train_season_set for lst in grouped.get(s, [])]
+        step_val_lists = list(grouped.get(val_season, [])) if val_season else []
+
+        if not step_train_lists:
+            print(f"Walk-forward step {step}/{n_steps}: no train lists, skip", flush=True)
+            continue
+
+        # Subsample if needed
+        if len(step_train_lists) > max_final:
+            step_idx = sorted(
+                range(len(step_train_lists)),
+                key=lambda i: (step_train_lists[i]["as_of_date"], step_train_lists[i].get("conference", "")),
+            )[:: max(1, len(step_train_lists) // max_final)][:max_final]
+            step_train_lists = [step_train_lists[i] for i in sorted(step_idx)]
+
+        train_batches, _ = build_batches_from_lists(
+            step_train_lists, games, tgl, teams, pgl, config, device=device
+        )
+        if not train_batches:
+            train_batches = build_batches_from_db(games, tgl, teams, pgl, config)
+
+        val_batches = None
+        val_metas = []
+        if step_val_lists:
+            val_batches, val_metas = build_batches_from_lists(
+                step_val_lists, games, tgl, teams, pgl, config, device=device
+            )
+
+        model = train_model_a_on_batches(
+            config, train_batches, device, max_epochs=epochs, val_batches=val_batches or None
+        )
+        if val_batches and val_metas:
+            scores_list = predict_batches(model, val_batches, device)
+            for score_tensor, meta in zip(scores_list, val_metas):
+                K = score_tensor.shape[1]
+                for ki in range(K):
+                    oof_rows.append({
+                        "team_id": meta["team_ids"][ki],
+                        "as_of_date": meta["as_of_date"],
+                        "oof_a": float(score_tensor[0, ki].item()),
+                        "y": meta["win_rates"][ki],
+                    })
+            print(
+                f"Walk-forward step {step}/{n_steps}: trained on seasons "
+                f"{train_seasons_ordered[0]}..{train_seasons_ordered[k-1]}, validated on {val_season}, "
+                f"OOF {len(val_batches)} lists",
+                flush=True,
+            )
+        else:
+            print(
+                f"Walk-forward step {step}/{n_steps}: trained on seasons "
+                f"{train_seasons_ordered[0]}..{train_seasons_ordered[k-1]} (final, no next season)",
+                flush=True,
+            )
+
+        # Last step: save final model (trained on all train seasons)
+        if k == n_steps:
+            path = out / "best_deep_set.pt"
+            torch.save({"model_state": model.state_dict(), "config": config}, path)
+            print(f"Saved {path} (final model from walk-forward)", flush=True)
+
+    if oof_rows:
+        oof_df = pd.DataFrame(oof_rows)
+        oof_path = out / "oof_model_a.parquet"
+        oof_df.to_parquet(oof_path, index=False)
+        print(f"Wrote {oof_path} ({len(oof_rows)} rows)", flush=True)
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default=None, help="Path to config YAML (default: config/defaults.yaml)")
+    args = parser.parse_args()
+    config_path = Path(args.config) if args.config else ROOT / "config" / "defaults.yaml"
+    if not config_path.is_absolute():
+        config_path = ROOT / config_path
     print("Script 3: loading config and DB...", flush=True)
-    with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     db_path = ROOT / config["paths"]["db"]
     if not db_path.exists():
@@ -28,8 +149,10 @@ def main():
     if not out.is_absolute():
         out = ROOT / out
     out.mkdir(parents=True, exist_ok=True)
+    # Reserve run_id for this pipeline run so inference (script 6) writes to the same folder
+    _reserve_run_id(out, config)
 
-    lists = build_lists(tgl, games, teams)
+    lists = build_lists(tgl, games, teams, config=config)
     print(f"build_lists: {len(lists)} lists", flush=True)
     if not lists:
         batches = build_batches_from_db(games, tgl, teams, pgl, config)
@@ -52,6 +175,11 @@ def main():
         batches = build_batches_from_db(games, tgl, teams, pgl, config)
         path = train_model_a(config, out, batches=batches)
         print(f"Saved {path} (no train lists after split)")
+        return
+
+    walk_forward = bool(config.get("training", {}).get("walk_forward", False))
+    if walk_forward:
+        _run_walk_forward(config, train_lists, games, tgl, teams, pgl, out, ROOT)
         return
 
     n_folds = config.get("training", {}).get("n_folds", 5)
@@ -119,11 +247,12 @@ def main():
         for score_tensor, meta in zip(scores_list, val_metas):
             K = score_tensor.shape[1]
             for k in range(K):
+                y_val = meta.get("rel_values", meta["win_rates"])[k]
                 oof_rows.append({
                     "team_id": meta["team_ids"][k],
                     "as_of_date": meta["as_of_date"],
                     "oof_a": float(score_tensor[0, k].item()),
-                    "y": meta["win_rates"][k],
+                    "y": y_val,
                 })
         print(f"Fold {fold+1}/{n_folds} OOF collected {len(val_batches)} lists")
 

@@ -29,13 +29,22 @@ def spearman(y_true: np.ndarray, y_score: np.ndarray) -> float:
     return float(r) if np.isfinite(r) else 0.0
 
 
-def mrr(y_true: np.ndarray, y_score: np.ndarray, top_k: int = 2) -> float:
-    """MRR: 1/rank of first relevant in ranking by y_score. top_k=2 allows two 'rank 1' (e.g. two conferences)."""
+def mrr(
+    y_true: np.ndarray,
+    y_score: np.ndarray,
+    top_n_teams: int = 2,
+) -> float:
+    """MRR: 1/rank of first team in top N (by actual rank) in predicted order.
+    top_n_teams=2: champion + runner-up (either conference).
+    top_n_teams=4: conference finals (top 4 teams).
+    y_true = relevance (higher = better, e.g. 31 - actual_rank).
+    """
     order = np.argsort(y_score)[::-1]
     y = np.asarray(y_true)
-    max_rel = np.max(y)
-    for i in range(min(top_k, len(order))):
-        if y[order[i]] >= max_rel - 1e-9:
+    max_rel = float(np.max(y))
+    min_rel = max_rel - top_n_teams + 1
+    for i in range(len(order)):
+        if y[order[i]] >= min_rel - 1e-9:
             return 1.0 / (i + 1)
     return 0.0
 

@@ -1,6 +1,6 @@
 ---
 name: Walk-Forward + EOS Final Rank (Option B)
-overview: "Implement per-season walk-forward training, EOS final rank (Option B), EORS rank in outputs, EORS vs EOS_global_rank graph, and per-season inference/evaluation for all test years."
+overview: "Implement per-season walk-forward training, EOS final rank (Option B), EOS_playoff_standings in outputs, EOS_playoff_standings vs EOS_global_rank graph, and per-season inference/evaluation for all test years."
 todos: []
 isProject: false
 ---
@@ -11,7 +11,7 @@ This plan merges three features:
 
 1. **Per-season walk-forward training** for Model A (expand training set season by season, validate on next unseen season)
 2. **EOS final rank for validation** via **Option B**: when playoff data exists for the target season, set `EOS_global_rank` in predictions to the EOS final rank instead of standings order. Script 5 unchanged; it reads `EOS_global_rank` and evaluates against it.
-3. **EORS rank (End of Regular Season = playoff standings)** in outputs: add `analysis.EORS_rank` to each team — the final regular-season standings rank (1–30 by win %), which determines playoff seeding.
+3. **EOS_playoff_standings (End of Regular Season = playoff standings)** in outputs: add `analysis.EOS_playoff_standings` to each team — the final regular-season standings rank (1–30 by win %), which determines playoff seeding.
 
 ---
 
@@ -87,17 +87,17 @@ Current flow: `actual_global_rank` is set from standings-to-date (win_rate_map s
 
 Add a top-level field in the predictions output (or in `notes`): `"eos_rank_source": "eos_final_rank"` or `"standings"`.
 
-### B.4 EORS Rank (End of Regular Season = Playoff Standings) in outputs
+### B.4 EOS_playoff_standings (End of Regular Season = Playoff Standings) in outputs
 
-**EORS rank** = End of Regular Season rank = **Playoff standings** — the final regular-season standings (1–30 by win % after all reg-season games).
+**EOS_playoff_standings** = End of Regular Season rank = **Playoff standings** — the final regular-season standings (1–30 by win % after all reg-season games).
 
 **File:** [src/evaluation/playoffs.py](src/evaluation/playoffs.py)
 
-Add `compute_eors_rank(games, tgl, season, *, season_start, season_end, all_team_ids) -> dict[int, int]`.
+Add `compute_eos_playoff_standings(games, tgl, season, *, season_start, season_end, all_team_ids) -> dict[int, int]`.
 
 **File:** [src/inference/predict.py](src/inference/predict.py)
 
-Add `analysis.EORS_rank` to each team in `predict_teams` output via optional `eors_rank: dict[int, int] | None = None`.
+Add `analysis.EOS_playoff_standings` to each team in `predict_teams` output via optional `eos_playoff_standings: dict[int, int] | None = None`.
 
 ---
 
@@ -107,15 +107,15 @@ Add `analysis.EORS_rank` to each team in `predict_teams` output via optional `eo
 
 See walk_forward_and_eos_final_rank_combined.plan.md for full details on metric changes, breaking comparison, and per-conference metrics.
 
-### C.6 EORS vs EOS_global_rank graph
+### C.6 EOS_playoff_standings vs EOS_global_rank graph
 
-Add scatter plot: **X-axis** EORS_rank (playoff standings), **Y-axis** EOS_global_rank (playoff outcome). Output: `outputs/run_NNN/eors_vs_eos_global_rank_{season}.png`.
+Add scatter plot: **X-axis** EOS_playoff_standings (playoff standings), **Y-axis** EOS_global_rank (playoff outcome). Output: `outputs/run_NNN/eos_playoff_standings_vs_eos_global_rank_{season}.png`.
 
 ### C.7 Per-season inference and evaluation (all test years)
 
 **Derive test seasons:** Add `test_seasons` to split_info.json (from test_dates + date_to_season).
 
-**Per-season inference:** For each test season, use last test date in that season, run inference, write `predictions_{season}.json` (e.g. `predictions_2023-24.json`, `predictions_2024-25.json`). Per-season figures: `pred_vs_actual_{season}.png`, `eors_vs_eos_global_rank_{season}.png`, etc.
+**Per-season inference:** For each test season, use last test date in that season, run inference, write `predictions_{season}.json` (e.g. `predictions_2023-24.json`, `predictions_2024-25.json`). Per-season figures: `pred_vs_actual_{season}.png`, `eos_playoff_standings_vs_eos_global_rank_{season}.png`, etc.
 
 **Per-season evaluation:** Loop over `predictions_{season}.json`, write `eval_report_{season}.json` per season. Optionally aggregate `eval_report.json`.
 

@@ -35,7 +35,7 @@ def _normalize_teams(teams: list) -> list:
 def compute_metrics(teams: list, *, k: int = 10) -> dict:
     """Same logic as script 5: ndcg, spearman, mrr, roc_auc_upset."""
     if not teams:
-        return {"ndcg": 0.0, "spearman": 0.0, "mrr": 0.0, "roc_auc_upset": 0.5}
+        return {"ndcg": 0.0, "spearman": 0.0, "mrr_top2": 0.0, "mrr_top4": 0.0, "roc_auc_upset": 0.5}
     actual_ranks = [float(t["analysis"]["EOS_global_rank"]) for t in teams]
     pred_ranks = [float(t["prediction"].get("predicted_strength") or 0) for t in teams]
     pred_scores = [float(t["prediction"].get("ensemble_score") or 0.0) for t in teams]
@@ -57,7 +57,10 @@ def compute_metrics(teams: list, *, k: int = 10) -> dict:
 
 
 def main():
-    out_dir = ROOT / "outputs"
+    with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    out_name = config.get("paths", {}).get("outputs", "outputs")
+    out_dir = Path(out_name) if Path(out_name).is_absolute() else ROOT / out_name
     pattern = re.compile(r"^run_(\d+)$", re.I)
     run_dirs = []
     for p in out_dir.iterdir():
@@ -67,8 +70,8 @@ def main():
                 run_dirs.append((int(pattern.match(p.name).group(1)), p))
     run_dirs.sort(key=lambda x: x[0])
 
-    print("Run    NDCG@10   Spearman   MRR    ROC-AUC (upset)")
-    print("----   -------   --------   ---    ----------------")
+    print("Run    NDCG@10   Spearman   MRR@2  MRR@4  ROC-AUC (upset)")
+    print("----   -------   --------   ----   ----   ----------------")
     results = {}
     for num, path in run_dirs:
         with open(path / "predictions.json", "r", encoding="utf-8") as f:
@@ -79,7 +82,7 @@ def main():
             continue
         m = compute_metrics(normalized)
         results[f"run_{num:03d}"] = m
-        print(f"run_{num:03d}   {m['ndcg']:.4f}     {m['spearman']:.4f}     {m['mrr']:.2f}   {m['roc_auc_upset']:.4f}")
+        print(f"run_{num:03d}   {m['ndcg']:.4f}     {m['spearman']:.4f}     {m['mrr_top2']:.2f}   {m['mrr_top4']:.2f}   {m['roc_auc_upset']:.4f}")
 
     # Write comparison JSON for ANALYSIS.md
     out_dir.mkdir(parents=True, exist_ok=True)

@@ -28,9 +28,12 @@ def fit_ridgecv_on_oof(
     alphas: tuple[float, ...] = (0.1, 1.0, 10.0),
     cv: int = 5,
 ) -> RidgeCV:
-    """X_oof: (N, 3) from build_oof. y: (N,)."""
+    """X_oof: (N, 3) from build_oof. y: (N,). Imputes NaN in X with 0 so RidgeCV can fit."""
+    X = np.asarray(X_oof, dtype=np.float64)
+    if np.any(np.isnan(X)):
+        X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
     meta = RidgeCV(alphas=alphas, cv=cv, scoring="neg_mean_squared_error")
-    meta.fit(X_oof, np.asarray(y).ravel())
+    meta.fit(X, np.asarray(y).ravel())
     return meta
 
 
