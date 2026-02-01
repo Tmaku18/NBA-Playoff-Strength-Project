@@ -68,6 +68,12 @@ PLAYER_STAT_COLS_L30: list[str] = [
 # L10 + L30 (14 total) for stat_dim=14
 PLAYER_STAT_COLS_L10_L30: list[str] = PLAYER_STAT_COLS_L10 + PLAYER_STAT_COLS_L30
 
+# On-court +/- approximation (from on_off.py), L10 and L30 windows
+ON_OFF_STAT_COLS: list[str] = ["on_court_pm_approx_L10", "on_court_pm_approx_L30"]
+
+# Full stat cols for Model A: 14 base + 2 on_off = 16. pct_min_returning (team scalar) added in build_roster_set -> 17
+PLAYER_STAT_COLS_WITH_ON_OFF: list[str] = PLAYER_STAT_COLS_L10_L30 + ON_OFF_STAT_COLS
+
 
 def get_prior_season_stats(
     pgl: pd.DataFrame,

@@ -8,9 +8,9 @@ from src.training.train_model_a import get_dummy_batch, _split_train_val
 
 
 def test_get_dummy_batch_shapes():
-    batch = get_dummy_batch(batch_size=4, num_teams_per_list=10, num_players=15, stat_dim=14)
+    batch = get_dummy_batch(batch_size=4, num_teams_per_list=10, num_players=15, stat_dim=17)
     assert batch["embedding_indices"].shape == (4, 10, 15)
-    assert batch["player_stats"].shape == (4, 10, 15, 14)
+    assert batch["player_stats"].shape == (4, 10, 15, 17)
     assert batch["minutes"].shape == (4, 10, 15)
     assert batch["key_padding_mask"].shape == (4, 10, 15)
     assert batch["rel"].shape == (4, 10)

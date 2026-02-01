@@ -41,7 +41,9 @@ def sample_player_stats():
     """Minimal player_stats DataFrame for build_roster_set."""
     import pandas as pd
 
-    cols = ["pts_L10", "reb_L10", "ast_L10", "stl_L10", "blk_L10", "tov_L10", "availability_L10"]
+    from src.features.rolling import PLAYER_STAT_COLS_WITH_ON_OFF
+
+    cols = [c for c in PLAYER_STAT_COLS_WITH_ON_OFF if c != "player_id"]
     return pd.DataFrame({
         "player_id": [101, 102],
         **{c: [10.0, 8.0] for c in cols},

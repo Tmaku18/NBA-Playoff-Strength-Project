@@ -1,4 +1,5 @@
 """Train Model B (XGB + RF) on real DB team-context features. Option A: K-fold OOF, then final models."""
+import argparse
 import sys
 from pathlib import Path
 
@@ -43,9 +44,13 @@ def main():
             rows.append({"team_id": int(tid), "as_of_date": lst["as_of_date"], "y": float(wr)})
     flat = pd.DataFrame(rows)
     team_dates = [(int(a), str(b)) for a, b in flat[["team_id", "as_of_date"]].drop_duplicates().values.tolist()]
-    feat_df = build_team_context_as_of_dates(tgl, games, team_dates)
+    feat_df = build_team_context_as_of_dates(
+        tgl, games, team_dates,
+        config=config, teams=teams, pgl=pgl,
+    )
     df = flat.merge(feat_df, on=["team_id", "as_of_date"], how="inner")
-    feat_cols = [c for c in TEAM_CONTEXT_FEATURE_COLS if c in df.columns]
+    all_feat_cols = get_team_context_feature_cols(config)
+    feat_cols = [c for c in all_feat_cols if c in df.columns]
     if not feat_cols:
         print("No feature columns. Exiting.", file=sys.stderr)
         sys.exit(1)

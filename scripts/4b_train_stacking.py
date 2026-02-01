@@ -1,4 +1,5 @@
 """Train RidgeCV meta-learner on pooled OOF from scripts 3 and 4 (real OOF parquets)."""
+import argparse
 import sys
 from pathlib import Path
 

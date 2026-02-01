@@ -7,8 +7,12 @@ import pandas as pd
 import torch
 
 from src.features.build_roster_set import build_roster_set, get_roster_as_of_date, latest_team_map_as_of
+from src.features.lineup_continuity import pct_min_returning_per_team
+from src.features.on_off import get_on_court_pm_as_of_date
 from src.features.rolling import (
+    ON_OFF_STAT_COLS,
     PLAYER_STAT_COLS_L10_L30,
+    PLAYER_STAT_COLS_WITH_ON_OFF,
     get_player_stats_as_of_date,
     get_prior_season_stats,
 )
@@ -73,8 +77,20 @@ def build_batches_from_lists(
         
         player_stats_df = get_player_stats_as_of_date(
             pgl, as_of_date,
+            windows=training_cfg.get("rolling_windows", [10, 30]),
             stat_cols=PLAYER_STAT_COLS_L10_L30,
             prior_season_stats=prior_season_stats,
+        )
+        on_court_df = get_on_court_pm_as_of_date(pgl, tgl, games, as_of_date)
+        if not on_court_df.empty:
+            player_stats_df = player_stats_df.merge(on_court_df, on="player_id", how="left")
+        for c in ON_OFF_STAT_COLS:
+            if c not in player_stats_df.columns:
+                player_stats_df[c] = 0.0
+
+        continuity = pct_min_returning_per_team(
+            pgl, games, as_of_date, team_ids=list(team_ids),
+            season_start=season_start,
         )
         latest_team_map = latest_team_map_as_of(
             pgl,
@@ -202,6 +218,17 @@ def build_batches_from_db(
             stat_cols=PLAYER_STAT_COLS_L10_L30,
             prior_season_stats=prior_season_stats,
         )
+        on_court_df = get_on_court_pm_as_of_date(pgl, tgl, games, as_of_date)
+        if not on_court_df.empty:
+            player_stats_df = player_stats_df.merge(on_court_df, on="player_id", how="left")
+        for c in ON_OFF_STAT_COLS:
+            if c not in player_stats_df.columns:
+                player_stats_df[c] = 0.0
+
+        continuity = pct_min_returning_per_team(
+            pgl, games, as_of_date, team_ids=list(team_ids),
+            season_start=season_start,
+        )
         latest_team_map = latest_team_map_as_of(
             pgl,
             as_of_date,
@@ -228,8 +255,9 @@ def build_batches_from_db(
                 roster,
                 player_stats_df,
                 n_pad=roster_size,
-                stat_cols=PLAYER_STAT_COLS_L10_L30,
+                stat_cols=PLAYER_STAT_COLS_WITH_ON_OFF,
                 num_embeddings=num_emb,
+                team_continuity_scalar=continuity.get(int(tid), 0.0),
             )
             embs_list.append(emb)
             stats_list.append(rows)

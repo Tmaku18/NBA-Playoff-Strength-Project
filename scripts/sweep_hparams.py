@@ -48,6 +48,22 @@ def _run_cmd(script_path: str, extra_args: list[str], cwd: Path | None = None) -
     return r.returncode
 
 
+def _collect_clone_metrics(report_path: Path) -> dict:
+    """Read clone_classifier_report.json and extract AUC, Brier for sweep results."""
+    if not report_path.exists():
+        return {}
+    try:
+        with open(report_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return {}
+    out = {}
+    for key in ("val_auc", "val_brier", "holdout_auc", "holdout_brier", "train_auc", "train_brier"):
+        if key in data and isinstance(data[key], (int, float)):
+            out[f"clone_{key}"] = data[key]
+    return out
+
+
 def _collect_metrics(eval_path: Path) -> dict:
     """Read eval_report.json and extract metrics for sweep results."""
     if not eval_path.exists():
@@ -94,6 +110,15 @@ def main() -> int:
     lr_list = mb.get("learning_rate", [0.08])
     n_xgb_list = mb.get("n_estimators_xgb", [250])
     n_rf_list = mb.get("n_estimators_rf", [200])
+    subsample_list = mb.get("subsample", [0.8])
+    colsample_list = mb.get("colsample_bytree", [0.7])
+    min_leaf_list = mb.get("min_samples_leaf", [5])
+    if not isinstance(subsample_list, list):
+        subsample_list = [subsample_list]
+    if not isinstance(colsample_list, list):
+        colsample_list = [colsample_list]
+    if not isinstance(min_leaf_list, list):
+        min_leaf_list = [min_leaf_list]
 
     combos = list(itertools.product(
         rolling_list,
@@ -102,20 +127,27 @@ def main() -> int:
         lr_list,
         n_xgb_list,
         n_rf_list,
+        subsample_list,
+        colsample_list,
+        min_leaf_list,
     ))
     if args.max_combos:
         combos = combos[: args.max_combos]
 
     print(f"Sweep: {len(combos)} combos in {batch_dir}", flush=True)
     if args.dry_run:
-        for i, (rw, ep, md, lr, nx, nr) in enumerate(combos[:5]):
-            print(f"  {i}: rolling_windows={rw}, epochs={ep}, max_depth={md}, lr={lr}, n_xgb={nx}, n_rf={nr}")
+        for i, c in enumerate(combos[:5]):
+            rw, ep, md, lr, nx, nr = c[0], c[1], c[2], c[3], c[4], c[5]
+            sub = c[6] if len(c) > 6 else 0.8
+            col = c[7] if len(c) > 7 else 0.7
+            mleaf = c[8] if len(c) > 8 else 5
+            print(f"  {i}: rolling={rw}, epochs={ep}, max_depth={md}, lr={lr}, n_xgb={nx}, n_rf={nr}, subsample={sub}, colsample={col}, min_leaf={mleaf}")
         if len(combos) > 5:
             print(f"  ... and {len(combos) - 5} more")
         return 0
 
     results = []
-    for i, (rolling_windows, epochs, max_depth, lr, n_xgb, n_rf) in enumerate(combos):
+    for i, (rolling_windows, epochs, max_depth, lr, n_xgb, n_rf, subsample, colsample, min_leaf) in enumerate(combos):
         combo_dir = batch_dir / f"combo_{i:04d}"
         combo_dir.mkdir(parents=True, exist_ok=True)
         combo_out = combo_dir / "outputs"
@@ -131,8 +163,11 @@ def main() -> int:
         cfg["model_b"]["xgb"]["max_depth"] = int(max_depth)
         cfg["model_b"]["xgb"]["learning_rate"] = float(lr)
         cfg["model_b"]["xgb"]["n_estimators"] = int(n_xgb)
+        cfg["model_b"]["xgb"]["subsample"] = float(subsample)
+        cfg["model_b"]["xgb"]["colsample_bytree"] = float(colsample)
         cfg["model_b"]["rf"] = cfg["model_b"].get("rf", {})
         cfg["model_b"]["rf"]["n_estimators"] = int(n_rf)
+        cfg["model_b"]["rf"]["min_samples_leaf"] = int(min_leaf)
         cfg["paths"] = cfg.get("paths", {})
         cfg["paths"]["outputs"] = str(combo_out.resolve())
 
@@ -140,15 +175,19 @@ def main() -> int:
         _write_config(config_path, cfg)
         config_arg = str(config_path)
 
-        print(f"[{i+1}/{len(combos)}] rolling={rolling_windows}, epochs={epochs}, xgb d={max_depth} lr={lr} n={n_xgb}, rf n={n_rf}", flush=True)
+        print(f"[{i+1}/{len(combos)}] rolling={rolling_windows}, epochs={epochs}, xgb d={max_depth} lr={lr} n={n_xgb} sub={subsample} col={colsample}, rf n={n_rf} min_leaf={min_leaf}", flush=True)
 
-        for script, name in [
+        include_clone = sweep_cfg.get("include_clone_classifier", False)
+        pipeline = [
             ("scripts/3_train_model_a.py", "Model A"),
             ("scripts/4_train_model_b.py", "Model B"),
             ("scripts/4b_train_stacking.py", "Stacking"),
             ("scripts/6_run_inference.py", "Inference"),
             ("scripts/5_evaluate.py", "Eval"),
-        ]:
+        ]
+        if include_clone:
+            pipeline.append(("scripts/4c_train_classifier_clone.py", "Clone Classifier"))
+        for script, name in pipeline:
             code = _run_cmd(script, ["--config", config_arg])
             if code != 0:
                 print(f"  FAILED at {name} (exit {code})", flush=True)
@@ -160,6 +199,9 @@ def main() -> int:
                     "learning_rate": lr,
                     "n_xgb": n_xgb,
                     "n_rf": n_rf,
+                    "subsample": subsample,
+                    "colsample_bytree": colsample,
+                    "min_samples_leaf": min_leaf,
                     "error": name,
                 })
                 break

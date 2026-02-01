@@ -1,4 +1,4 @@
-"""Team-context features for Model B: Four Factors, pace, SOS/SRS. FORBIDDEN: net_rating."""
+"""Team-context features for Model B: Four Factors, pace, SOS/SRS, Elo, rolling, motivation, injury. FORBIDDEN: net_rating."""
 
 from __future__ import annotations
 
@@ -7,6 +7,13 @@ import pandas as pd
 from .four_factors import four_factors_from_team_logs
 
 FORBIDDEN = {"net_rating", "NET_RATING", "net rating"}
+
+# Extended feature cols when optional modules enabled
+EXTENDED_FEATURE_COLS: list[str] = [
+    "elo", "eFG_L10", "DefRtg_L10", "won_prev_game",
+    "days_until_playoffs", "elimination_status", "late_season", "eliminated_x_late_season",
+    "proj_available_rating",
+]
 
 
 def build_team_context(
@@ -57,6 +64,21 @@ def build_team_context(
 # Model B feature column names (no net_rating)
 TEAM_CONTEXT_FEATURE_COLS: list[str] = ["eFG", "TOV_pct", "FT_rate", "ORB_pct", "pace"]
 
+# All feature cols (base + extended when enabled). Use for Model B when building feat_cols.
+def get_team_context_feature_cols(config: dict | None = None) -> list[str]:
+    """Return feature columns for Model B. Includes extended when config enables them."""
+    base = list(TEAM_CONTEXT_FEATURE_COLS)
+    cfg = config or {}
+    if cfg.get("elo", {}).get("enabled", False):
+        base.append("elo")
+    if cfg.get("team_rolling", {}).get("enabled", True):
+        base.extend(["eFG_L10", "DefRtg_L10", "won_prev_game"])
+    if cfg.get("motivation", {}).get("enabled", False):
+        base.extend(["days_until_playoffs", "elimination_status", "late_season", "eliminated_x_late_season"])
+    if cfg.get("injury", {}).get("enabled", False):
+        base.append("proj_available_rating")
+    return base
+
 
 def build_team_context_as_of_dates(
     tgl: pd.DataFrame,
@@ -65,10 +87,13 @@ def build_team_context_as_of_dates(
     *,
     date_col: str = "game_date",
     team_id_col: str = "team_id",
+    teams: pd.DataFrame | None = None,
+    pgl: pd.DataFrame | None = None,
+    config: dict | None = None,
 ) -> pd.DataFrame:
     """
     Build Model B features per (team_id, as_of_date): season-to-date mean of eFG, TOV_pct, FT_rate, ORB_pct, pace.
-    tgl must have game_date (e.g. from load_training_data join). team_dates = [(team_id, as_of_date), ...].
+    Optionally merge Elo, team_rolling (eFG_L10, DefRtg_L10, won_prev_game), motivation, injury when config enables.
     """
     if not team_dates:
         return pd.DataFrame(columns=[team_id_col, "as_of_date"] + TEAM_CONTEXT_FEATURE_COLS)
@@ -82,15 +107,75 @@ def build_team_context_as_of_dates(
         ad = pd.to_datetime(as_of).date() if isinstance(as_of, str) else as_of
         past = ctx[(ctx[team_id_col] == tid) & (ctx[date_col] < ad)]
         if past.empty or not feat_cols:
-            rows.append({team_id_col: tid, "as_of_date": as_of, **{c: 0.0 for c in TEAM_CONTEXT_FEATURE_COLS}})
-            continue
-        agg = past[feat_cols].mean()
-        row = {team_id_col: tid, "as_of_date": as_of, **{c: 0.0 for c in TEAM_CONTEXT_FEATURE_COLS}}
-        for c in feat_cols:
-            row[c] = float(agg[c]) if pd.notna(agg[c]) else 0.0
+            row = {team_id_col: tid, "as_of_date": as_of, **{c: 0.0 for c in TEAM_CONTEXT_FEATURE_COLS}}
+        else:
+            agg = past[feat_cols].mean()
+            row = {team_id_col: tid, "as_of_date": as_of, **{c: 0.0 for c in TEAM_CONTEXT_FEATURE_COLS}}
+            for c in feat_cols:
+                row[c] = float(agg[c]) if pd.notna(agg[c]) else 0.0
         rows.append(row)
     out = pd.DataFrame(rows)
     for c in TEAM_CONTEXT_FEATURE_COLS:
         if c not in out.columns:
             out[c] = 0.0
-    return out[[team_id_col, "as_of_date"] + TEAM_CONTEXT_FEATURE_COLS]
+
+    cfg = config or {}
+    seasons_cfg = cfg.get("seasons") or {}
+
+    if cfg.get("elo", {}).get("enabled", False):
+        from .elo import get_elo_as_of_dates
+        elo_df = get_elo_as_of_dates(
+            games, tgl, team_dates, seasons_cfg,
+            cold_start_games=cfg.get("elo", {}).get("cold_start_games", 10),
+            regression_to_mean=cfg.get("elo", {}).get("regression_to_mean", 0.25),
+        )
+        if not elo_df.empty:
+            out = out.merge(elo_df, on=[team_id_col, "as_of_date"], how="left")
+            out["elo"] = out["elo"].fillna(1500.0)
+
+    if cfg.get("team_rolling", {}).get("enabled", True):
+        from .team_rolling import get_team_rolling_as_of_dates
+        roll_df = get_team_rolling_as_of_dates(tgl, games, team_dates, window=10)
+        if not roll_df.empty:
+            out = out.merge(roll_df, on=[team_id_col, "as_of_date"], how="left")
+            for c in ["eFG_L10", "DefRtg_L10", "won_prev_game"]:
+                if c in out.columns:
+                    out[c] = out[c].fillna(0.5 if c == "won_prev_game" else (0.5 if c == "eFG_L10" else 110.0))
+
+    if cfg.get("motivation", {}).get("enabled", False):
+        from .motivation import get_motivation_features
+        mot_df = get_motivation_features(
+            tgl, games, teams if teams is not None else pd.DataFrame(), team_dates, seasons_cfg,
+            late_season_games=cfg.get("motivation", {}).get("late_season_games", 15),
+            playoff_wins_threshold=cfg.get("motivation", {}).get("playoff_wins_threshold", 42),
+        )
+        if not mot_df.empty:
+            extra = [c for c in mot_df.columns if c not in (team_id_col, "as_of_date")]
+            if extra:
+                mot_sub = mot_df[[team_id_col, "as_of_date"] + extra]
+                out = out.merge(mot_sub, on=[team_id_col, "as_of_date"], how="left")
+                for c in extra:
+                    out[c] = out[c].fillna(0)
+
+    if cfg.get("injury", {}).get("enabled", False) and pgl is not None:
+        from pathlib import Path
+        from ..data.injury_loader import load_injury_reports
+        from .injury_adjustment import proj_available_rating_per_team
+        paths_cfg = cfg.get("paths", {})
+        base = Path(paths_cfg.get("raw", "data/raw"))
+        injury_path = cfg.get("injury", {}).get("data_path", "data/raw/injury_reports")
+        inj_path = Path(injury_path) if str(injury_path).startswith("/") or (len(str(injury_path)) > 1 and str(injury_path)[1] == ":") else base.parent / injury_path
+        injury_df = load_injury_reports(inj_path)
+        inj_df = proj_available_rating_per_team(
+            pgl, tgl, games, team_dates, injury_df, seasons_cfg,
+            minutes_heuristic=cfg.get("injury", {}).get("minutes_heuristic", "proportional"),
+        )
+        if not inj_df.empty:
+            out = out.merge(inj_df, on=[team_id_col, "as_of_date"], how="left")
+            out["proj_available_rating"] = out["proj_available_rating"].fillna(1.0)
+
+    for c in list(out.columns):
+        if any(f in str(c).lower() for f in FORBIDDEN):
+            raise ValueError(f"Model B must not include net_rating; found: {c}")
+
+    return out

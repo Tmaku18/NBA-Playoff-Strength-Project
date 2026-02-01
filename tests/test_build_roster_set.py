@@ -51,13 +51,15 @@ def test_latest_team_map_as_of_keeps_last_team(sample_pgl):
 
 
 def test_build_roster_set_shape(sample_roster_df, sample_player_stats):
-    stat_cols = ["pts_L10", "reb_L10", "ast_L10", "stl_L10", "blk_L10", "tov_L10", "availability_L10"]
+    from src.features.rolling import PLAYER_STAT_COLS_WITH_ON_OFF
+
     emb, rows, minutes, mask = build_roster_set(
         sample_roster_df,
         sample_player_stats,
         n_pad=15,
-        stat_cols=stat_cols,
+        stat_cols=PLAYER_STAT_COLS_WITH_ON_OFF,
         num_embeddings=500,
+        team_continuity_scalar=0.75,
     )
     assert len(emb) == 15
     assert len(rows) == 15
@@ -65,6 +67,8 @@ def test_build_roster_set_shape(sample_roster_df, sample_player_stats):
     assert len(mask) == 15
     assert sum(1 for m in mask if not m) == 2  # 2 valid players
     assert sum(1 for m in mask if m) == 13  # padding
+    # Each row has 16 stats + 1 team_continuity_scalar = 17
+    assert len(rows[0]) == 17
 
 
 def test_build_roster_set_padding_index(sample_roster_df, sample_player_stats):

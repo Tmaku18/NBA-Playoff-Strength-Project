@@ -81,6 +81,8 @@ def predict_teams(
     *,
     true_strength_scale: str = "percentile",
     odds_temperature: float = 1.0,
+    championship_odds_method: str = "softmax",
+    monte_carlo_config: dict | None = None,
 ) -> list[dict]:
     """
     Combine base scores, run meta if present. For each team output:
@@ -234,7 +236,7 @@ def run_inference_from_db(
 
     from src.data.db import get_connection
     from src.data.db_loader import load_training_data
-    from src.features.team_context import TEAM_CONTEXT_FEATURE_COLS, build_team_context_as_of_dates
+    from src.features.team_context import build_team_context_as_of_dates
     from src.training.build_lists import TEAM_CONFERENCE, build_lists
     from src.training.data_model_a import build_batches_from_lists
     from src.training.train_model_a import predict_batches_with_attention
@@ -442,9 +444,14 @@ def run_inference_from_db(
 
         sx = np.zeros(len(unique_team_ids), dtype=np.float32)
         sr = np.zeros(len(unique_team_ids), dtype=np.float32)
-        feat_df = build_team_context_as_of_dates(tgl, games, team_dates)
+        feat_df = build_team_context_as_of_dates(
+            tgl, games, team_dates,
+            config=config, teams=teams, pgl=pgl,
+        )
         if not feat_df.empty and xgb is not None and rf is not None:
-            feat_cols = [c for c in TEAM_CONTEXT_FEATURE_COLS if c in feat_df.columns]
+            from src.features.team_context import get_team_context_feature_cols
+            all_feat = get_team_context_feature_cols(config)
+            feat_cols = [c for c in all_feat if c in feat_df.columns]
             if feat_cols:
                 for i, tid in enumerate(unique_team_ids):
                     row = feat_df[(feat_df["team_id"] == tid) & (feat_df["as_of_date"] == team_id_to_as_of.get(tid, as_of_date))]
@@ -557,6 +564,8 @@ def run_inference_from_db(
             model_presence={"a": model_a is not None, "xgb": xgb is not None, "rf": rf is not None},
             true_strength_scale=config.get("output", {}).get("true_strength_scale", "percentile"),
             odds_temperature=float(config.get("output", {}).get("odds_temperature", 1.0)),
+            championship_odds_method=config.get("output", {}).get("championship_odds_method", "softmax"),
+            monte_carlo_config=config.get("monte_carlo"),
         )
 
         # Integrated Gradients summary in predictions.json (optional, top-K per conference)

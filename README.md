@@ -39,7 +39,7 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 Used for training (optional) and evaluation when playoff data exists. **Phase 1:** Rank playoff teams by total playoff wins (desc). **Phase 2:** Tie-break by regular-season win %. **Phase 3:** Non-playoff teams are ranked 17–30 by regular-season win %. Config: `training.target_rank: standings | playoffs` (default `standings`). Playoff rank is computed from `playoff_team_game_logs` + `playoff_games` using **season date ranges** from `defaults.yaml`; it will be null if playoff data is missing or incomplete for the target season.
 
 ## Evaluation
-- **Ranking:** NDCG, Spearman, MRR (mrr_top2 = champion+runner-up, mrr_top4 = conference finals), Precision@4, Precision@2 (planned). Former MRR used top_k=2 for two-conference “rank 1”).
+- **Ranking:** NDCG, Spearman, MRR (mrr_top2 = champion+runner-up, mrr_top4 = conference finals), Precision@4, Precision@2 (planned). (Previously MRR used top_k=2 for two-conference “rank 1”).
 - **Future outcomes:** Brier score.
 - **Sleeper detection:** ROC-AUC on upsets (sleeper = actual rank worse than predicted rank); constant-label guard returns 0.5.
 - **Playoff metrics** (when playoff data and predictions include post_playoff_rank): Spearman (predicted global rank vs playoff performance rank), NDCG@4 (final four), Brier score on championship odds (one-hot champion vs predicted odds). Section `playoff_metrics` in `eval_report.json`.
@@ -76,8 +76,10 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 5. **Inference:** `python -m scripts.6_run_inference` — load DB and models, run Model A/B + meta → outputs dir `<run_id>/predictions.json`, plots. With `inference.run_id: null`, run_id auto-increments (e.g. run_019, run_020 when using `outputs2/` and `run_id_base: 19`) so each full pipeline run gets a new folder.
 6. **Evaluation:** `python -m scripts.5_evaluate` — uses predictions from the latest (or configured) run_id → outputs dir `eval_report.json` (NDCG, Spearman, MRR, ROC-AUC upset).
 7. **Explainability:** `python -m scripts.5b_explain` — SHAP on Model B (team-context X) → outputs dir `shap_summary.png`; attention ablation and Integrated Gradients (Model A) when Captum is installed → outputs dir `ig_model_a_attributions.txt`. Attention ablation skips padded roster slots and reports clearly when the masked forward yields NaN.
+8. **Clone classifier (optional):** `python -m scripts.4c_train_classifier_clone --config config/clone_classifier.yaml` — XGBoost binary classifier (playoff team vs not) on Train 2015–2022, Val 2023, Holdout 2024; outputs `clone_classifier_report.json` (AUC-ROC, Brier).
+9. **Hyperparameter sweep:** `python -m scripts.sweep_hparams` — Runs full pipeline (3, 4, 4b, 6, 5, 4c) across configurable hyperparameter grid; writes to `outputs/sweeps/<batch_id>/`. Use `--dry-run` to preview combos, `--max-combos N` to limit.
 
-**Optional:** `python -m scripts.run_manifest` (run manifest); `python -m scripts.run_leakage_tests` (before training).
+**Optional:** `python -m scripts.run_manifest` (run manifest); `python -m scripts.run_leakage_tests` (before training); `python -m scripts.1b_download_injuries` (stub for injury data).
 
 **Pipeline behavior:** Script 1 reuses raw files that already exist (no re-download). Script 2 skips rebuilding the DB when `build_db.skip_if_exists` is true and the DB file exists; set it to false to force a full rebuild from raw. With `inference.run_id: null`, inference writes to the next run folder (run_002, run_003, …) and evaluation uses the latest run.
 
@@ -108,6 +110,7 @@ All paths under `outputs/` (or `config.paths.outputs`). Produced from real data 
 - `outputs/shap_summary.png` — Model B (RF) SHAP summary on real team-context features (script 5b).
 - `outputs/ig_model_a_attributions.txt` — Model A Integrated Gradients top-5 player indices by attribution L2 norm (script 5b; requires Captum).
 - `outputs/oof_pooled.parquet`, `outputs/ridgecv_meta.joblib` — stacking meta-learner and pooled OOF (script 4b).
+- `outputs/clone_classifier_report.json`, `outputs/clone_xgb_classifier.joblib` — clone classifier (script 4c).
 - `outputs/oof_model_a.parquet`, `outputs/oof_model_b.parquet` — OOF from scripts 3 and 4 (Option A: K-fold, real data).
 - `outputs/best_deep_set.pt`, `outputs/xgb_model.joblib`, `outputs/rf_model.joblib` — trained Model A and Model B.
 
