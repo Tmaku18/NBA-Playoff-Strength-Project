@@ -87,8 +87,14 @@ def main():
                 ck = torch.load(model_a_path, map_location="cpu", weights_only=False)
                 ma = config.get("model_a", {})
                 model = DeepSetRank(
-                    ma.get("num_embeddings", 500), ma.get("embedding_dim", 32), 7,
-                    ma.get("encoder_hidden", [128, 64]), ma.get("attention_heads", 4), ma.get("dropout", 0.2),
+                    ma.get("num_embeddings", 500),
+                    ma.get("embedding_dim", 32),
+                    7,
+                    ma.get("encoder_hidden", [128, 64]),
+                    ma.get("attention_heads", 4),
+                    ma.get("dropout", 0.2),
+                    minutes_bias_weight=float(ma.get("minutes_bias_weight", 0.3)),
+                    minutes_sum_min=float(ma.get("minutes_sum_min", 1e-6)),
                 )
                 if "model_state" in ck:
                     model.load_state_dict(ck["model_state"])

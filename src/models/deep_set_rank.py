@@ -19,11 +19,20 @@ class DeepSetRank(nn.Module):
         encoder_hidden: list[int],
         attention_heads: int,
         dropout: float = 0.2,
+        *,
+        minutes_bias_weight: float = 0.3,
+        minutes_sum_min: float = 1e-6,
     ):
         super().__init__()
         self.emb = PlayerEmbedding(num_embeddings, embedding_dim)
         self.enc = PlayerEncoder(stat_dim + embedding_dim, encoder_hidden, dropout)
-        self.attn = SetAttention(self.enc.output_dim, attention_heads, dropout)
+        self.attn = SetAttention(
+            self.enc.output_dim,
+            attention_heads,
+            dropout,
+            minutes_bias_weight=minutes_bias_weight,
+            minutes_sum_min=minutes_sum_min,
+        )
         self.scorer = nn.Linear(self.enc.output_dim, 1)
 
     def forward(

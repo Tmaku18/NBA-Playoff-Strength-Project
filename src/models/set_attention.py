@@ -7,7 +7,15 @@ import torch.nn as nn
 
 
 class SetAttention(nn.Module):
-    def __init__(self, embed_dim: int, num_heads: int, dropout: float = 0.1):
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        dropout: float = 0.1,
+        *,
+        minutes_bias_weight: float = 0.3,
+        minutes_sum_min: float = 1e-6,
+    ):
         super().__init__()
         self.attn = nn.MultiheadAttention(
             embed_dim=embed_dim,
@@ -15,6 +23,8 @@ class SetAttention(nn.Module):
             dropout=dropout,
             batch_first=True,
         )
+        self.minutes_bias_weight = float(minutes_bias_weight)
+        self.minutes_sum_min = float(minutes_sum_min)
 
     def forward(
         self,
@@ -40,7 +50,17 @@ class SetAttention(nn.Module):
             if key_padding_mask is not None and key_padding_mask.shape == minutes.shape:
                 mins = mins.masked_fill(key_padding_mask, 0.0)
             mins = mins.clamp(min=0.0)
-            mins = mins / (mins.sum(dim=-1, keepdim=True).clamp(min=1e-8))
-            w = w * (0.5 + 0.5 * mins.unsqueeze(1))
-            w = w / (w.sum(dim=-1, keepdim=True) + 1e-8)
+            mins_sum = mins.sum(dim=-1, keepdim=True)
+            bias_weight = max(0.0, min(1.0, float(self.minutes_bias_weight)))
+            if bias_weight > 0:
+                valid = mins_sum > max(self.minutes_sum_min, 0.0)
+                if valid.any():
+                    mins_norm = mins / mins_sum.clamp(min=1e-8)
+                    bias = mins_norm.unsqueeze(1)
+                    w = torch.where(
+                        valid.unsqueeze(-1),
+                        (1.0 - bias_weight) * w + bias_weight * bias,
+                        w,
+                    )
+                    w = w / (w.sum(dim=-1, keepdim=True) + 1e-8)
         return out.squeeze(1), w.squeeze(1)

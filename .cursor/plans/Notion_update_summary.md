@@ -7,6 +7,7 @@
 
 ## Tasks / goals to add or update
 
+- [x] **Plan: 75/25 train-test split and richer metrics** — Plan added to repo and pushed to GitHub; Notion page created under Final Deliverables Index (🤖 icon).
 - [x] **Save performance trajectory doc to repo** — Done. `Performance_trajectory_and_hyperparameters.md` added; pushed to GitHub.
 - [ ] **Review optimal hyperparameters** — Model A: epochs 28 (NDCG) or 15 (Spearman); val_frac 0.25. Model B: XGB 4/0.08/250, RF 200/12/5 (ranking-first).
 - [ ] **Re-check roster logic** — Verify latest-team / as_of_date so no wrong-team players (e.g. Simons on Boston).

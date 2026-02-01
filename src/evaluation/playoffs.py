@@ -4,6 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 import pandas as pd
 
+MIN_PLAYOFF_TEAMS = 16
+
 
 def _to_date(value: str | pd.Timestamp | None) -> pd.Timestamp | None:
     if value is None:
@@ -35,13 +37,21 @@ def _filtered_playoff_tgl(
     *,
     season_start: str | pd.Timestamp | None = None,
     season_end: str | pd.Timestamp | None = None,
+    debug: bool = False,
 ) -> pd.DataFrame:
     if playoff_games.empty or playoff_tgl.empty:
         return pd.DataFrame()
     pg = playoff_games.copy()
     use_range = season_start is not None and season_end is not None
     if use_range:
+        before = len(pg)
         pg = _filter_by_date(pg, date_col="game_date", season_start=season_start, season_end=season_end)
+        if debug:
+            print(
+                f"Playoff filtering: season={season}, start={season_start}, end={season_end}, "
+                f"games_before={before}, games_after={len(pg)}",
+                flush=True,
+            )
     elif "season" not in pg.columns and "game_date" in pg.columns:
         pg["season"] = pd.to_datetime(pg["game_date"]).dt.to_period("Y").astype(str)
     if pg.empty:
@@ -129,6 +139,7 @@ def compute_playoff_performance_rank(
     *,
     season_start: str | pd.Timestamp | None = None,
     season_end: str | pd.Timestamp | None = None,
+    debug: bool = False,
 ) -> dict[int, int]:
     """
     Playoff performance rank 1-30 for one season.
@@ -157,13 +168,19 @@ def compute_playoff_performance_rank(
         season,
         season_start=season_start,
         season_end=season_end,
+        debug=debug,
     )
     playoff_team_ids = set(pt["team_id"].astype(int).tolist()) if not pt.empty else set()
     if all_team_ids is None:
         all_team_ids = sorted(set(list(pw.keys()) + list(reg_wp.keys())))
     if not all_team_ids:
         return {}
-    if len(playoff_team_ids) < 16:
+    if len(playoff_team_ids) < MIN_PLAYOFF_TEAMS:
+        print(
+            f"Warning: Only {len(playoff_team_ids)} playoff teams found (min {MIN_PLAYOFF_TEAMS}). "
+            "Skipping playoff rank/metrics.",
+            flush=True,
+        )
         return {}
 
     def _safe_wp(tid: int) -> float:

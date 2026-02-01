@@ -18,6 +18,8 @@ def main():
         cfg = yaml.safe_load(f)
     raw_dir = Path(cfg["paths"]["raw"])
     db_path = Path(cfg["paths"]["db"])
+    if not raw_dir.is_absolute():
+        raw_dir = ROOT / raw_dir
     if not db_path.is_absolute():
         db_path = ROOT / db_path
     seasons = list(cfg.get("seasons", {}).keys())

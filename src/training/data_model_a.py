@@ -31,6 +31,7 @@ def build_batches_from_lists(
     ma = config.get("model_a", {})
     num_emb = ma.get("num_embeddings", 500)
     roster_size = config.get("training", {}).get("roster_size", 15)
+    roster_debug = bool((config.get("logging") or {}).get("roster_debug", False))
 
     batches: list[dict[str, Any]] = []
     list_metas: list[dict[str, Any]] = []
@@ -42,7 +43,13 @@ def build_batches_from_lists(
         if len(team_ids) < 2:
             continue
         player_stats_df = get_player_stats_as_of_date(pgl, as_of_date, stat_cols=PLAYER_STAT_COLS_L10)
-        latest_team_map = latest_team_map_as_of(pgl, as_of_date, season_start=season_start)
+        latest_team_map = latest_team_map_as_of(
+            pgl,
+            as_of_date,
+            season_start=season_start,
+            debug=roster_debug,
+            warn_missing_season=True,
+        )
         embs_list = []
         stats_list = []
         min_list = []
@@ -56,6 +63,8 @@ def build_batches_from_lists(
                 n=roster_size,
                 season_start=season_start,
                 latest_team_map=latest_team_map,
+                debug=roster_debug,
+                warn_missing_season=True,
             )
             order = roster.sort_values("rank")["player_id"].tolist() if not roster.empty else []
             pad = roster_size - len(order)
@@ -117,6 +126,7 @@ def build_batches_from_db(
     num_emb = ma.get("num_embeddings", 500)
     roster_size = config.get("training", {}).get("roster_size", 15)
     stat_dim = 7
+    roster_debug = bool((config.get("logging") or {}).get("roster_debug", False))
 
     batches: list[dict[str, Any]] = []
     for lst in lists:
@@ -127,7 +137,13 @@ def build_batches_from_db(
         if len(team_ids) < 2:
             continue
         player_stats_df = get_player_stats_as_of_date(pgl, as_of_date, stat_cols=PLAYER_STAT_COLS_L10)
-        latest_team_map = latest_team_map_as_of(pgl, as_of_date, season_start=season_start)
+        latest_team_map = latest_team_map_as_of(
+            pgl,
+            as_of_date,
+            season_start=season_start,
+            debug=roster_debug,
+            warn_missing_season=True,
+        )
         embs_list: list[list[int]] = []
         stats_list: list[list[list[float]]] = []
         min_list: list[list[float]] = []
@@ -140,6 +156,8 @@ def build_batches_from_db(
                 n=roster_size,
                 season_start=season_start,
                 latest_team_map=latest_team_map,
+                debug=roster_debug,
+                warn_missing_season=True,
             )
             emb, rows, minutes, mask = build_roster_set(
                 roster,

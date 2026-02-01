@@ -35,6 +35,8 @@ def load_models(
             ma.get("encoder_hidden", [128, 64]),
             ma.get("attention_heads", 4),
             ma.get("dropout", 0.2),
+            minutes_bias_weight=float(ma.get("minutes_bias_weight", 0.3)),
+            minutes_sum_min=float(ma.get("minutes_sum_min", 1e-6)),
         )
         if "model_state" in ck:
             model_a.load_state_dict(ck["model_state"])
@@ -197,9 +199,11 @@ def predict_teams(
             "rank_delta_playoffs": int(rank_delta_playoffs) if rank_delta_playoffs is not None else None,
         }
 
+        conf = team_id_to_conference.get(tid) if team_id_to_conference else None
         out.append({
             "team_id": int(tid),
             "team_name": tname,
+            "conference": conf,
             "prediction": pred_dict,
             "analysis": analysis_dict,
             "ensemble_diagnostics": {"model_agreement": agreement, "deep_set_rank": int(r_a) if r_a is not None else None, "xgboost_rank": int(r_x) if r_x is not None else None, "random_forest_rank": int(r_r) if r_r is not None else None},
@@ -231,6 +235,7 @@ def run_inference_from_db(
     from src.training.build_lists import TEAM_CONFERENCE, build_lists
     from src.training.data_model_a import build_batches_from_lists
     from src.training.train_model_a import predict_batches_with_attention
+    from src.utils.split import load_split_info
 
     out = Path(output_dir)
     if run_id:
@@ -264,12 +269,27 @@ def run_inference_from_db(
     lists = build_lists(tgl, games, teams)
     if not lists:
         raise ValueError("No lists from build_lists.")
-    # Target: latest date in DB (or last list date)
     dates_sorted = sorted(set(lst["as_of_date"] for lst in lists))
-    target_date = dates_sorted[-1] if dates_sorted else None
+    # Use split_info: primary = last test date; optional second run = last train date
+    try:
+        split_info = load_split_info(Path(output_dir))
+        test_dates = split_info.get("test_dates", [])
+        train_dates = split_info.get("train_dates", [])
+    except FileNotFoundError:
+        split_info = {}
+        test_dates = []
+        train_dates = []
+    target_date = test_dates[-1] if test_dates else (dates_sorted[-1] if dates_sorted else None)
     target_lists = [lst for lst in lists if lst["as_of_date"] == target_date]
     if not target_lists:
         target_lists = [lists[-1]] if lists else []
+    also_train = bool(config.get("inference", {}).get("also_train_predictions", False))
+    run_specs: list[tuple[str | None, list, str]] = [(target_date, target_lists, "predictions.json")]
+    if also_train and train_dates:
+        train_date = train_dates[-1]
+        train_target_lists = [lst for lst in lists if lst["as_of_date"] == train_date]
+        if train_target_lists:
+            run_specs.append((train_date, train_target_lists, "train_predictions.json"))
     # Flatten to one list of (team_id, as_of_date) across target lists; keep unique team_id for naming/rank
     team_id_to_as_of: dict[int, str] = {}
     team_id_to_actual_rank: dict[int, int] = {}
@@ -430,11 +450,13 @@ def run_inference_from_db(
             from src.evaluation.playoffs import compute_playoff_performance_rank
             pg, ptgl, _ = load_playoff_data(db_path)
             if not pg.empty and not ptgl.empty:
+                playoff_debug = bool((config.get("logging") or {}).get("playoff_debug", False))
                 playoff_rank_map = compute_playoff_performance_rank(
                     pg, ptgl, games, tgl, target_season,
                     all_team_ids=unique_team_ids,
                     season_start=season_start,
                     season_end=season_end,
+                    debug=playoff_debug,
                 )
         except Exception:
             pass
@@ -638,6 +660,94 @@ def run_inference_from_db(
     fig4.tight_layout()
     fig4.savefig(out / "title_contender_scatter.png", bbox_inches="tight")
     plt.close(fig4)
+
+    # Optional second run: last train date -> train_predictions.json
+    if len(run_specs) > 1:
+        _tdate, _tlists, _ = run_specs[1]
+        _team_id_to_as_of = {}
+        _team_id_to_actual_rank = {}
+        _team_id_to_win_rate = {}
+        for lst in _tlists:
+            win_rates = lst.get("win_rates", [])
+            for idx, tid in enumerate(lst["team_ids"]):
+                tid = int(tid)
+                if tid not in _team_id_to_as_of:
+                    _team_id_to_as_of[tid] = lst["as_of_date"]
+                    _team_id_to_actual_rank[tid] = idx + 1
+                    _team_id_to_win_rate[tid] = float(win_rates[idx]) if idx < len(win_rates) else 0.0
+        _unique_team_ids = list(dict.fromkeys(tid for lst in _tlists for tid in lst["team_ids"]))
+        _unique_team_ids = [int(t) for t in _unique_team_ids]
+        if _unique_team_ids:
+            _team_dates = [(tid, _team_id_to_as_of.get(tid, _tdate or "")) for tid in _unique_team_ids]
+            _as_of_date = _tdate or _team_dates[0][1]
+            _win_rate_map = {tid: float(_team_id_to_win_rate.get(tid, 0.0)) for tid in _unique_team_ids}
+            _sorted_global = sorted(_win_rate_map.items(), key=lambda x: (-x[1], x[0]))
+            _actual_global_rank = {tid: i + 1 for i, (tid, _) in enumerate(_sorted_global)}
+            _tid_to_score_a = {}
+            if model_a is not None:
+                _batches_a, _list_metas = build_batches_from_lists(_tlists, games, tgl, teams, pgl, config, device=device)
+                if _batches_a:
+                    _scores_list, _ = predict_batches_with_attention(model_a, _batches_a, device)
+                    for i, meta in enumerate(_list_metas):
+                        if i >= len(_scores_list):
+                            break
+                        for k, tid in enumerate(meta["team_ids"]):
+                            _tid_to_score_a[int(tid)] = float(_scores_list[i][0, k].item())
+            _sa = np.array([_tid_to_score_a.get(tid, 0.0) for tid in _unique_team_ids], dtype=np.float32)
+            _sx = np.zeros(len(_unique_team_ids), dtype=np.float32)
+            _sr = np.zeros(len(_unique_team_ids), dtype=np.float32)
+            _feat_df = build_team_context_as_of_dates(tgl, games, _team_dates)
+            if not _feat_df.empty and xgb is not None and rf is not None:
+                _feat_cols = [c for c in TEAM_CONTEXT_FEATURE_COLS if c in _feat_df.columns]
+                if _feat_cols:
+                    for i, tid in enumerate(_unique_team_ids):
+                        row = _feat_df[(_feat_df["team_id"] == tid) & (_feat_df["as_of_date"] == _team_id_to_as_of.get(tid, _as_of_date))]
+                        if not row.empty:
+                            X_row = row[_feat_cols].values.astype(np.float32)
+                            _sx[i] = float(xgb.predict(X_row)[0])
+                            _sr[i] = float(rf.predict(X_row)[0])
+            _actual_ranks = {tid: _team_id_to_actual_rank.get(tid) for tid in _unique_team_ids}
+            _team_names = []
+            for tid in _unique_team_ids:
+                r = teams[teams["team_id"] == tid]
+                _team_names.append(str(r["name"].iloc[0]) if not r.empty and "name" in r.columns else f"Team_{tid}")
+            _playoff_rank_map = {}
+            for season, rng in (config.get("seasons") or {}).items():
+                start = pd.to_datetime(rng.get("start")).date()
+                end = pd.to_datetime(rng.get("end")).date()
+                if start <= pd.to_datetime(_as_of_date).date() <= end:
+                    try:
+                        from src.data.db_loader import load_playoff_data
+                        from src.evaluation.playoffs import compute_playoff_performance_rank
+                        pg, ptgl, _ = load_playoff_data(db_path)
+                        if not pg.empty and not ptgl.empty:
+                            _playoff_rank_map = compute_playoff_performance_rank(
+                                pg, ptgl, games, tgl, season,
+                                all_team_ids=_unique_team_ids,
+                                season_start=rng.get("start"),
+                                season_end=rng.get("end"),
+                                debug=False,
+                            )
+                    except Exception:
+                        pass
+                    break
+            _preds = predict_teams(
+                _unique_team_ids,
+                _team_names,
+                model_a_scores=_sa,
+                xgb_scores=_sx,
+                rf_scores=_sr,
+                meta_model=meta,
+                actual_ranks=_actual_ranks,
+                actual_global_ranks=_actual_global_rank,
+                team_id_to_conference=team_id_to_conf,
+                playoff_rank=_playoff_rank_map if _playoff_rank_map else None,
+                model_presence={"a": model_a is not None, "xgb": xgb is not None, "rf": rf is not None},
+                true_strength_scale=config.get("output", {}).get("true_strength_scale", "percentile"),
+                odds_temperature=float(config.get("output", {}).get("odds_temperature", 1.0)),
+            )
+            with open(out / "train_predictions.json", "w", encoding="utf-8") as f:
+                json.dump({"teams": _preds}, f, indent=2, allow_nan=False)
 
     return pj
 

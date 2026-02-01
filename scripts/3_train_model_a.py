@@ -12,6 +12,7 @@ from src.data.db_loader import load_training_data
 from src.training.data_model_a import build_batches_from_db, build_batches_from_lists
 from src.training.train_model_a import predict_batches, train_model_a, train_model_a_on_batches
 from src.training.build_lists import build_lists
+from src.utils.split import compute_split, write_split_info
 
 
 def main():
@@ -43,25 +44,36 @@ def main():
         print(f"Saved {path} (no valid lists for OOF)")
         return
 
+    # 75/25 train-test split: compute and persist; use only train lists for OOF and final model
+    train_lists, test_lists, split_info = compute_split(valid_lists, config)
+    write_split_info(split_info, out)
+    print(f"Split: {split_info['split_mode']} — train {split_info['n_train_lists']} lists, test {split_info['n_test_lists']} lists", flush=True)
+    if not train_lists:
+        batches = build_batches_from_db(games, tgl, teams, pgl, config)
+        path = train_model_a(config, out, batches=batches)
+        print(f"Saved {path} (no train lists after split)")
+        return
+
     n_folds = config.get("training", {}).get("n_folds", 5)
-    n_folds = min(n_folds, len(valid_lists))
+    n_folds = min(n_folds, len(train_lists))
     if n_folds < 2:
-        batches, _ = build_batches_from_lists(valid_lists, games, tgl, teams, pgl, config)
+        batches, _ = build_batches_from_lists(train_lists, games, tgl, teams, pgl, config)
         path = train_model_a(config, out, batches=batches)
         print(f"Saved {path} (too few lists for OOF)")
         return
 
-    # Subsample lists for OOF to keep runtime manageable (time-stratified)
+    # Subsample lists for OOF to keep runtime manageable (time-stratified, within train only)
     max_lists_oof = config.get("training", {}).get("max_lists_oof", 30)
-    if len(valid_lists) > max_lists_oof:
-        step = max(1, len(valid_lists) // max_lists_oof)
-        sorted_by_date = sorted(range(len(valid_lists)), key=lambda i: (valid_lists[i]["as_of_date"], valid_lists[i].get("conference", "")))
+    oof_lists = train_lists
+    if len(train_lists) > max_lists_oof:
+        step = max(1, len(train_lists) // max_lists_oof)
+        sorted_by_date = sorted(range(len(train_lists)), key=lambda i: (train_lists[i]["as_of_date"], train_lists[i].get("conference", "")))
         oof_indices = sorted_by_date[::step][:max_lists_oof]
-        valid_lists = [valid_lists[i] for i in sorted(oof_indices)]
-        print(f"OOF: using {len(valid_lists)} lists (subsampled from more)", flush=True)
-    n_folds = min(n_folds, len(valid_lists))
+        oof_lists = [train_lists[i] for i in sorted(oof_indices)]
+        print(f"OOF: using {len(oof_lists)} lists (subsampled from {len(train_lists)} train)", flush=True)
+    n_folds = min(n_folds, len(oof_lists))
     if n_folds < 2:
-        batches, _ = build_batches_from_lists(valid_lists, games, tgl, teams, pgl, config)
+        batches, _ = build_batches_from_lists(oof_lists, games, tgl, teams, pgl, config)
         path = train_model_a(config, out, batches=batches)
         print(f"Saved {path} (too few lists for OOF)")
         return
@@ -69,7 +81,7 @@ def main():
     import torch
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Building batches for OOF...", flush=True)
-    batches, list_metas = build_batches_from_lists(valid_lists, games, tgl, teams, pgl, config, device=device)
+    batches, list_metas = build_batches_from_lists(oof_lists, games, tgl, teams, pgl, config, device=device)
 
     if not batches or not list_metas:
         print(
@@ -81,8 +93,8 @@ def main():
         print(f"Saved {path} (no oof_model_a.parquet)")
         return
 
-    # Time-based fold split: sort by as_of_date, chunk into n_folds
-    sorted_indices = sorted(range(len(valid_lists)), key=lambda i: (valid_lists[i]["as_of_date"], valid_lists[i].get("conference", "")))
+    # Time-based fold split: sort by as_of_date, chunk into n_folds (within train only)
+    sorted_indices = sorted(range(len(oof_lists)), key=lambda i: (oof_lists[i]["as_of_date"], oof_lists[i].get("conference", "")))
     fold_size = (len(sorted_indices) + n_folds - 1) // n_folds
     oof_rows = []
     for fold in range(n_folds):
@@ -123,15 +135,14 @@ def main():
     else:
         print("No OOF rows collected (every fold had empty train or val batches).", file=sys.stderr)
 
-    # Final model: use full lists, cap batch count for feasible runtime
-    all_lists = build_lists(tgl, games, teams)
-    all_lists = [lst for lst in all_lists if len(lst["team_ids"]) >= 2]
+    # Final model: use train lists only, cap batch count for feasible runtime
+    all_lists = train_lists
     max_final = config.get("training", {}).get("max_final_batches", 50)
     if len(all_lists) > max_final:
         step = max(1, len(all_lists) // max_final)
         idx = sorted(range(len(all_lists)), key=lambda i: (all_lists[i]["as_of_date"], all_lists[i].get("conference", "")))[::step][:max_final]
         all_lists = [all_lists[i] for i in sorted(idx)]
-        print(f"Final model: training on {len(all_lists)} lists (subsampled)", flush=True)
+        print(f"Final model: training on {len(all_lists)} lists (subsampled from {len(train_lists)} train)", flush=True)
     print("Building final batches...", flush=True)
     all_batches, _ = build_batches_from_lists(all_lists, games, tgl, teams, pgl, config, device=device)
     if not all_batches:

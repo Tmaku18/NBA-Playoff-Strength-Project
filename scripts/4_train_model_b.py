@@ -13,6 +13,7 @@ from src.data.db_loader import load_training_data
 from src.features.team_context import TEAM_CONTEXT_FEATURE_COLS, build_team_context_as_of_dates
 from src.training.build_lists import build_lists
 from src.training.train_model_b import train_model_b
+from src.utils.split import load_split_info
 
 from src.models.xgb_model import build_xgb, fit_xgb
 from src.models.rf_model import build_rf, fit_rf
@@ -46,6 +47,16 @@ def main():
     if not out.is_absolute():
         out = ROOT / out
     out.mkdir(parents=True, exist_ok=True)
+
+    # Restrict to train dates from split_info.json (script 3 must have run first)
+    split_info = load_split_info(out)
+    train_dates_set = set(split_info.get("train_dates", []))
+    if not train_dates_set:
+        print("split_info.json has no train_dates. Exiting.", file=sys.stderr)
+        sys.exit(1)
+    df = df[df["as_of_date"].isin(train_dates_set)].copy()
+    flat = flat[flat["as_of_date"].isin(train_dates_set)].copy()
+    print(f"Model B: using {len(df)} rows on {len(train_dates_set)} train dates", flush=True)
 
     n_folds = config.get("training", {}).get("n_folds", 5)
     dates_sorted = sorted(df["as_of_date"].unique())
