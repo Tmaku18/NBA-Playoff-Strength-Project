@@ -1,6 +1,6 @@
 ---
 name: Walk-Forward + EOS Final Rank (Option B)
-overview: "Implement per-season walk-forward training, EOS final rank (Option B), EORS rank in outputs, EORS vs EOS_global_rank graph, and per-season inference/evaluation for all test years."
+overview: "Implement per-season walk-forward training, EOS final rank (Option B), EOS_playoff_standings in outputs, EOS_playoff_standings vs EOS_global_rank graph, and per-season inference/evaluation for all test years."
 todos: []
 isProject: false
 ---
@@ -11,7 +11,7 @@ This plan merges three features:
 
 1. **Per-season walk-forward training** for Model A (expand training set season by season, validate on next unseen season)
 2. **EOS final rank for validation** via **Option B**: when playoff data exists for the target season, set `EOS_global_rank` in predictions to the EOS final rank instead of standings order. Script 5 unchanged; it reads `EOS_global_rank` and evaluates against it.
-3. **EORS rank (End of Regular Season = playoff standings)** in outputs: add `analysis.EORS_rank` to each team — the final regular-season standings rank (1–30 by win %), which determines playoff seeding.
+3. **EOS_playoff_standings (End of Regular Season = playoff standings)** in outputs: add `analysis.EOS_playoff_standings` to each team — the final regular-season standings rank (1–30 by win %), which determines playoff seeding.
 
 ---
 
@@ -91,13 +91,13 @@ This affects both `predictions.json` and `train_predictions.json` (when `also_tr
 
 Add a top-level field in the predictions output (or in `notes`): `"eos_rank_source": "eos_final_rank"` or `"standings"`. This lets downstream consumers (and ANALYSIS.md) know whether metrics use playoff outcome or standings. Script 5 can optionally add this to eval_report notes.
 
-### B.4 EORS Rank (End of Regular Season = Playoff Standings) in outputs
+### B.4 EOS_playoff_standings (End of Regular Season = Playoff Standings) in outputs
 
-**EORS rank** = End of Regular Season rank = **Playoff standings** — the final regular-season standings (1–30 by win % after all reg-season games), which determine playoff seeding.
+**EOS_playoff_standings** = End of Regular Season rank = **Playoff standings** — the final regular-season standings (1–30 by win % after all reg-season games), which determine playoff seeding.
 
 **File:** [src/evaluation/playoffs.py](src/evaluation/playoffs.py)
 
-Add `compute_eors_rank(games, tgl, season, *, season_start, season_end, all_team_ids) -> dict[int, int]`:
+Add `compute_eos_playoff_standings(games, tgl, season, *, season_start, season_end, all_team_ids) -> dict[int, int]`:
 
 - Use `get_reg_season_win_pct` for the full regular season
 - Sort teams by reg-season win % (desc), tie-break by team_id
@@ -106,9 +106,9 @@ Add `compute_eors_rank(games, tgl, season, *, season_start, season_end, all_team
 
 **File:** [src/inference/predict.py](src/inference/predict.py)
 
-- For the target season (same logic as playoff_rank_map / EOS final rank), call `compute_eors_rank` whenever the regular season for that season has data (games + tgl). For completed seasons this is always available; for in-progress seasons we get standings-to-date order (or skip if strictly "end of" regular season).
-- Add `analysis.EORS_rank` to each team in `predict_teams` output: the playoff-standings rank (1–30). Extend `predict_teams` with optional `eors_rank: dict[int, int] | None = None`; when present, add `"EORS_rank": eors_rank.get(tid)` to each team's analysis dict. Populate `eors_rank_map` from `compute_eors_rank` and pass it into `predict_teams`.
-- **Scope:** EORS rank is available when we have reg-season games for the target season. For completed seasons, use full reg-season win %; for in-progress seasons, either omit EORS_rank or use standings-to-date as a proxy (document which). Recommendation: compute EORS only when `as_of_date >= season_end` for that season (reg season complete); otherwise omit to avoid ambiguity.
+- For the target season (same logic as playoff_rank_map / EOS final rank), call `compute_eos_playoff_standings` whenever the regular season for that season has data (games + tgl). For completed seasons this is always available; for in-progress seasons we get standings-to-date order (or skip if strictly "end of" regular season).
+- Add `analysis.EOS_playoff_standings` to each team in `predict_teams` output: the playoff-standings rank (1–30). Extend `predict_teams` with optional `eos_playoff_standings: dict[int, int] | None = None`; when present, add `"EOS_playoff_standings": eos_playoff_standings.get(tid)` to each team's analysis dict. Populate `eos_playoff_standings_map` from `compute_eos_playoff_standings` and pass it into `predict_teams`.
+- **Scope:** EOS_playoff_standings is available when we have reg-season games for the target season. For completed seasons, use full reg-season win %; for in-progress seasons, either omit EOS_playoff_standings or use standings-to-date as a proxy (document which). Recommendation: compute EOS_playoff_standings only when `as_of_date >= season_end` for that season (reg season complete); otherwise omit to avoid ambiguity.
 
 **Output structure (predictions.json per team):**
 
@@ -116,7 +116,7 @@ Add `compute_eors_rank(games, tgl, season, *, season_start, season_end, all_team
 "analysis": {
   "EOS_conference_rank": ...,
   "EOS_global_rank": ...,
-  "EORS_rank": 5,
+  "EOS_playoff_standings": 5,
   "classification": ...,
   "playoff_rank": ...,
   "rank_delta_playoffs": ...
@@ -125,7 +125,7 @@ Add `compute_eors_rank(games, tgl, season, *, season_start, season_end, all_team
 
 **Interpretation:**
 
-- **EORS_rank** = playoff standings (final reg-season rank, 1–30). Champion is not necessarily 1; the best reg-season team is 1.
+- **EOS_playoff_standings** = playoff standings (final reg-season rank, 1–30). Champion is not necessarily 1; the best reg-season team is 1.
 - **EOS_global_rank** (Option B) = playoff outcome (champion=1, first 2 eliminated=29–30).
 - **playoff_rank** = existing playoff-performance rank (1–16 playoff by wins, 17–30 lottery).
 
@@ -174,7 +174,7 @@ Add `compute_eors_rank(games, tgl, season, *, season_start, season_end, all_team
   - `train_metrics` (if train_predictions exist): Same logic per train snapshot.
 2. **predictions.json**
   - `analysis.EOS_global_rank`: Now = EOS final rank when playoff data exists (Option B), else standings. The field name is unchanged; only its semantics change when Option B applies.
-  - `**analysis.EORS_rank**`: End of Regular Season rank = playoff standings (1–30 by final reg-season win %). Added when reg-season data for the target season is complete. Distinct from EOS_global_rank (playoff outcome) and standings-at-snapshot.
+  - `**analysis.EOS_playoff_standings**`: End of Regular Season rank = playoff standings (1–30 by final reg-season win %). Added when reg-season data for the target season is complete. Distinct from EOS_global_rank (playoff outcome) and standings-at-snapshot.
   - Consider adding `analysis.eos_rank_source` per team for explicitness (optional).
 3. **ANALYSIS.md**
   - Update to state: "When playoff data exists for the target season, EOS_global_rank is the end-of-season final rank (champion=1, first 2 eliminated=29-30). Otherwise it is standings order at the snapshot."
@@ -186,16 +186,16 @@ Per-conference NDCG/Spearman use the same `EOS_global_rank` (or EOS final rank) 
 
 ---
 
-## Part C.6 EORS vs EOS_global_rank graph
+## Part C.6 EOS_playoff_standings vs EOS_global_rank graph
 
-Add a scatter plot comparing **playoff standings (EORS_rank)** vs **EOS_global_rank** (playoff outcome when Option B applies).
+Add a scatter plot comparing **playoff standings (EOS_playoff_standings)** vs **EOS_global_rank** (playoff outcome when Option B applies).
 
-- **X-axis:** EORS_rank (End of Regular Season = playoff standings, 1–30)
+- **X-axis:** EOS_playoff_standings (End of Regular Season = playoff standings, 1–30)
 - **Y-axis:** EOS_global_rank (playoff outcome: champion=1, first 2 eliminated=29–30)
 - **Each point:** One team. Identity line shows agreement; deviations show teams that over-/under-performed relative to regular-season standings.
-- **Output:** `outputs/run_NNN/eors_vs_eos_global_rank_{season}.png` (one per season, when both EORS_rank and EOS_global_rank exist)
+- **Output:** `outputs/run_NNN/eos_playoff_standings_vs_eos_global_rank_{season}.png` (one per season, when both EOS_playoff_standings and EOS_global_rank exist)
 
-**File:** [src/inference/predict.py](src/inference/predict.py) (or wherever figures are generated). Generate this plot when both `eors_rank_map` and `actual_global_rank` (EOS final rank) are non-empty for the target season.
+**File:** [src/inference/predict.py](src/inference/predict.py) (or wherever figures are generated). Generate this plot when both `eos_playoff_standings_map` and `actual_global_rank` (EOS final rank) are non-empty for the target season.
 
 ---
 
@@ -236,7 +236,7 @@ When generating figures in predict.py, generate them **per season** (since each 
 
 - `pred_vs_actual_{season}.png`
 - `pred_vs_playoff_rank_{season}.png` (if playoff data exists)
-- `eors_vs_eos_global_rank_{season}.png` (new)
+- `eos_playoff_standings_vs_eos_global_rank_{season}.png` (new)
 - `odds_top10_{season}.png`
 - `title_contender_scatter_{season}.png`
 
@@ -285,7 +285,7 @@ flowchart TD
         EOSRank[compute_eos_final_rank]
         Actual[actual_global_rank]
         PredFile[predictions_season.json]
-        Graph[eors_vs_eos_global_rank.png]
+        Graph[eos_playoff_standings_vs_eos_global_rank.png]
         TestSeasons --> Loop
         Loop --> Snapshot
         Snapshot --> Playoffs
@@ -318,11 +318,11 @@ flowchart TD
 | [src/utils/split.py](src/utils/split.py)                 | Add `date_to_season`, `get_train_seasons_ordered`, `group_lists_by_season`; ensure split_info includes `test_seasons`                                          |
 | [config/defaults.yaml](config/defaults.yaml)             | Add `training.walk_forward: false`                                                                                                                             |
 | [scripts/3_train_model_a.py](scripts/3_train_model_a.py) | Add walk-forward branch; ensure split_info written with `test_seasons` when using seasons mode                                                                 |
-| [src/evaluation/playoffs.py](src/evaluation/playoffs.py) | Add `compute_eos_final_rank`, `compute_eors_rank`                                                                                                              |
-| [src/inference/predict.py](src/inference/predict.py)     | Option B; add `eos_rank_source`, `analysis.EORS_rank`; per-season inference loop; EORS vs EOS graph; per-season outputs (`predictions_{season}.json`, figures) |
+| [src/evaluation/playoffs.py](src/evaluation/playoffs.py) | Add `compute_eos_final_rank`, `compute_eos_playoff_standings`                                                                                                              |
+| [src/inference/predict.py](src/inference/predict.py)     | Option B; add `eos_rank_source`, `analysis.EOS_playoff_standings`; per-season inference loop; EOS_playoff_standings vs EOS graph; per-season outputs (`predictions_{season}.json`, figures) |
 | [scripts/6_run_inference.py](scripts/6_run_inference.py) | Call run_inference per test season (or run_inference handles loop internally)                                                                                  |
 | [scripts/5_evaluate.py](scripts/5_evaluate.py)           | Add `notes.eos_rank_source`; loop over `predictions_{season}.json`; write `eval_report_{season}.json` per season; optionally aggregate `eval_report.json`      |
-| [outputs/ANALYSIS.md](outputs/ANALYSIS.md)               | Document Option B, EORS rank, per-season outputs, EORS vs EOS graph, and comparison caveat                                                                     |
+| [outputs/ANALYSIS.md](outputs/ANALYSIS.md)               | Document Option B, EOS_playoff_standings, per-season outputs, EOS_playoff_standings vs EOS graph, and comparison caveat                                                                     |
 
 
 ---

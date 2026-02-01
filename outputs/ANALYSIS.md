@@ -9,6 +9,8 @@ This document explains what each output means, interprets the current results, c
 | Output | Source | Purpose |
 |--------|--------|---------|
 | `outputs/run_XXX/predictions.json` | Script 6 (inference) | Per-team predictions, analysis, roster dependence, ensemble diagnostics |
+| `outputs/run_XXX/predictions_{season}.json` | Script 6 (inference) | Per-season predictions when test_seasons configured |
+| `outputs/run_XXX/eos_playoff_standings_vs_eos_global_rank.png` | Script 6 (inference) | Scatter: EOS playoff standings vs playoff outcome (EOS) |
 | `outputs/eval_report.json` | Script 5 (evaluate) | Ranking and playoff metrics for the **latest** run’s predictions |
 | `outputs/split_info.json` | Script 3 (train Model A) | Train/test date split (75/25); read by scripts 4, 5, 6 |
 | `outputs/run_comparison.json` | `scripts/compare_runs.py` | NDCG, Spearman, MRR, ROC-AUC upset for every run_XXX with predictions |
@@ -47,7 +49,7 @@ Within each conference, Spearman is **negative** while global Spearman is **+0.7
 
 ### Playoff metrics
 
-- **run_016** (and run_014/015) test snapshot has **no playoff_rank** data (test date 2025-04-13 is in 2024-25; playoffs had not started). So `eval_report.json` has no `playoff_metrics`. When playoff data exists (≥16 teams with playoff_rank), the report will include Spearman pred vs playoff rank, NDCG@4 final four, and Brier championship odds.
+- **run_016** (and run_014/015) test snapshot has **no post_playoff_rank** data (test date 2025-04-13 is in 2024-25; playoffs had not started). So `eval_report.json` has no `playoff_metrics`. When playoff data exists (≥16 teams with post_playoff_rank), the report will include Spearman pred vs playoff rank, NDCG@4 final four, and Brier championship odds.
 
 #### Why is there no playoff data?
 
@@ -57,6 +59,8 @@ Within each conference, Spearman is **negative** while global Spearman is **+0.7
 4. **Minimum 16 teams required.** `compute_playoff_performance_rank` requires at least **16** teams with playoff data. With 0 playoff games for 2024-25, `playoff_team_ids` is empty, so the function returns `{}` and you see: *"Warning: Only 0 playoff teams found (min 16). Skipping playoff rank/metrics."*
 
 **To get playoff metrics:** Use a snapshot from a **completed** season (e.g. last date of 2023-24 after playoffs finished), or run inference with `inference.also_train_predictions: true` and evaluate `train_predictions.json` (last train date is in 2022-23, which has playoff data in the DB if playoff raw files were loaded).
+
+**EOS_global_rank (Option B):** When playoff data exists for the target season (16+ playoff teams), `EOS_global_rank` is the **end-of-season final rank** (champion=1, first 2 eliminated=29-30). Otherwise it is standings order at the snapshot. See `eos_rank_source` in predictions JSON. **EOS_playoff_standings** = final regular-season rank (1-30 by final reg-season win %). Metrics from runs before Option B used standings; newer runs with playoff data use EOS final rank. Do not compare NDCG/Spearman across these run types.
 
 ---
 
@@ -98,8 +102,8 @@ Metrics below are computed from each run’s `predictions.json` using the same l
 
 ## 5. Predictions (run_016) — Structure and Examples
 
-- **prediction:** `predicted_strength` (1–30), `global_rank`, `ensemble_score` (0–1), `conference_rank` (1–15), `championship_odds`.
-- **analysis:** `EOS_conference_rank`, `EOS_global_rank`, `classification` (e.g. “Under-ranked by 2 slots”), `playoff_rank`, `rank_delta_playoffs`.
+- **prediction:** `predicted_strength` (1–30, used for eval), `ensemble_score` (0–1), `conference_rank` (1–15), `championship_odds`.
+- **analysis:** `actual_conference_rank` (Actual Conference Rank, 1–15), `EOS_global_rank`, `classification` (e.g. “Under-ranked by 2 slots”), `post_playoff_rank`, `rank_delta_playoffs`.
 - **conference:** E/W (for per-conference evaluation).
 - **ensemble_diagnostics:** model_agreement (High/Medium/Low), per-model ranks (deep_set, xgboost, random_forest).
 - **roster_dependence:** primary_contributors (player + attention_weight); currently often empty or fallback with zero weights.

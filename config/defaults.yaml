@@ -3,6 +3,7 @@
 
 # Season boundaries (hard-coded to avoid play-in ambiguity)
 seasons:
+  "2014-15": { start: "2014-10-01", end: "2015-04-15" }  # prior season baseline only
   "2015-16": { start: "2015-10-01", end: "2016-04-15" }
   "2016-17": { start: "2016-10-01", end: "2017-04-15" }
   "2017-18": { start: "2017-10-01", end: "2018-04-15" }
@@ -19,7 +20,7 @@ paths:
   db: "data/processed/nba_build_run.duckdb"
   raw: "data/raw"
   processed: "data/processed"
-  outputs: "outputs"
+  outputs: "outputs2"
 
 # Skip rebuilding DB if file already exists (saves existing DB; set false to force rebuild from raw)
 build_db:
@@ -29,6 +30,7 @@ repro:
   seed: 42
 
 model_a:
+  stat_dim: 14  # L10 + L30 stats (7 + 7)
   num_embeddings: 500
   embedding_dim: 32
   encoder_hidden: [128, 64]
@@ -57,7 +59,8 @@ training:
   n_folds: 5
   rolling_windows: [10, 30]
   roster_size: 15
-  target_rank: "standings"  # or "playoffs" to train meta on playoff performance rank
+  target_rank: "playoffs"  # or "standings" to train meta on standings-to-date
+  listmle_target: "final_rank"  # ListMLE train target: "final_rank" (EOS_playoff_standings) or "standings" (win-rate to date)
   # 75/25 train-test split (script 3 writes split_info.json; 4 and 6 read it)
   train_seasons: ["2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
   test_seasons: ["2023-24", "2024-25"]
@@ -67,6 +70,11 @@ training:
   max_lists_oof: 30        # max lists for OOF; subsampled when there are more
   max_final_batches: 50    # max lists for final Model A training (script 3)
   # build_lists (src/training/build_lists.py) subsamples dates to 200 when there are more
+  # If true, use per-season walk-forward instead of pooled OOF (Model A only)
+  walk_forward: false
+  # Prior season baseline: fill zero player stats with prior season averages
+  use_prior_season_baseline: true
+  prior_season_lookback_days: 365
 
 output:
   true_strength_scale: "percentile"  # or softmax, platt
@@ -78,8 +86,20 @@ logging:
   roster_debug: false
   playoff_debug: false
 
+# Hyperparameter sweep (scripts/sweep_hparams.py)
+sweep:
+  model_a_epochs: [8, 12, 16, 20, 24, 28]
+  rolling_windows: [[5, 10], [10, 20], [10, 30], [15, 30]]
+  model_b:
+    max_depth: [3, 4, 5]
+    learning_rate: [0.06, 0.08, 0.10]
+    n_estimators_xgb: [200, 250, 300]
+    n_estimators_rf: [150, 200, 250]
+
 # null = auto-increment run (run_002, run_003, ... from existing run_* dirs); set e.g. "run_001" to fix
 inference:
   run_id: null
+  # When outputs dir has no run_* subdirs, use this as first run (e.g. 19 -> run_019)
+  run_id_base: 19
   # If true, also run inference on last train date and write run_id/train_predictions.json
   also_train_predictions: false

@@ -52,15 +52,15 @@ def test_spearman_constant_returns_zero():
 
 
 def test_mrr_first_is_best():
-    relevance = np.array([3.0, 1.0, 2.0])  # max rel = 3 at index 0
-    score = np.array([10.0, 1.0, 2.0])  # top by score is index 0
-    assert mrr(relevance, score, top_k=2) == pytest.approx(1.0, abs=1e-6)
+    relevance = np.array([3.0, 1.0, 2.0])  # max rel = 3; top 2 = rel >= 2
+    score = np.array([10.0, 1.0, 2.0])  # top by score is index 0 (rel 3)
+    assert mrr(relevance, score, top_n_teams=2) == pytest.approx(1.0, abs=1e-6)
 
 
 def test_mrr_second_is_best():
-    relevance = np.array([1.0, 3.0, 2.0])  # max rel at index 1
-    score = np.array([10.0, 9.0, 1.0])  # order 0, 1, 2
-    assert mrr(relevance, score, top_k=2) == pytest.approx(0.5, abs=1e-6)
+    relevance = np.array([1.0, 3.0, 2.0])  # top 2 = rel >= 2
+    score = np.array([10.0, 9.0, 1.0])  # order 0, 1, 2; first top-2 at pos 2
+    assert mrr(relevance, score, top_n_teams=2) == pytest.approx(0.5, abs=1e-6)
 
 
 def test_brier_score_perfect():

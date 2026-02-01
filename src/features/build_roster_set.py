@@ -5,6 +5,8 @@ from typing import Any
 
 import pandas as pd
 
+from src.features.rolling import PLAYER_STAT_COLS_L10_L30
+
 
 def hash_trick_index(player_id: int | str, num_embeddings: int) -> int:
     return hash(str(player_id)) % num_embeddings
@@ -143,7 +145,7 @@ def build_roster_set(
     - key_padding_mask: list of n_pad bools, True = ignore (padded), False = valid
     """
     if stat_cols is None:
-        stat_cols = ["pts_L10", "reb_L10", "ast_L10", "stl_L10", "blk_L10", "tov_L10", "availability_L10"]
+        stat_cols = PLAYER_STAT_COLS_L10_L30
 
     order = roster_df.sort_values("rank")["player_id"].tolist()
     pad = n_pad - len(order)

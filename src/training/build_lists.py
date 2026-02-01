@@ -1,4 +1,6 @@
-"""Training list construction for ListMLE: conference-date lists, target = standings-to-date (win-rate)."""
+"""Training list construction for ListMLE: conference-date lists.
+Target: standings-to-date (win-rate) or final_rank (EOS_playoff_standings).
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -74,17 +76,33 @@ def build_lists_for_conference_date(
     return [(tid, float(agg.loc[tid, "win_rate"])) for tid in agg.index]
 
 
+def _season_for_date(d: object, seasons_cfg: dict) -> str | None:
+    """Return season key (e.g. '2023-24') if d falls within that season's range."""
+    d = pd.to_datetime(d).date() if d is not None else None
+    if d is None or not seasons_cfg:
+        return None
+    for season, rng in seasons_cfg.items():
+        start = pd.to_datetime(rng.get("start")).date()
+        end = pd.to_datetime(rng.get("end")).date()
+        if start <= d <= end:
+            return season
+    return None
+
+
 def build_lists(
     tgl: pd.DataFrame,
     games: pd.DataFrame,
     teams: pd.DataFrame,
     *,
     by_week: bool = False,
+    config: dict | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Build many conference-date (or conference-week) lists. Each element:
+    Build many conference-date lists. Each element:
     { "conference": str, "as_of_date": str, "team_ids": [id,...], "win_rates": [float,...] }
+    or when listmle_target=final_rank: "final_rank": [int,...] (EOS_playoff_standings, 1-30).
     by_week: if True, group dates by week.
+    config: if provided and training.listmle_target=="final_rank", use EOS_playoff_standings (final_rank).
     """
     games = games.copy()
     games["game_date"] = pd.to_datetime(games["game_date"])
@@ -103,16 +121,44 @@ def build_lists(
     if not conferences:
         conferences = ["E", "W"]
 
+    use_final_rank = (
+        config is not None
+        and (config.get("training") or {}).get("listmle_target") == "final_rank"
+    )
+    final_rank_cache: dict[str, dict[int, int]] = {}
+    if use_final_rank:
+        from src.evaluation.playoffs import compute_eos_playoff_standings
+        seasons_cfg = config.get("seasons") or {}
+        for season, rng in seasons_cfg.items():
+            ss = rng.get("start")
+            se = rng.get("end")
+            final_rank_cache[season] = compute_eos_playoff_standings(
+                games, tgl, season,
+                season_start=ss,
+                season_end=se,
+            )
+
     out: list[dict[str, Any]] = []
     for d in dates:
         for conf in conferences:
             lst = build_lists_for_conference_date(tgl, games, teams, d, conf)
             if len(lst) < 2:
                 continue
-            out.append({
+            win_rates = [x[1] for x in lst]
+            # Skip early-season lists where all teams have 0 win_rate (no games played yet)
+            if all(wr == 0.0 for wr in win_rates):
+                continue
+            team_ids = [x[0] for x in lst]
+            entry: dict[str, Any] = {
                 "conference": conf,
                 "as_of_date": str(d),
-                "team_ids": [x[0] for x in lst],
-                "win_rates": [x[1] for x in lst],
-            })
+                "team_ids": team_ids,
+                "win_rates": win_rates,
+            }
+            if use_final_rank:
+                season = _season_for_date(d, config.get("seasons") or {})
+                standings = final_rank_cache.get(season or "", {}) if season else {}
+                final_ranks = [standings.get(int(tid), 30) for tid in team_ids]
+                entry["final_rank"] = final_ranks
+            out.append(entry)
     return out

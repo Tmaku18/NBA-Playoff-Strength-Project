@@ -200,7 +200,7 @@ def _build_model(config: dict, device: torch.device) -> nn.Module:
     ma = config.get("model_a", {})
     num_emb = ma.get("num_embeddings", 500)
     emb_dim = ma.get("embedding_dim", 32)
-    stat_dim = 7
+    stat_dim = int(ma.get("stat_dim", 14))
     enc_h = ma.get("encoder_hidden", [128, 64])
     heads = ma.get("attention_heads", 4)
     drop = ma.get("dropout", 0.2)
@@ -227,7 +227,6 @@ def train_model_a_on_batches(
     val_batches: list[dict] | None = None,
 ) -> nn.Module:
     """Train Model A on given batches; return the model (do not save). For OOF fold training."""
-    stat_dim = 7
     ma = config.get("model_a", {})
     num_emb = ma.get("num_embeddings", 500)
     if not batches:
@@ -274,8 +273,8 @@ def train_model_a(
     else:
         device = torch.device(device) if isinstance(device, str) else device
 
-    stat_dim = 7
     ma = config.get("model_a", {})
+    stat_dim = int(ma.get("stat_dim", 14))
     num_emb = ma.get("num_embeddings", 500)
     model = _build_model(config, device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)

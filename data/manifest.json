@@ -1,5 +1,7 @@
 {
   "raw": {
+    "team_logs_2014_15.parquet": "3fab9c734a0bda845f69e104abe921f85763e844e4f7de0116c5a6316e88ce30",
+    "player_logs_2014_15.parquet": "9fbc9d4b41d0920f0f1975e6a36cff48402abbaa5a728b107286ef4e6d656028",
     "team_logs_2015_16.parquet": "006809e5b92c0f1c726ecfe5e53a76d4516a50922ca5f8be68353685ede52cbe",
     "player_logs_2015_16.parquet": "cd1ddc09c5edca183532f5a14f615a2e7583a97faae265f6bfcc635fce56dc56",
     "team_logs_2016_17.parquet": "044171d41d9b3f66f7ab8c9420ebae57dc9cee4bfc67d9f79bc3a85f18a1ecd2",
@@ -22,6 +24,7 @@
     "player_logs_2024_25.parquet": "6b13c34ecb143e66d671c088dde49e6d510e5a2fb39c31fb061d7a9d77206d2b",
     "team_logs_2025_26.parquet": "8f4d56a3050fad983ec7bb720b95558fe5308df6c275544b2a56eade1bf2167c",
     "player_logs_2025_26.parquet": "a007fc37e4570764cc60bb6051c4a21c5cd785b1b14f37de2c6372522fd694c2",
+    "playoffs_team_logs_2014_15.parquet": "e480240f4c470a9b98e13a64a19905e2e1f25b6f54939f92d21e317c1428af5e",
     "playoffs_team_logs_2015_16.parquet": "33de8a6622113b4ab989f5b5b55efd8ecdfceaa7563a162d1ddebe109965ef29",
     "playoffs_player_logs_2015_16.parquet": "34efd21abd0b91dee8f2ee6f0f852aa0ffad7bcb55fa6aac8a34118b504ad72a",
     "playoffs_team_logs_2016_17.parquet": "ed79e5a37e3b54c4f7ee628dd5c9f64ee5403fbbb230d6c7cba79260c85bf911",
@@ -46,8 +49,8 @@
     "playoffs_player_logs_2025_26.parquet": "a926a7c4bbbcccd7c28db8fa13401f915253f2c7869f26a152f7f2e646358ce0"
   },
   "timestamps": {
-    "download": "1769919594.0493965"
+    "download": "1769940888.902951"
   },
-  "processed": "cc8a596afd953d9db2b9de065e3e5e5af1267d335dfd968d20af360269a7b4a2",
+  "processed": "6d49530276db397edf56e18c73d0a8469cb047733f92dcade6826a0e45613626",
   "db_path": "data\\processed\\nba_build_run.duckdb"
 }

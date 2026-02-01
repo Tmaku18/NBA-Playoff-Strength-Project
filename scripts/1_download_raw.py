@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 import yaml
 
 # project root
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 
 def _hash_if_exists(path: Path) -> str | None:
