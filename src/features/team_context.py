@@ -77,6 +77,8 @@ def get_team_context_feature_cols(config: dict | None = None) -> list[str]:
         base.extend(["days_until_playoffs", "elimination_status", "late_season", "eliminated_x_late_season"])
     if cfg.get("injury", {}).get("enabled", False):
         base.append("proj_available_rating")
+    if cfg.get("sos_srs", {}).get("enabled", False):
+        base.extend(["sos", "srs"])
     return base
 
 
@@ -173,6 +175,43 @@ def build_team_context_as_of_dates(
         if not inj_df.empty:
             out = out.merge(inj_df, on=[team_id_col, "as_of_date"], how="left")
             out["proj_available_rating"] = out["proj_available_rating"].fillna(1.0)
+
+    if cfg.get("sos_srs", {}).get("enabled", False):
+        from datetime import timedelta
+        from pathlib import Path
+        from ..data.kaggle_loader import load_team_records_srs
+        paths_cfg = cfg.get("paths", {})
+        raw_base = Path(paths_cfg.get("raw", "data/raw")).resolve()
+        project_root = raw_base.parent.parent if raw_base.name == "raw" else raw_base.parent
+        sos_path = cfg.get("sos_srs", {}).get("data_path", "data/raw/Team_Records.csv")
+        if str(sos_path).startswith("/") or (len(str(sos_path)) > 1 and str(sos_path)[1] == ":"):
+            sos_full = Path(sos_path)
+        else:
+            sos_full = project_root / sos_path
+        if sos_full.exists():
+            teams_df = teams if teams is not None else pd.DataFrame()
+            if not teams_df.empty:
+                sos_df = load_team_records_srs(sos_full, teams_df)
+                if not sos_df.empty and "team_id" in sos_df.columns and "season" in sos_df.columns:
+                    date_to_season: dict[str, str] = {}
+                    for seas, bounds in (seasons_cfg or {}).items():
+                        if isinstance(bounds, dict) and "start" in bounds and "end" in bounds:
+                            start = pd.to_datetime(bounds["start"]).date()
+                            end = pd.to_datetime(bounds["end"]).date()
+                            d = start
+                            while d <= end:
+                                date_to_season[str(d)] = seas
+                                d = d + timedelta(days=1)
+                    def _season_for_date(d):
+                        ds = str(pd.to_datetime(d).date()) if d is not None else ""
+                        return date_to_season.get(str(d), date_to_season.get(ds, None))
+                    out["_season"] = out["as_of_date"].apply(_season_for_date)
+                    sos_sub = sos_df[["team_id", "season", "srs", "sos"]].drop_duplicates(subset=["team_id", "season"])
+                    out = out.merge(sos_sub, left_on=[team_id_col, "_season"], right_on=["team_id", "season"], how="left")
+                    out = out.drop(columns=["_season", "season"], errors="ignore")
+                    for c in ("sos", "srs"):
+                        if c in out.columns:
+                            out[c] = out[c].fillna(0.0)
 
     for c in list(out.columns):
         if any(f in str(c).lower() for f in FORBIDDEN):

@@ -25,6 +25,7 @@
     "team_logs_2025_26.parquet": "8f4d56a3050fad983ec7bb720b95558fe5308df6c275544b2a56eade1bf2167c",
     "player_logs_2025_26.parquet": "a007fc37e4570764cc60bb6051c4a21c5cd785b1b14f37de2c6372522fd694c2",
     "playoffs_team_logs_2014_15.parquet": "e480240f4c470a9b98e13a64a19905e2e1f25b6f54939f92d21e317c1428af5e",
+    "playoffs_player_logs_2014_15.parquet": "001fa2646110b8e174cef444a3b77ed903ae6b1163464e3f6972ebbbc50010ef",
     "playoffs_team_logs_2015_16.parquet": "33de8a6622113b4ab989f5b5b55efd8ecdfceaa7563a162d1ddebe109965ef29",
     "playoffs_player_logs_2015_16.parquet": "34efd21abd0b91dee8f2ee6f0f852aa0ffad7bcb55fa6aac8a34118b504ad72a",
     "playoffs_team_logs_2016_17.parquet": "ed79e5a37e3b54c4f7ee628dd5c9f64ee5403fbbb230d6c7cba79260c85bf911",
@@ -49,8 +50,6 @@
     "playoffs_player_logs_2025_26.parquet": "a926a7c4bbbcccd7c28db8fa13401f915253f2c7869f26a152f7f2e646358ce0"
   },
   "timestamps": {
-    "download": "1769940888.902951"
-  },
-  "processed": "6d49530276db397edf56e18c73d0a8469cb047733f92dcade6826a0e45613626",
-  "db_path": "data\\processed\\nba_build_run.duckdb"
+    "download": "1769948177.9436715"
+  }
 }

@@ -19,7 +19,7 @@ paths:
   db: "data/processed/nba_build_run.duckdb"
   raw: "data/raw"
   processed: "data/processed"
-  outputs: "outputs2"
+  outputs: "outputs3"
 
 training:
   train_seasons: ["2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
