@@ -17,12 +17,17 @@ def build_xgb(config: dict | None = None) -> Any:
     cfg = config or {}
     if not _HAS_XGB:
         raise ImportError("xgboost is required")
-    return xgb.XGBRegressor(
-        n_estimators=cfg.get("n_estimators", 500),
-        max_depth=cfg.get("max_depth", 6),
-        learning_rate=cfg.get("learning_rate", 0.05),
-        random_state=cfg.get("random_state", 42),
-    )
+    kwargs = {
+        "n_estimators": cfg.get("n_estimators", 500),
+        "max_depth": cfg.get("max_depth", 6),
+        "learning_rate": cfg.get("learning_rate", 0.05),
+        "random_state": cfg.get("random_state", 42),
+    }
+    if cfg.get("subsample") is not None:
+        kwargs["subsample"] = float(cfg["subsample"])
+    if cfg.get("colsample_bytree") is not None:
+        kwargs["colsample_bytree"] = float(cfg["colsample_bytree"])
+    return xgb.XGBRegressor(**kwargs)
 
 
 def fit_xgb(

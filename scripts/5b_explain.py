@@ -24,7 +24,7 @@ def main():
         sys.exit(1)
 
     from src.data.db_loader import load_training_data
-    from src.features.team_context import TEAM_CONTEXT_FEATURE_COLS, build_team_context_as_of_dates
+    from src.features.team_context import build_team_context_as_of_dates, get_team_context_feature_cols
     from src.training.build_lists import build_lists
     from src.training.data_model_a import build_batches_from_lists
 
@@ -43,8 +43,11 @@ def main():
             rows.append({"team_id": int(tid), "as_of_date": lst["as_of_date"]})
     flat = pd.DataFrame(rows)
     team_dates = [(int(a), str(b)) for a, b in flat[["team_id", "as_of_date"]].drop_duplicates().values.tolist()]
-    feat_df = build_team_context_as_of_dates(tgl, games, team_dates)
-    feat_cols = [c for c in TEAM_CONTEXT_FEATURE_COLS if c in feat_df.columns]
+    feat_df = build_team_context_as_of_dates(
+        tgl, games, team_dates,
+        config=config, teams=teams, pgl=pgl,
+    )
+    feat_cols = [c for c in get_team_context_feature_cols(config) if c in feat_df.columns]
     if not feat_cols:
         print("No feature columns for SHAP.", file=sys.stderr)
         sys.exit(1)

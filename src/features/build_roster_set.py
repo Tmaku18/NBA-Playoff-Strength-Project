@@ -5,7 +5,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.features.rolling import PLAYER_STAT_COLS_L10_L30
+from src.features.rolling import PLAYER_STAT_COLS_L10_L30, PLAYER_STAT_COLS_WITH_ON_OFF
 
 
 def hash_trick_index(player_id: int | str, num_embeddings: int) -> int:
@@ -135,17 +135,19 @@ def build_roster_set(
     n_pad: int = 15,
     stat_cols: list[str] | None = None,
     num_embeddings: int = 500,
+    team_continuity_scalar: float | None = None,
 ) -> tuple[list[int], list[list[float]], list[float], list[bool]]:
     """
     From roster_df (top-N from get_roster_as_of_date) and player_stats (rolling stats keyed by player_id),
     build:
     - embedding_indices: list of length n_pad (hash_trick for each player; 0 for padding)
-    - player_stats_matrix: list of n_pad lists of stat values (0 for padding)
+    - player_stats_matrix: list of n_pad lists of stat values (0 for padding); includes team_continuity_scalar
+      as extra stat when provided (e.g. pct_min_returning).
     - minutes_weights: list of n_pad (e.g. total_min/max or 0 for padding)
     - key_padding_mask: list of n_pad bools, True = ignore (padded), False = valid
     """
     if stat_cols is None:
-        stat_cols = PLAYER_STAT_COLS_L10_L30
+        stat_cols = PLAYER_STAT_COLS_WITH_ON_OFF
 
     order = roster_df.sort_values("rank")["player_id"].tolist()
     pad = n_pad - len(order)
@@ -158,19 +160,22 @@ def build_roster_set(
     minutes_weights: list[float] = []
     key_padding_mask: list[bool] = []
 
+    pct_min = float(team_continuity_scalar) if team_continuity_scalar is not None else 0.0
     max_min = float(roster_df["total_min"].max()) if "total_min" in roster_df.columns and len(roster_df) else 1.0
     for pid in order:
         embedding_indices.append(hash_trick_index(pid, num_embeddings))
         r = player_stats[player_stats[player_id_col] == pid]
         vec = [float(r[c].iloc[0]) if c in r.columns and len(r) and pd.notna(r[c].iloc[0]) else 0.0 for c in stat_cols]
+        vec.append(pct_min)  # team_continuity_scalar (e.g. pct_min_returning) per team
         rows.append(vec)
         m = float(roster_df.loc[roster_df["player_id"] == pid, "total_min"].iloc[0]) if pid in roster_df["player_id"].values else 0.0
         minutes_weights.append(m / max_min if max_min else 0.0)
         key_padding_mask.append(False)
 
+    stat_len = len(stat_cols) + 1  # +1 for team_continuity_scalar
     for _ in range(pad):
         embedding_indices.append(num_embeddings)  # padding index, distinct from hash range [0, num_embeddings-1]
-        rows.append([0.0] * len(stat_cols))
+        rows.append([0.0] * stat_len)
         minutes_weights.append(0.0)
         key_padding_mask.append(True)
 

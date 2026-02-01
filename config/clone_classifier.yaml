@@ -1,0 +1,35 @@
+# Clone config: Train (2015-2022), Validation (2023), Holdout (2024)
+# XGBoost Classifier, binary:logistic. Evaluation: AUC-ROC, Brier.
+
+# Inherits base config; override only what changes
+seasons:
+  "2014-15": { start: "2014-10-01", end: "2015-04-15" }
+  "2015-16": { start: "2015-10-01", end: "2016-04-15" }
+  "2016-17": { start: "2016-10-01", end: "2017-04-15" }
+  "2017-18": { start: "2017-10-01", end: "2018-04-15" }
+  "2018-19": { start: "2018-10-01", end: "2019-04-15" }
+  "2019-20": { start: "2019-10-01", end: "2020-04-15" }
+  "2020-21": { start: "2020-12-01", end: "2021-05-15" }
+  "2021-22": { start: "2021-10-01", end: "2022-04-15" }
+  "2022-23": { start: "2022-10-01", end: "2023-04-15" }
+  "2023-24": { start: "2023-10-01", end: "2024-04-15" }
+  "2024-25": { start: "2024-10-01", end: "2025-04-15" }
+
+paths:
+  db: "data/processed/nba_build_run.duckdb"
+  raw: "data/raw"
+  processed: "data/processed"
+  outputs: "outputs2"
+
+training:
+  train_seasons: ["2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
+  validation_seasons: ["2023-24"]
+  holdout_seasons: ["2024-25"]
+  target_binary: "playoff_team"  # y=1 if top-15 by EOS standing, else 0
+
+clone_classifier:
+  objective: "binary:logistic"
+  eval_metric: ["auc", "logloss"]
+  n_estimators: 250
+  max_depth: 4
+  learning_rate: 0.08

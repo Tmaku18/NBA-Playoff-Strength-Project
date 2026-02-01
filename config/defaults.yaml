@@ -30,7 +30,7 @@ repro:
   seed: 42
 
 model_a:
-  stat_dim: 14  # L10 + L30 stats (7 + 7)
+  stat_dim: 17  # 14 (L10+L30) + 2 (on_court_pm_approx L10/L30) + 1 (pct_min_returning)
   num_embeddings: 500
   embedding_dim: 32
   encoder_hidden: [128, 64]
@@ -64,6 +64,8 @@ training:
   # 75/25 train-test split (script 3 writes split_info.json; 4 and 6 read it)
   train_seasons: ["2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
   test_seasons: ["2023-24", "2024-25"]
+  validation_seasons: ["2023-24"]
+  holdout_seasons: ["2024-25"]
   train_test_cutoff: null   # optional date cutoff alternative, e.g. "2023-04-15"
   train_frac: 0.75          # fallback if seasons/cutoff not provided
   # Model A (script 3): subsample lists for feasible runtime
@@ -79,22 +81,57 @@ training:
 output:
   true_strength_scale: "percentile"  # or softmax, platt
   odds_temperature: 1.0  # softmax temperature for championship odds
+  championship_odds_method: "softmax"  # or "monte_carlo"
   ig_inference_top_k: 1  # per conference; set 0 to disable IG in predictions.json
   ig_inference_steps: 50
+
+# Elo with cold start (enable and retrain Model B to use)
+elo:
+  cold_start_games: 10
+  regression_to_mean: 0.25
+  enabled: false
+
+# Team rolling (eFG_L10, DefRtg_L10, won_prev_game)
+team_rolling:
+  enabled: false
+
+# Injury adjustments (ProjAvailableRating)
+injury:
+  data_path: "data/raw/injury_reports"
+  minutes_heuristic: "proportional"
+  enabled: false  # set true when injury JSON available
+
+# Motivation (tanking/seeding)
+motivation:
+  late_season_games: 15
+  playoff_wins_threshold: 42
+  enabled: true
+
+# Monte Carlo championship simulation
+monte_carlo:
+  hca: 100.0
+  rating_scale: 400.0
+  n_seasons: 10000
+  n_series: 1000
 
 logging:
   roster_debug: false
   playoff_debug: false
 
 # Hyperparameter sweep (scripts/sweep_hparams.py)
+# Expanded robust ranges beyond refined sweep; tests all models including clone classifier.
 sweep:
-  model_a_epochs: [8, 12, 16, 20, 24, 28]
+  model_a_epochs: [8, 16, 24, 28]
   rolling_windows: [[5, 10], [10, 20], [10, 30], [15, 30]]
   model_b:
     max_depth: [3, 4, 5]
-    learning_rate: [0.06, 0.08, 0.10]
-    n_estimators_xgb: [200, 250, 300]
+    learning_rate: [0.05, 0.08, 0.10]
+    n_estimators_xgb: [200, 250, 300, 350]
     n_estimators_rf: [150, 200, 250]
+    subsample: [0.8]
+    colsample_bytree: [0.7]
+    min_samples_leaf: [5]
+  include_clone_classifier: true
 
 # null = auto-increment run (run_002, run_003, ... from existing run_* dirs); set e.g. "run_001" to fix
 inference:
