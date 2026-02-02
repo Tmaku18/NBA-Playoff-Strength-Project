@@ -35,6 +35,10 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 
 **Storage:** DuckDB preferred (regular-season + separate playoff tables: `playoff_games`, `playoff_team_game_logs`, `playoff_player_game_logs`).
 
+**RAPTOR (FiveThirtyEight):** Optional. Place `modern_RAPTOR_by_team.csv` or `historical_RAPTOR_by_player.csv` in `docs/` or `data/`. Enable with `raptor.enabled: true` in config. Adds `raptor_offense_sum_top5` and `raptor_defense_sum_top5` to Model B team context. Download: `python -m scripts.1c_download_raptor` or from [GitHub](https://github.com/fivethirtyeight/data/tree/master/nba-raptor).
+
+**LEBRON (future):** BBall Index proprietary metric. Manual CSV export from [BBall Index](https://www.bball-index.com/lebron-database/) or the free Google Sheets database. Place in `data/raw/lebron/` with schema: player_id or player_name, season, lebron_total, o_lebron, d_lebron. Loader and team_context wiring to be added when file present.
+
 ---
 
 ## Playoff performance rank (ground truth)
@@ -81,7 +85,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 8. **Clone classifier (optional):** `python -m scripts.4c_train_classifier_clone --config config/clone_classifier.yaml` — XGBoost binary classifier (playoff team vs not) on Train 2015–2022, Val 2023, Holdout 2024; outputs `clone_classifier_report.json` (AUC-ROC, Brier).
 9. **Hyperparameter sweep:** `python -m scripts.sweep_hparams` — Runs full pipeline (3, 4, 4b, 6, 5, 4c) across configurable hyperparameter grid; writes to **`outputs3/sweeps/<batch_id>/`** (config: `paths.outputs` = `outputs3`). Use `--dry-run` to preview combos, `--max-combos N` to limit.
 
-**Optional:** `python -m scripts.run_manifest` (run manifest); `python -m scripts.run_leakage_tests` (before training); `python -m scripts.1b_download_injuries` (stub for injury data).
+**Optional:** `python -m scripts.run_manifest` (run manifest); `python -m scripts.run_leakage_tests` (before training); `python -m scripts.1b_download_injuries` (stub for injury data); `python -m scripts.1c_download_raptor` (RAPTOR CSV from FiveThirtyEight).
 
 **Pipeline behavior:** Script 1 reuses raw files that already exist (no re-download). Script 2 skips rebuilding the DB when `build_db.skip_if_exists` is true and the DB file exists; set it to false to force a full rebuild from raw. With `inference.run_id: null`, inference writes to the next run folder (run_002, run_003, …) and evaluation uses the latest run.
 
