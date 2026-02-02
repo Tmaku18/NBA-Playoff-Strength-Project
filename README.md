@@ -29,7 +29,7 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 
 ## Data Sources
 - **nba_api** (official): play-by-play, player/team logs, tracking data; **playoff** game logs (SeasonType=Playoffs) for validation. Play-In games are excluded from playoff win counts.
-- **Kaggle (Wyatt Walsh):** **primary** for SOS/SRS and historical validation.
+- **Kaggle — NBA Season Records from Every Year:** [boonpalipatana/nba-season-records-from-every-year](https://www.kaggle.com/datasets/boonpalipatana/nba-season-records-from-every-year) — **primary** for season records, SOS/SRS (e.g. `Team_Records.csv` in `data/raw/`), and historical validation.
 - **Basketball-Reference:** **fallback** for SOS/SRS when Kaggle unavailable.
 - **Proxy SOS:** If both are unavailable, compute from internal DB (e.g. opponent win-rate) and document.
 

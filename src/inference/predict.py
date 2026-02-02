@@ -239,7 +239,7 @@ def run_inference_from_db(
     from src.features.team_context import build_team_context_as_of_dates
     from src.training.build_lists import TEAM_CONFERENCE, build_lists
     from src.training.data_model_a import build_batches_from_lists
-    from src.training.train_model_a import predict_batches_with_attention
+    from src.training.train_model_a import get_model_a_device, predict_batches_with_attention
     from src.utils.split import date_to_season, load_split_info
 
     out = Path(output_dir)
@@ -348,7 +348,10 @@ def run_inference_from_db(
         sorted_global = sorted(win_rate_map.items(), key=lambda x: (-x[1], x[0]))
         actual_global_rank = {tid: i + 1 for i, (tid, _) in enumerate(sorted_global)}
 
-        device = torch.device("cpu")  # Match load_models map_location="cpu"
+        device = get_model_a_device(config) if config else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if model_a is not None:
+            model_a.to(device)
+            print(f"Model A device (inference): {device}", flush=True)
         tid_to_score_a: dict[int, float] = {}
         attention_by_team: dict[int, list[tuple[str, float]]] = {}  # team_id -> [(player_name, weight), ...]
         attention_fallback_by_team: dict[int, bool] = {}
@@ -386,21 +389,18 @@ def run_inference_from_db(
                         attn_debug["attn_max"].append(attn_max)
                         if attn_sum <= 0:
                             attn_debug["all_zero"] += 1
-                        order = np.argsort(-attn_weights)
+                        # If all attention weights are zero or non-finite, mark as fallback and leave contributors empty
+                        all_zero_or_nonfinite = (
+                            attn_sum <= 0
+                            or not np.any(np.isfinite(attn_weights))
+                            or np.all(attn_weights <= 0)
+                        )
                         contrib: list[tuple[str, float]] = []
-                        for idx in order[:10]:
-                            if idx >= len(player_ids) or player_ids[idx] is None:
-                                continue
-                            w = float(attn_weights[idx])
-                            if not np.isfinite(w) or w <= 0:
-                                continue
-                            pid = player_ids[idx]
-                            name = player_id_to_name.get(int(pid), f"Player_{pid}")
-                            contrib.append((name, w))
                         fallback_used = False
-                        if not contrib and max_len > 0:
-                            # Fallback 1: take top-k by raw weight even if <= 0
+                        if all_zero_or_nonfinite:
                             fallback_used = True
+                        else:
+                            order = np.argsort(-attn_weights)
                             for idx in order[:10]:
                                 if idx >= len(player_ids) or player_ids[idx] is None:
                                     continue
@@ -410,20 +410,6 @@ def run_inference_from_db(
                                 pid = player_ids[idx]
                                 name = player_id_to_name.get(int(pid), f"Player_{pid}")
                                 contrib.append((name, w))
-                        if not contrib and max_len > 0 and i < len(batches_a):
-                            # Fallback 2: top-3 by minutes when attention yields nothing
-                            b = batches_a[i]
-                            if "minutes" in b:
-                                min_t = b["minutes"]
-                                if min_t.dim() >= 3 and k < min_t.shape[1]:
-                                    minutes_row = min_t[0, k].cpu().numpy()
-                                    order_min = np.argsort(-minutes_row)
-                                    for idx in order_min[:3]:
-                                        if idx < len(player_ids) and player_ids[idx] is not None:
-                                            pid = player_ids[idx]
-                                            name = player_id_to_name.get(int(pid), f"Player_{pid}")
-                                            contrib.append((name, float(minutes_row[idx])))
-                            fallback_used = True
                         if contrib:
                             attention_by_team[tid] = contrib
                         if fallback_used:

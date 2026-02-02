@@ -13,6 +13,21 @@ from src.models.listmle_loss import listmle_loss
 from src.utils.repro import set_seeds
 
 
+def get_model_a_device(config: dict | None = None) -> torch.device:
+    """Resolve Model A device from config: 'cuda', 'cpu', or None/auto (cuda when available)."""
+    if config:
+        ma = config.get("model_a", {})
+        dev = ma.get("device")
+        if dev is not None and isinstance(dev, str) and dev.strip().lower() == "cpu":
+            return torch.device("cpu")
+        if dev is not None and isinstance(dev, str) and dev.strip().lower() == "cuda":
+            if not torch.cuda.is_available():
+                import warnings
+                warnings.warn("model_a.device is cuda but CUDA is not available; using cpu", stacklevel=1)
+            return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 def _log_attention_debug_stats(model: nn.Module, batch: dict, device: torch.device) -> None:
     """Log one-shot attention diagnostics: mask/minutes/attn sums + grad norm."""
     B, K, P, S = batch["embedding_indices"].shape[0], batch["embedding_indices"].shape[1], batch["embedding_indices"].shape[2], batch["player_stats"].shape[-1]
@@ -269,9 +284,10 @@ def train_model_a(
     set_seeds(config.get("repro", {}).get("seed", 42))
 
     if device is None:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = get_model_a_device(config)
     else:
         device = torch.device(device) if isinstance(device, str) else device
+    print(f"Model A device: {device}", flush=True)
 
     ma = config.get("model_a", {})
     stat_dim = int(ma.get("stat_dim", 14))
@@ -306,10 +322,15 @@ def train_model_a(
                 bad_epochs += 1
             if bad_epochs >= patience:
                 break
+        if train_batches and bool(ma.get("attention_debug", True)):
+            try:
+                _log_attention_debug_stats(model, train_batches[0], device)
+            except Exception:
+                pass
     if best_state is not None:
         model.load_state_dict(best_state)
 
-    if batches and bool(ma.get("attention_debug", False)):
+    if batches and bool(ma.get("attention_debug", True)):
         try:
             _log_attention_debug_stats(model, batches[0], device)
         except Exception:

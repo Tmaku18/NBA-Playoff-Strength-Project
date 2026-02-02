@@ -77,12 +77,14 @@ def main():
         sys.exit(1)
     try:
         from src.models.deep_set_rank import DeepSetRank
+        from src.training.train_model_a import get_model_a_device
         from src.viz.integrated_gradients import attention_ablation
         valid_lists = [lst for lst in lists if len(lst["team_ids"]) >= 2]
         if not valid_lists:
             print("No valid lists for attention ablation.", file=sys.stderr)
         else:
-            device = torch.device("cpu")
+            device = get_model_a_device(config)
+            print(f"Model A device (explain): {device}", flush=True)
             batches_a, _ = build_batches_from_lists(valid_lists[:1], games, tgl, teams, pgl, config, device=device)
             if not batches_a:
                 print("No batches for attention ablation.", file=sys.stderr)
@@ -101,6 +103,7 @@ def main():
                 )
                 if "model_state" in ck:
                     model.load_state_dict(ck["model_state"])
+                model.to(device)
                 model.eval()
                 batch = batches_a[0]
                 emb = batch["embedding_indices"].to(device).reshape(-1, batch["embedding_indices"].shape[2])

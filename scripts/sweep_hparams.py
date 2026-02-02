@@ -16,6 +16,7 @@ import argparse
 import copy
 import itertools
 import json
+import math
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -228,9 +229,10 @@ def main() -> int:
             w.writeheader()
             w.writerows(results)
 
-    # Summary: best by spearman, ndcg, etc.
+    # Summary: best by spearman, ndcg, rank_mae (lower is better)
     ensemble_key = "test_metrics_ensemble_spearman"
     ndcg_key = "test_metrics_ensemble_ndcg"
+    rank_mae_key = "test_metrics_ensemble_rank_mae_pred_vs_playoff"
     valid = [r for r in results if ensemble_key in r and r.get(ensemble_key) is not None]
     summary = {}
     if valid:
@@ -238,6 +240,15 @@ def main() -> int:
         best_ndcg = max(valid, key=lambda x: float(x.get(ndcg_key, -1)))
         summary["best_by_spearman"] = best_sp
         summary["best_by_ndcg"] = best_ndcg
+    valid_mae = [
+        r for r in results
+        if rank_mae_key in r
+        and isinstance(r.get(rank_mae_key), (int, float))
+        and math.isfinite(r.get(rank_mae_key))
+    ]
+    if valid_mae:
+        best_mae = min(valid_mae, key=lambda x: float(x.get(rank_mae_key, float("inf"))))
+        summary["best_by_rank_mae"] = best_mae
     with open(batch_dir / "sweep_results_summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.evaluation.evaluate import evaluate_ranking, evaluate_upset
-from src.evaluation.metrics import brier_champion, ndcg_at_4, ndcg_score, spearman
+from src.evaluation.metrics import brier_champion, ndcg_at_4, ndcg_score, rank_mae, rank_rmse, spearman
 from src.utils.split import load_split_info
 
 
@@ -133,6 +133,21 @@ def _compute_metrics(teams: list, *, k: int = 10) -> dict:
     """Compute ndcg, spearman, mrr, roc_auc_upset and optionally playoff_metrics from teams list."""
     y_actual, y_score, pred_ranks_arr, _, _ = _teams_to_arrays(teams)
     m = _compute_metrics_from_arrays(y_actual, y_score, pred_ranks_arr, k=k)
+    # Rank-distance metrics: predicted rank vs actual EOS playoff rank (lower is better)
+    m["rank_mae_pred_vs_playoff"] = float(rank_mae(pred_ranks_arr, y_actual))
+    m["rank_rmse_pred_vs_playoff"] = float(rank_rmse(pred_ranks_arr, y_actual))
+    # Standings vs actual playoff rank (baseline: how far reg-season rank was from playoff outcome)
+    standings_list = []
+    actual_list = []
+    for t in teams:
+        act = t.get("analysis", {}).get("EOS_global_rank")
+        stand = t.get("analysis", {}).get("EOS_playoff_standings")
+        if act is not None and stand is not None:
+            actual_list.append(float(act))
+            standings_list.append(float(stand))
+    if len(actual_list) >= 16:
+        m["rank_mae_standings_vs_playoff"] = float(rank_mae(np.array(standings_list), np.array(actual_list)))
+        m["rank_rmse_standings_vs_playoff"] = float(rank_rmse(np.array(standings_list), np.array(actual_list)))
     playoff_rows = []
     for t in teams:
         p_rank = t.get("analysis", {}).get("post_playoff_rank")
@@ -150,6 +165,10 @@ def _compute_metrics(teams: list, *, k: int = 10) -> dict:
             "spearman_pred_vs_playoff_rank": float(spearman(p_rank, g_rank)),
             "ndcg_at_4_final_four": float(ndcg_at_4(p_rank, -g_rank)),
             "brier_championship_odds": float(brier_champion(champion_onehot, odds_pct)),
+            "rank_mae_pred_vs_playoff": m["rank_mae_pred_vs_playoff"],
+            "rank_rmse_pred_vs_playoff": m["rank_rmse_pred_vs_playoff"],
+            "rank_mae_standings_vs_playoff": m.get("rank_mae_standings_vs_playoff", float("nan")),
+            "rank_rmse_standings_vs_playoff": m.get("rank_rmse_standings_vs_playoff", float("nan")),
         }
     return m
 
@@ -157,45 +176,55 @@ def _compute_metrics(teams: list, *, k: int = 10) -> dict:
 def _metrics_by_conference(
     teams: list,
     *,
-    use_conference_ranks: bool = True,
-) -> dict[str, dict[str, float]]:
-    """Compute NDCG and Spearman per conference (E, W).
-    When use_conference_ranks=True (default), uses predicted vs actual conference rank (1-15 within E/W).
+    k: int = 10,
+) -> dict[str, dict[str, dict[str, float]]]:
+    """Compute full metrics (ndcg, spearman, mrr_top2, mrr_top4, roc_auc_upset, rank_mae/rmse) per conference (E, W) and per model (ensemble, model_a, xgb, rf).
+    Uses EOS_global_rank (playoff rank) as actual; slices teams by conference then evaluates each model on that slice.
     """
-    out: dict[str, dict[str, float]] = {}
+    by_model, team_ids, team_id_to_conf = _teams_to_arrays_by_model(teams)
+    if not by_model or not team_ids:
+        return {}
+
+    conf_indices: dict[str, list[int]] = {"E": [], "W": []}
+    for i, tid in enumerate(team_ids):
+        c = team_id_to_conf.get(tid)
+        if c in conf_indices:
+            conf_indices[c].append(i)
+
+    # Standings vs playoff baseline per conference (same for all models)
+    standings_by_conf: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     for conf in ("E", "W"):
-        conf_teams = [t for t in teams if t.get("conference") == conf]
-        if len(conf_teams) < 2:
+        act_list = []
+        stand_list = []
+        for t in teams:
+            if t.get("conference") != conf:
+                continue
+            act = t.get("analysis", {}).get("EOS_global_rank")
+            stand = t.get("analysis", {}).get("EOS_playoff_standings")
+            if act is not None and stand is not None:
+                act_list.append(float(act))
+                stand_list.append(float(stand))
+        if len(act_list) >= 2:
+            standings_by_conf[conf] = (np.array(act_list), np.array(stand_list))
+
+    out: dict[str, dict[str, dict[str, float]]] = {}
+    for conf in ("E", "W"):
+        idx = conf_indices.get(conf, [])
+        if len(idx) < 2:
             continue
-        if use_conference_ranks:
-            act_ranks = []
-            pred_ranks = []
-            for t in conf_teams:
-                act = t.get("analysis", {}).get("actual_conference_rank") or t.get("analysis", {}).get("EOS_conference_rank")
-                pred = t.get("prediction", {}).get("conference_rank")
-                if act is not None and pred is not None:
-                    act_ranks.append(float(act))
-                    pred_ranks.append(float(pred))
-            if len(act_ranks) < 2:
-                continue
-            ya = np.array(act_ranks, dtype=np.float32)
-            yp = np.array(pred_ranks, dtype=np.float32)
-            max_r = int(np.max(ya)) if len(ya) else 15
-            rel = (max_r - ya + 1).clip(1, max_r)
-            ndcg = ndcg_score(rel, -yp, k=min(10, len(rel)))  # -pred so lower rank = higher score
-            sp = spearman(ya, yp)
-        else:
-            y_actual, y_score, _, team_ids, team_id_to_conf = _teams_to_arrays(teams)
-            idx = [i for i, tid in enumerate(team_ids) if team_id_to_conf.get(tid) == conf]
-            if len(idx) < 2:
-                continue
+        out[conf] = {}
+        for model_name, (y_actual, y_score, pred_ranks_arr) in by_model.items():
             ya = y_actual[idx]
             ys = y_score[idx]
-            max_rank = int(np.max(ya))
-            rel = (max_rank - ya + 1).clip(1, max_rank if max_rank > 0 else 1)
-            ndcg = ndcg_score(rel, ys, k=min(10, len(rel)))
-            sp = spearman(ya, ys)
-        out[conf] = {"ndcg": float(ndcg), "spearman": float(sp)}
+            pr = pred_ranks_arr[idx]
+            m = _compute_metrics_from_arrays(ya, ys, pr, k=min(k, len(ya)))
+            m["rank_mae_pred_vs_playoff"] = float(rank_mae(pr, ya))
+            m["rank_rmse_pred_vs_playoff"] = float(rank_rmse(pr, ya))
+            if conf in standings_by_conf:
+                act_arr, stand_arr = standings_by_conf[conf]
+                m["rank_mae_standings_vs_playoff"] = float(rank_mae(stand_arr, act_arr))
+                m["rank_rmse_standings_vs_playoff"] = float(rank_rmse(stand_arr, act_arr))
+            out[conf][model_name] = {k: (float(v) if isinstance(v, (int, float)) else v) for k, v in m.items()}
     return out
 
 
@@ -316,7 +345,15 @@ def main():
             report["notes"]["train_eos_rank_source"] = train_data.get("eos_rank_source", "standings")
 
     if report.get("test_metrics", {}).get("playoff_metrics"):
-        report["notes"]["playoff_metrics"] = "Spearman (pred global vs playoff rank), NDCG@4 (final four), Brier (champion vs odds)."
+        report["notes"]["playoff_metrics"] = (
+            "Spearman (pred global vs playoff rank), NDCG@4 (final four), Brier (champion vs odds). "
+            "rank_mae/rank_rmse: mean absolute and root mean squared error of rank vs actual EOS playoff rank (pred and standings baselines)."
+        )
+    if report.get("test_metrics_by_conference"):
+        report["notes"]["test_metrics_by_conference"] = (
+            "Per conference (E, W) and per model (ensemble, model_a, xgb, rf): ndcg, spearman, mrr_top2, mrr_top4, "
+            "roc_auc_upset, rank_mae_pred_vs_playoff, rank_rmse_pred_vs_playoff, rank_mae/rmse_standings_vs_playoff."
+        )
 
     out = out_dir / "eval_report.json"
     out.parent.mkdir(parents=True, exist_ok=True)

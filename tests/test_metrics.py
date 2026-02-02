@@ -10,6 +10,8 @@ from src.evaluation.metrics import (
     ndcg_at_4,
     ndcg_score,
     mrr,
+    rank_mae,
+    rank_rmse,
     roc_auc_upset,
     spearman,
 )
@@ -94,3 +96,26 @@ def test_brier_champion():
     prob = np.array([0.1, 0.2, 0.5, 0.2])
     b = brier_champion(onehot, prob)
     assert b >= 0 and np.isfinite(b)
+
+
+def test_rank_mae_perfect():
+    pred = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    actual = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    assert rank_mae(pred, actual) == pytest.approx(0.0, abs=1e-6)
+
+
+def test_rank_mae_off_by_one():
+    pred = np.array([1.0, 3.0, 2.0, 5.0, 4.0])
+    actual = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    assert rank_mae(pred, actual) == pytest.approx(0.8, abs=1e-5)
+
+
+def test_rank_rmse_perfect():
+    pred = np.array([1.0, 2.0, 3.0])
+    actual = np.array([1.0, 2.0, 3.0])
+    assert rank_rmse(pred, actual) == pytest.approx(0.0, abs=1e-6)
+
+
+def test_rank_rmse_empty_returns_nan():
+    assert np.isnan(rank_mae(np.array([]), np.array([])))
+    assert np.isnan(rank_rmse(np.array([]), np.array([])))

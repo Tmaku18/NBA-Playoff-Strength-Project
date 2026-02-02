@@ -1,4 +1,4 @@
-"""XGBoost ranker/regressor with early stopping. No net_rating in features."""
+"""XGBoost ranker/regressor with early stopping. No net_rating in features. Optional GPU via tree_method='hist', device='cuda'."""
 
 from __future__ import annotations
 
@@ -13,16 +13,36 @@ except ImportError:
     _HAS_XGB = False
 
 
+def _cuda_available() -> bool:
+    """True if CUDA is available (e.g. PyTorch or nvidia-smi). Prefer torch for consistency with Model A."""
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except ImportError:
+        return False
+
+
 def build_xgb(config: dict | None = None) -> Any:
     cfg = config or {}
     if not _HAS_XGB:
         raise ImportError("xgboost is required")
+    use_gpu = cfg.get("use_gpu")
+    if use_gpu is None:
+        use_gpu = _cuda_available()
+    else:
+        use_gpu = bool(use_gpu) and _cuda_available()
     kwargs = {
         "n_estimators": cfg.get("n_estimators", 500),
         "max_depth": cfg.get("max_depth", 6),
         "learning_rate": cfg.get("learning_rate", 0.05),
         "random_state": cfg.get("random_state", 42),
     }
+    if use_gpu:
+        kwargs["tree_method"] = "hist"
+        kwargs["device"] = "cuda"
+        print("XGBoost device: cuda", flush=True)
+    else:
+        print("XGBoost device: cpu", flush=True)
     if cfg.get("subsample") is not None:
         kwargs["subsample"] = float(cfg["subsample"])
     if cfg.get("colsample_bytree") is not None:

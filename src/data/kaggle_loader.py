@@ -1,4 +1,8 @@
-"""Kaggle SOS/SRS loader. Expects CSV(s) already downloaded (no credentials in repo)."""
+"""Kaggle SOS/SRS loader. Expects CSV(s) already downloaded (no credentials in repo).
+
+Data source: Kaggle — NBA Season Records from Every Year (boonpalipatana)
+https://www.kaggle.com/datasets/boonpalipatana/nba-season-records-from-every-year
+"""
 from __future__ import annotations
 
 from pathlib import Path

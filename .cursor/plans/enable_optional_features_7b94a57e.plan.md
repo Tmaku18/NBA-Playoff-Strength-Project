@@ -98,7 +98,7 @@ output:
 
 ## 6. SOS/SRS — Team_Records.csv integration
 
-**Data:** [data/raw/Team_Records.csv](data/raw/Team_Records.csv) already present. Columns: `Season`, `Team`, `SRS` (no SOS; use SRS only or duplicate as sos).
+**Data:** [data/raw/Team_Records.csv](data/raw/Team_Records.csv) — from Kaggle [NBA Season Records from Every Year](https://www.kaggle.com/datasets/boonpalipatana/nba-season-records-from-every-year) (boonpalipatana). Columns: `Season`, `Team`, `SRS` (no SOS; use SRS only or duplicate as sos).
 
 **Loader** [src/data/kaggle_loader.py](src/data/kaggle_loader.py):
 

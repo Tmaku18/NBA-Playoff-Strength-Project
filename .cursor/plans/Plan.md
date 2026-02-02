@@ -47,7 +47,7 @@ Training data is restricted to **2015-2016 through 2025-2026**.
 ### 2.2 Data Acquisition
 A unified SQL database will be constructed from:
 1. **nba_api (official):** play-by-play, player IDs, tracking data (speed, distance, touch time).
-2. **Kaggle (Wyatt Walsh):** **primary** source for SOS/SRS and historical validation (preferred over live scraping).
+2. **Kaggle — NBA Season Records from Every Year (boonpalipatana):** [dataset](https://www.kaggle.com/datasets/boonpalipatana/nba-season-records-from-every-year) — **primary** source for season records, SOS/SRS, and historical validation (preferred over live scraping).
 3. **Basketball-Reference (scraped):** **fallback only** for SOS/SRS when Kaggle is unavailable; use sparingly due to anti-bot protection.
 
 **Proxy SOS:** If neither Kaggle nor Basketball-Reference is available, compute an internal **Proxy SOS** from the unified DB (e.g., opponent win-rate or opponent SRS derived from stored results). Document the formula and mark outputs when Proxy SOS is used.

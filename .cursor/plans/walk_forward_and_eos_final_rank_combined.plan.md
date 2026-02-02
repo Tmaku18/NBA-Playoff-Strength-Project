@@ -1,6 +1,6 @@
 ---
 name: Walk-Forward + EOS Final Rank (Option B)
-overview: "Implement per-season walk-forward training, EOS final rank (Option B), EOS_playoff_standings in outputs, EOS_playoff_standings vs EOS_global_rank graph, and per-season inference/evaluation for all test years."
+overview: Implement per-season walk-forward training, EOS final rank (Option B), EOS_playoff_standings in outputs, EOS_playoff_standings vs EOS_global_rank graph, and per-season inference/evaluation for all test years.
 todos: []
 isProject: false
 ---
@@ -313,15 +313,15 @@ flowchart TD
 ## Part E: Files to Modify
 
 
-| File                                                     | Changes                                                                                                                                                        |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [src/utils/split.py](src/utils/split.py)                 | Add `date_to_season`, `get_train_seasons_ordered`, `group_lists_by_season`; ensure split_info includes `test_seasons`                                          |
-| [config/defaults.yaml](config/defaults.yaml)             | Add `training.walk_forward: false`                                                                                                                             |
-| [scripts/3_train_model_a.py](scripts/3_train_model_a.py) | Add walk-forward branch; ensure split_info written with `test_seasons` when using seasons mode                                                                 |
-| [src/evaluation/playoffs.py](src/evaluation/playoffs.py) | Add `compute_eos_final_rank`, `compute_eos_playoff_standings`                                                                                                              |
+| File                                                     | Changes                                                                                                                                                                                     |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [src/utils/split.py](src/utils/split.py)                 | Add `date_to_season`, `get_train_seasons_ordered`, `group_lists_by_season`; ensure split_info includes `test_seasons`                                                                       |
+| [config/defaults.yaml](config/defaults.yaml)             | Add `training.walk_forward: false`                                                                                                                                                          |
+| [scripts/3_train_model_a.py](scripts/3_train_model_a.py) | Add walk-forward branch; ensure split_info written with `test_seasons` when using seasons mode                                                                                              |
+| [src/evaluation/playoffs.py](src/evaluation/playoffs.py) | Add `compute_eos_final_rank`, `compute_eos_playoff_standings`                                                                                                                               |
 | [src/inference/predict.py](src/inference/predict.py)     | Option B; add `eos_rank_source`, `analysis.EOS_playoff_standings`; per-season inference loop; EOS_playoff_standings vs EOS graph; per-season outputs (`predictions_{season}.json`, figures) |
-| [scripts/6_run_inference.py](scripts/6_run_inference.py) | Call run_inference per test season (or run_inference handles loop internally)                                                                                  |
-| [scripts/5_evaluate.py](scripts/5_evaluate.py)           | Add `notes.eos_rank_source`; loop over `predictions_{season}.json`; write `eval_report_{season}.json` per season; optionally aggregate `eval_report.json`      |
+| [scripts/6_run_inference.py](scripts/6_run_inference.py) | Call run_inference per test season (or run_inference handles loop internally)                                                                                                               |
+| [scripts/5_evaluate.py](scripts/5_evaluate.py)           | Add `notes.eos_rank_source`; loop over `predictions_{season}.json`; write `eval_report_{season}.json` per season; optionally aggregate `eval_report.json`                                   |
 | [outputs/ANALYSIS.md](outputs/ANALYSIS.md)               | Document Option B, EOS_playoff_standings, per-season outputs, EOS_playoff_standings vs EOS graph, and comparison caveat                                                                     |
 
 

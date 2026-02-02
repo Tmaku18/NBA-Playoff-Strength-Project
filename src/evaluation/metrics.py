@@ -75,3 +75,21 @@ def ndcg_at_4(y_true_rank: np.ndarray, y_score: np.ndarray) -> float:
 def brier_champion(y_onehot: np.ndarray, y_prob: np.ndarray) -> float:
     """Brier score for champion prediction: y_onehot is 1 for champion, 0 else; y_prob are championship probabilities."""
     return brier_score(np.asarray(y_onehot).ravel(), np.asarray(y_prob).ravel())
+
+
+def rank_mae(y_pred_rank: np.ndarray, y_actual_rank: np.ndarray) -> float:
+    """Mean Absolute Error of rank predictions vs actual ranks (1=best, 30=worst). Lower is better."""
+    pred = np.asarray(y_pred_rank).ravel()
+    actual = np.asarray(y_actual_rank).ravel()
+    if len(pred) != len(actual) or len(pred) == 0:
+        return float("nan")
+    return float(np.mean(np.abs(pred - actual)))
+
+
+def rank_rmse(y_pred_rank: np.ndarray, y_actual_rank: np.ndarray) -> float:
+    """Root Mean Squared Error of rank predictions vs actual ranks. Lower is better; penalizes large errors more."""
+    pred = np.asarray(y_pred_rank).ravel()
+    actual = np.asarray(y_actual_rank).ravel()
+    if len(pred) != len(actual) or len(pred) == 0:
+        return float("nan")
+    return float(np.sqrt(np.mean((pred - actual) ** 2)))

@@ -36,13 +36,14 @@ model_a:
   encoder_hidden: [128, 64]
   attention_heads: 4
   dropout: 0.2
-  epochs: 28
+  epochs: 16  # best combo phase2_rolling_on (next steps)
   early_stopping_patience: 0
   early_stopping_min_delta: 0.0
   early_stopping_val_frac: 0.25
   minutes_bias_weight: 0.3
   minutes_sum_min: 1.0e-6
-  attention_debug: false
+  attention_debug: true   # show training loss + attn_sum_mean / attn_grad_norm each epoch
+  device: null            # "cuda", "cpu", or null for auto (cuda when available)
 
 model_b:
   xgb:
@@ -50,6 +51,7 @@ model_b:
     max_depth: 4
     learning_rate: 0.08
     early_stopping_rounds: 20
+    use_gpu: true   # use CUDA when available (tree_method=hist, device=cuda); set false for CPU-only
   rf:
     n_estimators: 200
     max_depth: 12
@@ -57,7 +59,7 @@ model_b:
 
 training:
   n_folds: 5
-  rolling_windows: [10, 30]
+  rolling_windows: [5, 10]  # best combo phase2_rolling_on (next steps)
   roster_size: 15
   target_rank: "playoffs"  # or "standings" to train meta on standings-to-date
   listmle_target: "final_rank"  # ListMLE train target: "final_rank" (EOS_playoff_standings) or "standings" (win-rate to date)
@@ -77,6 +79,9 @@ training:
   # Prior season baseline: fill zero player stats with prior season averages
   use_prior_season_baseline: true
   prior_season_lookback_days: 365
+  # Skip rebuilding Model A batches if cache exists (same config + same lists)
+  skip_batch_rebuild: false
+  batch_cache_dir: "outputs3/cache"
 
 output:
   true_strength_scale: "percentile"  # or softmax, platt
@@ -109,6 +114,8 @@ motivation:
   enabled: true
 
 # SOS/SRS from Team_Records.csv (Strength of Schedule / Simple Rating System)
+# Source: Kaggle — NBA Season Records from Every Year (boonpalipatana)
+# https://www.kaggle.com/datasets/boonpalipatana/nba-season-records-from-every-year
 sos_srs:
   data_path: "data/raw/Team_Records.csv"
   enabled: true
@@ -125,7 +132,10 @@ logging:
   playoff_debug: false
 
 # Hyperparameter sweep (scripts/sweep_hparams.py)
-# Expanded robust ranges beyond refined sweep; tests all models including clone classifier.
+# Refined presets: see docs/SWEEP_COMPARATIVE_ANALYSIS.md.
+# Rolling on (varied): use full list below.
+# Rolling off (baseline): set rolling_windows: [[10, 30]] only for quick rolling-off sweeps.
+# Model A: keep NDCG (or current default); Spearman later. Model B: current metric; expand grid when needed.
 sweep:
   model_a_epochs: [8, 16, 24, 28]
   rolling_windows: [[5, 10], [10, 20], [10, 30], [15, 30]]

@@ -34,7 +34,7 @@ This project builds a multi-modal stacking ensemble to predict NBA team strength
 
 ### 2.1 Data and storage
 
-- **Sources:** nba_api (official) for regular-season and playoff game/player logs; Kaggle (e.g. Wyatt Walsh) for SOS/SRS where used; Basketball-Reference as fallback.
+- **Sources:** nba_api (official) for regular-season and playoff game/player logs; [Kaggle — NBA Season Records from Every Year](https://www.kaggle.com/datasets/boonpalipatana/nba-season-records-from-every-year) (boonpalipatana) for season records and SOS/SRS where used; Basketball-Reference as fallback.
 - **Storage:** DuckDB with regular-season tables (`games`, `team_game_logs`, `player_game_logs`, `teams`, `players`) and playoff tables (`playoff_games`, `playoff_team_game_logs`, `playoff_player_game_logs`). Raw files (Parquet/CSV) hashed in `data/manifest.json`; DB rebuild is skipped when raw hashes are unchanged.
 - **Build pipeline:** Scripts `1_download_raw` and `2_build_db`; `2_build_db` compares current raw hashes to manifest and rebuilds only when raw files change.
 
@@ -90,11 +90,22 @@ This project builds a multi-modal stacking ensemble to predict NBA team strength
 - **Spearman (predicted vs playoff rank):** Correlation between predicted global rank and end-of-season playoff performance rank (champion=1, …, 30).
 - **Brier (championship odds):** One-hot champion vs predicted championship probabilities. See `brier_champion` in `src.evaluation.metrics`.
 
-### 3.5 Per-conference caveat
+### 3.5 Rank-distance metrics (MAE / RMSE)
+
+These metrics measure how far predicted or baseline ranks are from the actual end-of-season playoff rank (1–30). **Lower is better.** Implemented in `src.evaluation.metrics` and reported in `eval_report.json` and sweep results.
+
+- **rank_mae_pred_vs_playoff:** Mean Absolute Error of predicted rank vs actual EOS playoff rank: \( \frac{1}{n}\sum_i |\hat{r}_i - r_i| \). Interpretable as “average number of rank positions off.”
+- **rank_rmse_pred_vs_playoff:** Root Mean Squared Error of predicted vs actual playoff rank: \( \sqrt{\frac{1}{n}\sum_i (\hat{r}_i - r_i)^2} \). Penalizes large errors more than MAE.
+- **rank_mae_standings_vs_playoff:** MAE of regular-season final standings rank vs actual playoff rank. Baseline: how far reg-season order was from playoff outcome.
+- **rank_rmse_standings_vs_playoff:** RMSE of standings vs playoff rank. Same baseline in squared-error form.
+
+Sweep summary includes **best_by_rank_mae** (combo with lowest `rank_mae_pred_vs_playoff`) in addition to best_by_spearman and best_by_ndcg.
+
+### 3.6 Per-conference caveat
 
 - When relevance is **global** rank (1–30), computing Spearman **within one conference** can yield **negative** Spearman (e.g. East, West) because within a conference only a slice of global ranks appears; “better” teams in that conference can have worse (higher) global rank numbers. Run_020 showed negative per-conference Spearman; run_021 shows positive per-conference (E: 0.72, W: 0.68) after improvements. For fair per-conference evaluation, relevance should be defined within conference (e.g. EOS conference rank 1–15).
 
-### 3.6 Ground truth (eos_rank_source)
+### 3.7 Ground truth (eos_rank_source)
 
 - **standings:** Ground truth = regular-season standings or snapshot order at inference date.
 - **eos_final_rank:** Ground truth = playoff outcome (champion=1, …, 30). Used when playoff data exists for the target season (≥16 teams with playoff data).
@@ -180,6 +191,17 @@ Chronological narrative from commit history and plans:
 
 ---
 
+## Update (post–RUN 20): Hyperparameter Testing
+
+**Plan:** [.cursor/plans/Hyperparameter_Testing.md](.cursor/plans/Hyperparameter_Testing.md)  
+**Comparison:** [docs/PHASE3_COMPARISON_SUMMARY.md](docs/PHASE3_COMPARISON_SUMMARY.md) | [docs/SWEEP_COMPARATIVE_ANALYSIS.md](docs/SWEEP_COMPARATIVE_ANALYSIS.md)
+
+- **Runs compared:** Run A (rolling on) = `outputs3/sweeps/phase2_rolling_on` combo_0000; Run B (rolling off) = `outputs3/sweeps/phase1_rolling_off` combo_0000.
+- **Params:** Run A used `rolling_windows: [5, 10]`, Run B used `rolling_windows: [10, 30]`; both epochs 16, model_b max_depth 4, lr 0.08, n_xgb 250, n_rf 200.
+- **Conclusion:** Test metrics were identical (ensemble Spearman 0.590, NDCG 0.150, rank_mae_pred_vs_playoff 6.07). Model A did not differentiate (flat loss, all-zero attention in those sweeps); rolling window choice had no measurable effect. Refining “rolling on vs off” sweeps is deferred until Model A is validated. Refined sweep presets and next steps are in the plan and in docs/SWEEP_COMPARATIVE_ANALYSIS.md.
+
+---
+
 ## 8. Conclusion and Next Steps
 
 **Run 21** is the first run where Model A contributes meaningfully (attention and primary_contributors) and ensemble ranking versus playoff outcome clearly improves (NDCG, Spearman, MRR). From here:
@@ -193,6 +215,7 @@ Chronological narrative from commit history and plans:
 ## References and Repo Artifacts
 
 - **Repository:** [NBA Playoff Strength Project](https://github.com/Tmaku18/NBA-Playoff-Strentgh-Project) (or NBA-Playoff-Strength-Project).
+- **Kaggle dataset:** [NBA Season Records from Every Year](https://www.kaggle.com/datasets/boonpalipatana/nba-season-records-from-every-year) (boonpalipatana) — primary source for season records and SOS/SRS.
 - **Key artifacts:**  
   - `README.md` — design choices, pipeline order, anti-leakage, outputs.  
   - `outputs2/ANALYSIS.md` — run_020/021 comparison, metrics interpretation, known issues.  
