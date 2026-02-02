@@ -20,7 +20,7 @@ paths:
   db: "data/processed/nba_build_run.duckdb"
   raw: "data/raw"
   processed: "data/processed"
-  outputs: "outputs3"
+  outputs: "outputs2"
 
 # Skip rebuilding DB if file already exists (saves existing DB; set false to force rebuild from raw)
 build_db:
@@ -89,16 +89,15 @@ output:
 elo:
   cold_start_games: 10
   regression_to_mean: 0.25
-  enabled: true
+  enabled: false
 
 # Team rolling (eFG_L10, DefRtg_L10, won_prev_game)
 team_rolling:
-  enabled: true
+  enabled: false
 
 # Injury adjustments (ProjAvailableRating)
 injury:
   data_path: "data/raw/injury_reports"
-  source: "nbainjuries"  # or "json" for manual files
   minutes_heuristic: "proportional"
   enabled: false  # set true when injury JSON available
 
@@ -108,9 +107,9 @@ motivation:
   playoff_wins_threshold: 42
   enabled: true
 
-# SOS/SRS from Team_Records.csv (Strength of Schedule / Simple Rating System)
-sos_srs:
-  data_path: "data/raw/Team_Records.csv"
+# RAPTOR (FiveThirtyEight) player impact metrics
+raptor:
+  data_path: "docs/modern_RAPTOR_by_team.csv"
   enabled: true
 
 # Monte Carlo championship simulation

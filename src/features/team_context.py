@@ -79,6 +79,8 @@ def get_team_context_feature_cols(config: dict | None = None) -> list[str]:
         base.append("proj_available_rating")
     if cfg.get("sos_srs", {}).get("enabled", False):
         base.extend(["sos", "srs"])
+    if cfg.get("raptor", {}).get("enabled", False):
+        base.extend(["raptor_offense_sum_top5", "raptor_defense_sum_top5"])
     return base
 
 
@@ -175,6 +177,67 @@ def build_team_context_as_of_dates(
         if not inj_df.empty:
             out = out.merge(inj_df, on=[team_id_col, "as_of_date"], how="left")
             out["proj_available_rating"] = out["proj_available_rating"].fillna(1.0)
+
+    if cfg.get("raptor", {}).get("enabled", False) and pgl is not None:
+        from datetime import timedelta
+        from pathlib import Path
+        from ..data.raptor_loader import load_raptor_by_player
+        from .build_roster_set import get_roster_as_of_date, latest_team_map_as_of
+        paths_cfg = cfg.get("paths", {})
+        raw_base = Path(paths_cfg.get("raw", "data/raw")).resolve()
+        project_root = raw_base.parent.parent if raw_base.name == "raw" else raw_base.parent
+        raptor_path = cfg.get("raptor", {}).get("data_path", "docs/modern_RAPTOR_by_team.csv")
+        if str(raptor_path).startswith("/") or (len(str(raptor_path)) > 1 and str(raptor_path)[1] == ":"):
+            raptor_full = Path(raptor_path)
+        else:
+            raptor_full = project_root / raptor_path
+        if not raptor_full.exists():
+            raptor_full = project_root / "data/modern_RAPTOR_by_team.csv"
+        if raptor_full.exists():
+            from ..data.db import get_connection
+            db_path = project_root / paths_cfg.get("db", "data/processed/nba_build_run.duckdb")
+            if db_path.exists():
+                con = get_connection(db_path, read_only=True)
+                players_df = con.execute("SELECT player_id, player_name FROM players").df()
+                con.close()
+                raptor_df = load_raptor_by_player(raptor_full, players_df)
+                if not raptor_df.empty:
+                    raptor_df = raptor_df.set_index(["player_id", "season"])
+                    date_to_season_r: dict[str, str] = {}
+                    for seas, bounds in (seasons_cfg or {}).items():
+                        if isinstance(bounds, dict) and "start" in bounds and "end" in bounds:
+                            start = pd.to_datetime(bounds["start"]).date()
+                            end = pd.to_datetime(bounds["end"]).date()
+                            d = start
+                            while d <= end:
+                                date_to_season_r[str(d)] = seas
+                                d = d + timedelta(days=1)
+                    def _season_for_d(d):
+                        ds = str(pd.to_datetime(d).date()) if d is not None else ""
+                        return date_to_season_r.get(str(d), date_to_season_r.get(ds, None))
+                    raptor_rows = []
+                    for tid, as_of in team_dates:
+                        tid = int(tid)
+                        ad = pd.to_datetime(as_of).date() if isinstance(as_of, str) else as_of
+                        season_start_d = _season_for_d(ad)
+                        ss = pd.to_datetime(seasons_cfg.get(season_start_d, {}).get("start", "")).date() if season_start_d else None
+                        latest_team_map = latest_team_map_as_of(pgl, as_of, season_start=ss)
+                        roster = get_roster_as_of_date(pgl, tid, as_of, season_start=ss, latest_team_map=latest_team_map)
+                        top5 = roster.head(5)
+                        off_sum = 0.0
+                        def_sum = 0.0
+                        for _, row in top5.iterrows():
+                            pid = int(row["player_id"])
+                            if season_start_d and (pid, season_start_d) in raptor_df.index:
+                                r = raptor_df.loc[(pid, season_start_d)]
+                                off_sum += float(r.get("raptor_offense", 0) or 0)
+                                def_sum += float(r.get("raptor_defense", 0) or 0)
+                        raptor_rows.append({team_id_col: tid, "as_of_date": as_of, "raptor_offense_sum_top5": off_sum, "raptor_defense_sum_top5": def_sum})
+                    raptor_out = pd.DataFrame(raptor_rows)
+                    out = out.merge(raptor_out, on=[team_id_col, "as_of_date"], how="left")
+                    for c in ("raptor_offense_sum_top5", "raptor_defense_sum_top5"):
+                        if c in out.columns:
+                            out[c] = out[c].fillna(0.0)
 
     if cfg.get("sos_srs", {}).get("enabled", False):
         from datetime import timedelta

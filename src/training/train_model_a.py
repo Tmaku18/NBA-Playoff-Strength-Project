@@ -196,11 +196,21 @@ def predict_batches_with_attention(
     return scores_list, attn_list
 
 
-def _build_model(config: dict, device: torch.device) -> nn.Module:
+NOT_LEARNING_PATIENCE = 3  # stop when train loss does not improve for this many consecutive epochs
+
+NOT_LEARNING_ANALYSIS = (
+    "Model A is not learning: train loss did not improve. Typical cause (see docs/CHECKPOINT_PROJECT_REPORT.md, "
+    "fix_attention plan): attention has collapsed (all-zero or uniform), so the pooled representation Z is "
+    "constant across teams -> constant scores -> ListMLE loss is fixed for that list length. Fix: harden "
+    "set_attention (minutes reweighting, uniform fallback when raw attention is zero) so gradients flow."
+)
+
+
+def _build_model(config: dict, device: torch.device, stat_dim_override: int | None = None) -> nn.Module:
     ma = config.get("model_a", {})
     num_emb = ma.get("num_embeddings", 500)
     emb_dim = ma.get("embedding_dim", 32)
-    stat_dim = int(ma.get("stat_dim", 14))
+    stat_dim = int(stat_dim_override) if stat_dim_override is not None else int(ma.get("stat_dim", 14))
     enc_h = ma.get("encoder_hidden", [128, 64])
     heads = ma.get("attention_heads", 4)
     drop = ma.get("dropout", 0.2)
@@ -232,7 +242,8 @@ def train_model_a_on_batches(
     if not batches:
         model = _build_model(config, device)
         return model
-    model = _build_model(config, device)
+    stat_dim_override = int(batches[0]["player_stats"].shape[-1])
+    model = _build_model(config, device, stat_dim_override=stat_dim_override)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = int(max_epochs) if max_epochs is not None else int(ma.get("epochs", 20))
     patience = int(ma.get("early_stopping_patience", 3))
@@ -241,8 +252,20 @@ def train_model_a_on_batches(
     best_val = float("inf")
     best_state = None
     bad_epochs = 0
+    best_train_loss = float("inf")
+    train_no_improve = 0
     for epoch in range(epochs):
-        train_epoch(model, batches, optimizer, device)
+        loss = train_epoch(model, batches, optimizer, device)
+        print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
+        if loss < best_train_loss:
+            best_train_loss = loss
+            train_no_improve = 0
+        else:
+            train_no_improve += 1
+        if train_no_improve >= NOT_LEARNING_PATIENCE:
+            print("Stopping: train loss did not improve for {} epoch(s).".format(NOT_LEARNING_PATIENCE), flush=True)
+            print(NOT_LEARNING_ANALYSIS, flush=True)
+            break
         if use_early:
             val_loss = eval_epoch(model, val_batches or [], device)
             if val_loss + min_delta < best_val:
@@ -276,7 +299,8 @@ def train_model_a(
     ma = config.get("model_a", {})
     stat_dim = int(ma.get("stat_dim", 14))
     num_emb = ma.get("num_embeddings", 500)
-    model = _build_model(config, device)
+    stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
+    model = _build_model(config, device, stat_dim_override=stat_dim_override)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     if batches is None:
@@ -292,12 +316,23 @@ def train_model_a(
     best_val = float("inf")
     best_state = None
     bad_epochs = 0
+    best_train_loss = float("inf")
+    train_no_improve = 0
     for epoch in range(epochs):
         loss = train_epoch(model, train_batches, optimizer, device)
-        print(f"epoch {epoch+1} loss={loss:.4f}")
+        print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
+        if loss < best_train_loss:
+            best_train_loss = loss
+            train_no_improve = 0
+        else:
+            train_no_improve += 1
+        if train_no_improve >= NOT_LEARNING_PATIENCE:
+            print("Stopping: train loss did not improve for {} epoch(s).".format(NOT_LEARNING_PATIENCE), flush=True)
+            print(NOT_LEARNING_ANALYSIS, flush=True)
+            break
         if use_early:
             val_loss = eval_epoch(model, val_batches, device)
-            print(f"val_loss {epoch+1}: {val_loss:.4f}")
+            print(f"val_loss {epoch+1}: {val_loss:.4f}", flush=True)
             if val_loss + min_delta < best_val:
                 best_val = val_loss
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
