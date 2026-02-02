@@ -239,10 +239,10 @@ def train_model_a_on_batches(
     """Train Model A on given batches; return the model (do not save). For OOF fold training."""
     ma = config.get("model_a", {})
     num_emb = ma.get("num_embeddings", 500)
+    stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
     if not batches:
         model = _build_model(config, device)
         return model
-    stat_dim_override = int(batches[0]["player_stats"].shape[-1])
     model = _build_model(config, device, stat_dim_override=stat_dim_override)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = int(max_epochs) if max_epochs is not None else int(ma.get("epochs", 20))
