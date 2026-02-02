@@ -196,11 +196,11 @@ def predict_batches_with_attention(
     return scores_list, attn_list
 
 
-def _build_model(config: dict, device: torch.device) -> nn.Module:
+def _build_model(config: dict, device: torch.device, stat_dim_override: int | None = None) -> nn.Module:
     ma = config.get("model_a", {})
     num_emb = ma.get("num_embeddings", 500)
     emb_dim = ma.get("embedding_dim", 32)
-    stat_dim = int(ma.get("stat_dim", 14))
+    stat_dim = int(stat_dim_override) if stat_dim_override is not None else int(ma.get("stat_dim", 14))
     enc_h = ma.get("encoder_hidden", [128, 64])
     heads = ma.get("attention_heads", 4)
     drop = ma.get("dropout", 0.2)
@@ -229,10 +229,11 @@ def train_model_a_on_batches(
     """Train Model A on given batches; return the model (do not save). For OOF fold training."""
     ma = config.get("model_a", {})
     num_emb = ma.get("num_embeddings", 500)
+    stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
     if not batches:
         model = _build_model(config, device)
         return model
-    model = _build_model(config, device)
+    model = _build_model(config, device, stat_dim_override=stat_dim_override)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     epochs = int(max_epochs) if max_epochs is not None else int(ma.get("epochs", 20))
     patience = int(ma.get("early_stopping_patience", 3))
@@ -276,7 +277,10 @@ def train_model_a(
     ma = config.get("model_a", {})
     stat_dim = int(ma.get("stat_dim", 14))
     num_emb = ma.get("num_embeddings", 500)
-    model = _build_model(config, device)
+    stat_dim_override = None
+    if batches:
+        stat_dim_override = int(batches[0]["player_stats"].shape[-1])
+    model = _build_model(config, device, stat_dim_override=stat_dim_override)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     if batches is None:
