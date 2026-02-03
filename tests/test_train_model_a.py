@@ -13,9 +13,9 @@ from src.training.train_model_a import (
 
 
 def test_get_dummy_batch_shapes():
-    batch = get_dummy_batch(batch_size=4, num_teams_per_list=10, num_players=15, stat_dim=17)
+    batch = get_dummy_batch(batch_size=4, num_teams_per_list=10, num_players=15, stat_dim=20)
     assert batch["embedding_indices"].shape == (4, 10, 15)
-    assert batch["player_stats"].shape == (4, 10, 15, 17)
+    assert batch["player_stats"].shape == (4, 10, 15, 20)
     assert batch["minutes"].shape == (4, 10, 15)
     assert batch["key_padding_mask"].shape == (4, 10, 15)
     assert batch["rel"].shape == (4, 10)
@@ -46,7 +46,7 @@ def test_model_a_learning_with_fallback():
     """With attention fallback, Model A loss should be finite and scores non-constant."""
     config = {
         "model_a": {
-            "stat_dim": 21,
+            "stat_dim": 24,
             "num_embeddings": 500,
             "embedding_dim": 32,
             "encoder_hidden": [128, 64],
@@ -59,10 +59,10 @@ def test_model_a_learning_with_fallback():
         "repro": {"seed": 42},
     }
     device = torch.device("cpu")
-    model = _build_model(config, device, stat_dim_override=21)
+    model = _build_model(config, device, stat_dim_override=24)
     batches = [
-        get_dummy_batch(batch_size=2, num_teams_per_list=8, num_players=15, stat_dim=21),
-        get_dummy_batch(batch_size=2, num_teams_per_list=8, num_players=15, stat_dim=21),
+        get_dummy_batch(batch_size=2, num_teams_per_list=8, num_players=15, stat_dim=24),
+        get_dummy_batch(batch_size=2, num_teams_per_list=8, num_players=15, stat_dim=24),
     ]
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     losses = []

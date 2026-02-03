@@ -28,15 +28,22 @@ def load_models(
 
     if model_a_path and Path(model_a_path).exists():
         ck = torch.load(model_a_path, map_location="cpu", weights_only=False)
+        attn_cfg = ma.get("attention", {})
+        stat_dim = int(ma.get("stat_dim", ma.get("expected_stat_dim", 14)))
         model_a = DeepSetRank(
             ma.get("num_embeddings", 500),
             ma.get("embedding_dim", 32),
-            int(ma.get("stat_dim", 14)),
+            stat_dim,
             ma.get("encoder_hidden", [128, 64]),
             ma.get("attention_heads", 4),
             ma.get("dropout", 0.2),
             minutes_bias_weight=float(ma.get("minutes_bias_weight", 0.3)),
             minutes_sum_min=float(ma.get("minutes_sum_min", 1e-6)),
+            fallback_strategy=str(ma.get("attention_fallback_strategy", "minutes")),
+            attention_temperature=float(attn_cfg.get("temperature", 1.0)),
+            attention_input_dropout=float(attn_cfg.get("input_dropout", 0.0)),
+            attention_use_pre_norm=bool(attn_cfg.get("use_pre_norm", True)),
+            attention_use_residual=bool(attn_cfg.get("use_residual", True)),
         )
         if "model_state" in ck:
             model_a.load_state_dict(ck["model_state"])

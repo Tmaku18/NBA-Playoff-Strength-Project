@@ -172,17 +172,23 @@ def build_roster_set(
 
     pct_min = float(team_continuity_scalar) if team_continuity_scalar is not None else 0.0
     max_min = float(roster_df["total_min"].max()) if "total_min" in roster_df.columns and len(roster_df) else 1.0
-    for pid in order:
+    valid_count = len(order)
+    rank_denom = max(valid_count - 1, 1)
+    for idx, pid in enumerate(order):
         embedding_indices.append(hash_trick_index(pid, num_embeddings))
         r = player_stats[player_stats[player_id_col] == pid]
         vec = [float(r[c].iloc[0]) if c in r.columns and len(r) and pd.notna(r[c].iloc[0]) else 0.0 for c in stat_cols]
         vec.append(pct_min)  # team_continuity_scalar (e.g. pct_min_returning) per team
-        rows.append(vec)
         m = float(roster_df.loc[roster_df["player_id"] == pid, "total_min"].iloc[0]) if pid in roster_df["player_id"].values else 0.0
-        minutes_weights.append(m / max_min if max_min else 0.0)
+        minutes_norm = m / max_min if max_min else 0.0
+        minutes_weights.append(minutes_norm)
+        starter_flag = 1.0 if idx < 5 else 0.0
+        rank_feature = 1.0 - (idx / rank_denom) if valid_count > 1 else 1.0
+        vec.extend([minutes_norm, starter_flag, rank_feature])
+        rows.append(vec)
         key_padding_mask.append(False)
 
-    stat_len = len(stat_cols) + 1  # +1 for team_continuity_scalar
+    stat_len = len(stat_cols) + 4  # +1 team continuity + 3 usage/positional features
     for _ in range(pad):
         embedding_indices.append(num_embeddings)  # padding index, distinct from hash range [0, num_embeddings-1]
         rows.append([0.0] * stat_len)
