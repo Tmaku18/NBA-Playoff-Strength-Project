@@ -22,6 +22,7 @@ class DeepSetRank(nn.Module):
         *,
         minutes_bias_weight: float = 0.3,
         minutes_sum_min: float = 1e-6,
+        fallback_strategy: str = "minutes",
     ):
         super().__init__()
         self.emb = PlayerEmbedding(num_embeddings, embedding_dim)
@@ -32,6 +33,7 @@ class DeepSetRank(nn.Module):
             dropout,
             minutes_bias_weight=minutes_bias_weight,
             minutes_sum_min=minutes_sum_min,
+            fallback_strategy=fallback_strategy,
         )
         self.scorer = nn.Linear(self.enc.output_dim, 1)
 

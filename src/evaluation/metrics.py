@@ -75,3 +75,42 @@ def ndcg_at_4(y_true_rank: np.ndarray, y_score: np.ndarray) -> float:
 def brier_champion(y_onehot: np.ndarray, y_prob: np.ndarray) -> float:
     """Brier score for champion prediction: y_onehot is 1 for champion, 0 else; y_prob are championship probabilities."""
     return brier_score(np.asarray(y_onehot).ravel(), np.asarray(y_prob).ravel())
+
+
+def rank_mae(y_pred_rank: np.ndarray, y_actual_rank: np.ndarray) -> float:
+    """Mean Absolute Error of rank predictions vs actual ranks (1=best, 30=worst). Lower is better."""
+    pred = np.asarray(y_pred_rank).ravel()
+    actual = np.asarray(y_actual_rank).ravel()
+    if len(pred) != len(actual) or len(pred) == 0:
+        return float("nan")
+    return float(np.mean(np.abs(pred - actual)))
+
+
+def rank_rmse(y_pred_rank: np.ndarray, y_actual_rank: np.ndarray) -> float:
+    """Root Mean Squared Error of rank predictions vs actual ranks. Lower is better; penalizes large errors more."""
+    pred = np.asarray(y_pred_rank).ravel()
+    actual = np.asarray(y_actual_rank).ravel()
+    if len(pred) != len(actual) or len(pred) == 0:
+        return float("nan")
+    return float(np.sqrt(np.mean((pred - actual) ** 2)))
+
+
+def ece(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> float:
+    """Expected Calibration Error: weighted mean of |acc(bin) - conf(bin)| over n_bins. y_true binary 0/1, y_prob in [0,1]."""
+    y_true = np.asarray(y_true).ravel()
+    y_prob = np.asarray(y_prob).ravel()
+    y_prob = np.clip(y_prob, 1e-8, 1.0 - 1e-8)
+    n = len(y_true)
+    if n == 0 or n_bins < 1:
+        return 0.0
+    bin_edges = np.linspace(0, 1, n_bins + 1)
+    ece_val = 0.0
+    for i in range(n_bins):
+        lo, hi = bin_edges[i], bin_edges[i + 1]
+        mask = (y_prob >= lo) & (y_prob < hi) if i < n_bins - 1 else (y_prob >= lo) & (y_prob <= hi)
+        if mask.sum() == 0:
+            continue
+        acc = y_true[mask].mean()
+        conf = y_prob[mask].mean()
+        ece_val += mask.sum() / n * abs(acc - conf)
+    return float(ece_val)

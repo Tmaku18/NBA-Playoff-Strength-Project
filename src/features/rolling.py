@@ -1,6 +1,7 @@
-"""Rolling features with strict t-1: shift(1) before rolling. L10/L30, DNP, availability fraction."""
+"""Rolling features with strict t-1: shift(1) before rolling. L10/L30, DNP, availability fraction. TS% and usage rate."""
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 
@@ -52,26 +53,45 @@ def compute_rolling_stats(
             if f"availability_L{w}" not in out_cols:
                 out_cols.append(f"availability_L{w}")
 
+    # TS% (True Shooting %) and usage rate per window: PTS / (2*(FGA+0.44*FTA)), (FGA+0.44*FTA+TOV) per game
+    for w in windows:
+        pts_w = f"pts_L{w}"
+        fga_w = f"fga_L{w}"
+        fta_w = f"fta_L{w}"
+        tov_w = f"tov_L{w}"
+        if pts_w in df.columns and fga_w in df.columns and fta_w in df.columns:
+            denom = 2.0 * (df[fga_w] + 0.44 * df[fta_w])
+            denom = denom.replace(0, np.nan)
+            df[f"ts_pct_L{w}"] = (df[pts_w] / denom).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+            if f"ts_pct_L{w}" not in out_cols:
+                out_cols.append(f"ts_pct_L{w}")
+        if fga_w in df.columns and fta_w in df.columns and tov_w in df.columns:
+            df[f"usage_L{w}"] = df[fga_w] + 0.44 * df[fta_w] + df[tov_w]
+            if f"usage_L{w}" not in out_cols:
+                out_cols.append(f"usage_L{w}")
+
     return df
 
 
 # Default 7 stat cols for DeepSetRank stat_dim=7 (build_roster_set legacy)
 PLAYER_STAT_COLS_L10: list[str] = [
     "pts_L10", "reb_L10", "ast_L10", "stl_L10", "blk_L10", "tov_L10", "availability_L10",
+    "ts_pct_L10", "usage_L10",
 ]
 
-# L30 stat cols (7) for second rolling window
+# L30 stat cols (9) for second rolling window
 PLAYER_STAT_COLS_L30: list[str] = [
     "pts_L30", "reb_L30", "ast_L30", "stl_L30", "blk_L30", "tov_L30", "availability_L30",
+    "ts_pct_L30", "usage_L30",
 ]
 
-# L10 + L30 (14 total) for stat_dim=14
+# L10 + L30 (18 total) for stat_dim=18 base; +2 on_off +1 pct_min = 21
 PLAYER_STAT_COLS_L10_L30: list[str] = PLAYER_STAT_COLS_L10 + PLAYER_STAT_COLS_L30
 
 # On-court +/- approximation (from on_off.py), L10 and L30 windows
 ON_OFF_STAT_COLS: list[str] = ["on_court_pm_approx_L10", "on_court_pm_approx_L30"]
 
-# Full stat cols for Model A: 14 base + 2 on_off = 16. pct_min_returning (team scalar) added in build_roster_set -> 17
+# Full stat cols for Model A: 18 base (incl ts_pct, usage) + 2 on_off = 20. pct_min_returning (team scalar) -> 21
 PLAYER_STAT_COLS_WITH_ON_OFF: list[str] = PLAYER_STAT_COLS_L10_L30 + ON_OFF_STAT_COLS
 
 

@@ -1,4 +1,4 @@
-"""Hyperparameter sweep: Model A epochs, Model B grid, rolling windows.
+"""Hyperparameter sweep: Model A epochs, Model B grid or Optuna Bayesian tuning.
 
 Runs in the foreground (no background/daemon mode). Writes results to
 <config.paths.outputs>/sweeps/<batch_id>/ (e.g. outputs3/sweeps/<batch_id>/).
@@ -6,9 +6,13 @@ No artificial timeout.
 
 Usage:
   python -m scripts.sweep_hparams [--batch-id BATCH_ID] [--dry-run] [--max-combos N]
+  python -m scripts.sweep_hparams --method optuna [--n-trials N] [--batch-id BATCH_ID]
 
+--method grid: Full grid search (default).
+--method optuna: Bayesian optimization with Optuna (fewer trials, faster).
 --dry-run: Print combo count and config overrides without running.
---max-combos: Limit number of combos to run (for testing).
+--max-combos: Limit number of combos (grid only).
+--n-trials: Number of Optuna trials (default 20).
 """
 from __future__ import annotations
 
@@ -16,6 +20,7 @@ import argparse
 import copy
 import itertools
 import json
+import math
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -85,11 +90,68 @@ def _collect_metrics(eval_path: Path) -> dict:
     return out
 
 
+def _run_one_combo(
+    batch_dir: Path,
+    combo_idx: int,
+    config: dict,
+    rolling_windows: list,
+    epochs: int,
+    max_depth: int,
+    lr: float,
+    n_xgb: int,
+    n_rf: int,
+    subsample: float,
+    colsample: float,
+    min_leaf: int,
+    include_clone: bool,
+) -> dict:
+    """Run one pipeline (3, 4, 4b, 6, 5) with given params; return metrics dict or error."""
+    combo_dir = batch_dir / f"combo_{combo_idx:04d}"
+    combo_dir.mkdir(parents=True, exist_ok=True)
+    combo_out = combo_dir / "outputs"
+    combo_out.mkdir(parents=True, exist_ok=True)
+    cfg = copy.deepcopy(config)
+    cfg["training"] = cfg.get("training", {})
+    cfg["training"]["rolling_windows"] = list(rolling_windows)
+    cfg["model_a"] = cfg.get("model_a", {})
+    cfg["model_a"]["epochs"] = int(epochs)
+    cfg["model_b"] = cfg.get("model_b", {})
+    cfg["model_b"]["xgb"] = cfg["model_b"].get("xgb", {})
+    cfg["model_b"]["xgb"]["max_depth"] = int(max_depth)
+    cfg["model_b"]["xgb"]["learning_rate"] = float(lr)
+    cfg["model_b"]["xgb"]["n_estimators"] = int(n_xgb)
+    cfg["model_b"]["xgb"]["subsample"] = float(subsample)
+    cfg["model_b"]["xgb"]["colsample_bytree"] = float(colsample)
+    cfg["model_b"]["rf"] = cfg["model_b"].get("rf", {})
+    cfg["model_b"]["rf"]["n_estimators"] = int(n_rf)
+    cfg["model_b"]["rf"]["min_samples_leaf"] = int(min_leaf)
+    cfg["paths"] = cfg.get("paths", {})
+    cfg["paths"]["outputs"] = str(combo_out.resolve())
+    config_path = combo_dir / "config.yaml"
+    _write_config(config_path, cfg)
+    pipeline = [
+        ("scripts/3_train_model_a.py", "Model A"),
+        ("scripts/4_train_model_b.py", "Model B"),
+        ("scripts/4b_train_stacking.py", "Stacking"),
+        ("scripts/6_run_inference.py", "Inference"),
+        ("scripts/5_evaluate.py", "Eval"),
+    ]
+    if include_clone:
+        pipeline.append(("scripts/4c_train_classifier_clone.py", "Clone Classifier"))
+    for script, name in pipeline:
+        code = _run_cmd(script, ["--config", str(config_path)])
+        if code != 0:
+            return {"error": name}
+    return _collect_metrics(combo_out / "eval_report.json")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Hyperparameter sweep")
     parser.add_argument("--batch-id", type=str, default=None, help="Batch folder name; default: timestamp")
     parser.add_argument("--dry-run", action="store_true", help="Print combos without running")
-    parser.add_argument("--max-combos", type=int, default=None, help="Limit number of combos (for testing)")
+    parser.add_argument("--max-combos", type=int, default=None, help="Limit number of combos (grid only)")
+    parser.add_argument("--method", type=str, default="grid", choices=("grid", "optuna"), help="grid or optuna (Bayesian)")
+    parser.add_argument("--n-trials", type=int, default=20, help="Number of Optuna trials (default 20)")
     args = parser.parse_args()
 
     config = _load_config()
@@ -103,6 +165,7 @@ def main() -> int:
     batch_dir.mkdir(parents=True, exist_ok=True)
 
     sweep_cfg = config.get("sweep", {})
+    include_clone = sweep_cfg.get("include_clone_classifier", False)
     epochs_list = sweep_cfg.get("model_a_epochs", [8, 12, 16, 20, 24, 28])
     rolling_list = sweep_cfg.get("rolling_windows", [[10, 30]])
     mb = sweep_cfg.get("model_b", {})
@@ -120,77 +183,85 @@ def main() -> int:
     if not isinstance(min_leaf_list, list):
         min_leaf_list = [min_leaf_list]
 
-    combos = list(itertools.product(
-        rolling_list,
-        epochs_list,
-        max_depth_list,
-        lr_list,
-        n_xgb_list,
-        n_rf_list,
-        subsample_list,
-        colsample_list,
-        min_leaf_list,
-    ))
-    if args.max_combos:
-        combos = combos[: args.max_combos]
+    if args.method == "optuna":
+        import optuna
+        metric_key = "test_metrics_ensemble_spearman"
 
-    print(f"Sweep: {len(combos)} combos in {batch_dir}", flush=True)
-    if args.dry_run:
-        for i, c in enumerate(combos[:5]):
-            rw, ep, md, lr, nx, nr = c[0], c[1], c[2], c[3], c[4], c[5]
-            sub = c[6] if len(c) > 6 else 0.8
-            col = c[7] if len(c) > 7 else 0.7
-            mleaf = c[8] if len(c) > 8 else 5
-            print(f"  {i}: rolling={rw}, epochs={ep}, max_depth={md}, lr={lr}, n_xgb={nx}, n_rf={nr}, subsample={sub}, colsample={col}, min_leaf={mleaf}")
-        if len(combos) > 5:
-            print(f"  ... and {len(combos) - 5} more")
-        return 0
+        def objective(trial: "optuna.Trial") -> float:
+            rolling_windows = trial.suggest_categorical("rolling_windows", [tuple(x) for x in rolling_list])
+            epochs = trial.suggest_int("model_a_epochs", min(epochs_list), max(epochs_list))
+            max_depth = trial.suggest_int("max_depth", min(max_depth_list), max(max_depth_list))
+            lr = trial.suggest_float("learning_rate", min(lr_list), max(lr_list), log=True)
+            n_xgb = trial.suggest_int("n_estimators_xgb", min(n_xgb_list), max(n_xgb_list))
+            n_rf = trial.suggest_int("n_estimators_rf", min(n_rf_list), max(n_rf_list))
+            subsample = trial.suggest_float("subsample", min(subsample_list), max(subsample_list))
+            colsample = trial.suggest_float("colsample_bytree", min(colsample_list), max(colsample_list))
+            min_leaf = trial.suggest_int("min_samples_leaf", min(min_leaf_list), max(min_leaf_list))
+            i = trial.number
+            print(f"[Optuna trial {i+1}/{args.n_trials}] rolling={rolling_windows}, epochs={epochs}, xgb d={max_depth} lr={lr:.4f} n_xgb={n_xgb} n_rf={n_rf}", flush=True)
+            metrics = _run_one_combo(
+                batch_dir, i, config, list(rolling_windows), epochs,
+                max_depth, lr, n_xgb, n_rf, subsample, colsample, min_leaf, include_clone,
+            )
+            if "error" in metrics:
+                print(f"  FAILED: {metrics['error']}", flush=True)
+                return float("-inf")
+            val = metrics.get(metric_key)
+            if val is None:
+                return float("-inf")
+            return float(val)
 
-    results = []
-    for i, (rolling_windows, epochs, max_depth, lr, n_xgb, n_rf, subsample, colsample, min_leaf) in enumerate(combos):
-        combo_dir = batch_dir / f"combo_{i:04d}"
-        combo_dir.mkdir(parents=True, exist_ok=True)
-        combo_out = combo_dir / "outputs"
-        combo_out.mkdir(parents=True, exist_ok=True)
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective, n_trials=args.n_trials, show_progress_bar=False)
+        results = []
+        for t in study.trials:
+            if t.value is None:
+                results.append({"combo": t.number, "error": "failed", "value": None})
+            else:
+                results.append({
+                    "combo": t.number,
+                    "value": t.value,
+                    **{k: v for k, v in t.params.items()},
+                })
+        with open(batch_dir / "optuna_study.json", "w", encoding="utf-8") as f:
+            json.dump({"best_value": study.best_value, "best_params": study.best_params, "n_trials": len(study.trials)}, f, indent=2)
+        print(f"Optuna best {metric_key}={study.best_value:.4f} params={study.best_params}", flush=True)
+    else:
+        combos = list(itertools.product(
+            rolling_list,
+            epochs_list,
+            max_depth_list,
+            lr_list,
+            n_xgb_list,
+            n_rf_list,
+            subsample_list,
+            colsample_list,
+            min_leaf_list,
+        ))
+        if args.max_combos:
+            combos = combos[: args.max_combos]
 
-        cfg = copy.deepcopy(config)
-        cfg["training"] = cfg.get("training", {})
-        cfg["training"]["rolling_windows"] = list(rolling_windows)
-        cfg["model_a"] = cfg.get("model_a", {})
-        cfg["model_a"]["epochs"] = int(epochs)
-        cfg["model_b"] = cfg.get("model_b", {})
-        cfg["model_b"]["xgb"] = cfg["model_b"].get("xgb", {})
-        cfg["model_b"]["xgb"]["max_depth"] = int(max_depth)
-        cfg["model_b"]["xgb"]["learning_rate"] = float(lr)
-        cfg["model_b"]["xgb"]["n_estimators"] = int(n_xgb)
-        cfg["model_b"]["xgb"]["subsample"] = float(subsample)
-        cfg["model_b"]["xgb"]["colsample_bytree"] = float(colsample)
-        cfg["model_b"]["rf"] = cfg["model_b"].get("rf", {})
-        cfg["model_b"]["rf"]["n_estimators"] = int(n_rf)
-        cfg["model_b"]["rf"]["min_samples_leaf"] = int(min_leaf)
-        cfg["paths"] = cfg.get("paths", {})
-        cfg["paths"]["outputs"] = str(combo_out.resolve())
+        print(f"Sweep: {len(combos)} combos in {batch_dir}", flush=True)
+        if args.dry_run:
+            for i, c in enumerate(combos[:5]):
+                rw, ep, md, lr, nx, nr = c[0], c[1], c[2], c[3], c[4], c[5]
+                sub = c[6] if len(c) > 6 else 0.8
+                col = c[7] if len(c) > 7 else 0.7
+                mleaf = c[8] if len(c) > 8 else 5
+                print(f"  {i}: rolling={rw}, epochs={ep}, max_depth={md}, lr={lr}, n_xgb={nx}, n_rf={nr}, subsample={sub}, colsample={col}, min_leaf={mleaf}")
+            if len(combos) > 5:
+                print(f"  ... and {len(combos) - 5} more")
+            return 0
 
-        config_path = combo_dir / "config.yaml"
-        _write_config(config_path, cfg)
-        config_arg = str(config_path)
-
-        print(f"[{i+1}/{len(combos)}] rolling={rolling_windows}, epochs={epochs}, xgb d={max_depth} lr={lr} n={n_xgb} sub={subsample} col={colsample}, rf n={n_rf} min_leaf={min_leaf}", flush=True)
-
-        include_clone = sweep_cfg.get("include_clone_classifier", False)
-        pipeline = [
-            ("scripts/3_train_model_a.py", "Model A"),
-            ("scripts/4_train_model_b.py", "Model B"),
-            ("scripts/4b_train_stacking.py", "Stacking"),
-            ("scripts/6_run_inference.py", "Inference"),
-            ("scripts/5_evaluate.py", "Eval"),
-        ]
-        if include_clone:
-            pipeline.append(("scripts/4c_train_classifier_clone.py", "Clone Classifier"))
-        for script, name in pipeline:
-            code = _run_cmd(script, ["--config", config_arg])
-            if code != 0:
-                print(f"  FAILED at {name} (exit {code})", flush=True)
+        results = []
+        for i, (rolling_windows, epochs, max_depth, lr, n_xgb, n_rf, subsample, colsample, min_leaf) in enumerate(combos):
+            print(f"[{i+1}/{len(combos)}] rolling={rolling_windows}, epochs={epochs}, xgb d={max_depth} lr={lr} n_xgb={n_xgb} n_rf={n_rf} sub={subsample} col={colsample} min_leaf={min_leaf}", flush=True)
+            metrics = _run_one_combo(
+                batch_dir, i, config, list(rolling_windows), epochs,
+                max_depth, lr, n_xgb, n_rf, subsample, colsample, min_leaf, include_clone,
+            )
+            if "error" in metrics:
+                print(f"  FAILED at {metrics['error']}", flush=True)
                 results.append({
                     "combo": i,
                     "rolling_windows": str(rolling_windows),
@@ -202,22 +273,22 @@ def main() -> int:
                     "subsample": subsample,
                     "colsample_bytree": colsample,
                     "min_samples_leaf": min_leaf,
-                    "error": name,
+                    "error": metrics["error"],
                 })
-                break
-        else:
-            metrics = _collect_metrics(combo_out / "eval_report.json")
-            row = {
-                "combo": i,
-                "rolling_windows": str(rolling_windows),
-                "epochs": epochs,
-                "max_depth": max_depth,
-                "learning_rate": lr,
-                "n_xgb": n_xgb,
-                "n_rf": n_rf,
-                **{k: v for k, v in metrics.items() if isinstance(v, (int, float))},
-            }
-            results.append(row)
+            else:
+                results.append({
+                    "combo": i,
+                    "rolling_windows": str(rolling_windows),
+                    "epochs": epochs,
+                    "max_depth": max_depth,
+                    "learning_rate": lr,
+                    "n_xgb": n_xgb,
+                    "n_rf": n_rf,
+                    "subsample": subsample,
+                    "colsample_bytree": colsample,
+                    "min_samples_leaf": min_leaf,
+                    **{k: v for k, v in metrics.items() if isinstance(v, (int, float))},
+                })
 
     # Write results
     if results:
@@ -228,21 +299,36 @@ def main() -> int:
             w.writeheader()
             w.writerows(results)
 
-    # Summary: best by spearman, ndcg, etc.
+    # Summary: best by spearman, ndcg, rank_mae (lower is better), etc. (grid) or by value (optuna)
     ensemble_key = "test_metrics_ensemble_spearman"
     ndcg_key = "test_metrics_ensemble_ndcg"
+    rank_mae_key = "test_metrics_ensemble_rank_mae_pred_vs_playoff"
     valid = [r for r in results if ensemble_key in r and r.get(ensemble_key) is not None]
+    valid_optuna = [r for r in results if "value" in r and r.get("value") is not None]
+    valid_mae = [
+        r for r in results
+        if rank_mae_key in r
+        and isinstance(r.get(rank_mae_key), (int, float))
+        and math.isfinite(r.get(rank_mae_key))
+    ]
     summary = {}
     if valid:
         best_sp = max(valid, key=lambda x: float(x.get(ensemble_key, -2)))
         best_ndcg = max(valid, key=lambda x: float(x.get(ndcg_key, -1)))
         summary["best_by_spearman"] = best_sp
         summary["best_by_ndcg"] = best_ndcg
+    if valid_mae:
+        best_mae = min(valid_mae, key=lambda x: float(x.get(rank_mae_key, float("inf"))))
+        summary["best_by_rank_mae"] = best_mae
+    if valid_optuna:
+        best_trial = max(valid_optuna, key=lambda x: float(x.get("value", -2)))
+        summary["best_optuna_trial"] = best_trial
     with open(batch_dir / "sweep_results_summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 
+    n_combos = len(combos) if args.method == "grid" else args.n_trials
     with open(batch_dir / "sweep_config.json", "w", encoding="utf-8") as f:
-        json.dump({"batch_id": batch_id, "n_combos": len(combos), "config_outputs": str(out_dir)}, f, indent=2)
+        json.dump({"batch_id": batch_id, "method": args.method, "n_combos": n_combos, "config_outputs": str(out_dir)}, f, indent=2)
 
     print(f"Wrote {batch_dir / 'sweep_results.csv'}, {batch_dir / 'sweep_results_summary.json'}")
     return 0
