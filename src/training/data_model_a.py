@@ -139,6 +139,15 @@ def build_batches_from_lists(
         minutes = torch.tensor(min_list, dtype=torch.float32, device=device).unsqueeze(0)
         key_padding_mask = torch.tensor(mask_list, dtype=torch.bool, device=device).unsqueeze(0)
         rel = torch.tensor([rel_values], dtype=torch.float32, device=device)
+        # Skip batches where every team has all players masked (no valid roster for any team)
+        all_masked_per_team = key_padding_mask.squeeze(0).all(dim=-1)
+        if all_masked_per_team.all().item():
+            if roster_debug:
+                print(
+                    f"Batch skip: all {len(team_ids)} teams have empty roster (as_of_date={as_of_date}).",
+                    flush=True,
+                )
+            continue
         batches.append({
             "embedding_indices": embedding_indices,
             "player_stats": player_stats,
@@ -270,6 +279,14 @@ def build_batches_from_db(
         minutes = torch.tensor(min_list, dtype=torch.float32, device=device).unsqueeze(0)  # (1, K, P)
         key_padding_mask = torch.tensor(mask_list, dtype=torch.bool, device=device).unsqueeze(0)  # (1, K, P)
         rel = torch.tensor([rel_values], dtype=torch.float32, device=device)  # (1, K)
+        all_masked_per_team = key_padding_mask.squeeze(0).all(dim=-1)
+        if all_masked_per_team.all().item():
+            if roster_debug:
+                print(
+                    f"Batch skip: all {len(team_ids)} teams have empty roster (as_of_date={as_of_date}).",
+                    flush=True,
+                )
+            continue
         batches.append({
             "embedding_indices": embedding_indices,
             "player_stats": player_stats,

@@ -56,10 +56,11 @@ if lists:
         
         # Test forward pass
         ma = cfg.get("model_a", {})
+        stat_dim = int(ma.get("stat_dim", 21))
         model = DeepSetRank(
             ma.get("num_embeddings", 500),
             ma.get("embedding_dim", 32),
-            7,
+            stat_dim,
             ma.get("encoder_hidden", [128, 64]),
             ma.get("attention_heads", 4),
             ma.get("dropout", 0.2),

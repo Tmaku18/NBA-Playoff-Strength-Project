@@ -40,6 +40,8 @@ def _log_attention_debug_stats(model: nn.Module, batch: dict, device: torch.devi
         minutes_valid = minutes[valid_mask]
         attn_sum = attn_w.sum(dim=-1).reshape(-1)
         attn_max = attn_w.max(dim=-1).values.reshape(-1)
+        attn_sum_mean = float(torch.nanmean(attn_sum).item()) if attn_sum.numel() else 0.0
+        attn_max_mean = float(torch.nanmean(attn_max).item()) if attn_max.numel() else 0.0
         print(
             "Attention debug (train):",
             f"teams={attn_sum.numel()}",
@@ -47,8 +49,8 @@ def _log_attention_debug_stats(model: nn.Module, batch: dict, device: torch.devi
             f"minutes_min={float(minutes_valid.min().item()) if minutes_valid.numel() else 0.0:.4f}",
             f"minutes_mean={float(minutes_valid.mean().item()) if minutes_valid.numel() else 0.0:.4f}",
             f"minutes_max={float(minutes_valid.max().item()) if minutes_valid.numel() else 0.0:.4f}",
-            f"attn_sum_mean={float(attn_sum.mean().item()) if attn_sum.numel() else 0.0:.4f}",
-            f"attn_max_mean={float(attn_max.mean().item()) if attn_max.numel() else 0.0:.4f}",
+            f"attn_sum_mean={attn_sum_mean:.4f}",
+            f"attn_max_mean={attn_max_mean:.4f}",
             f"attn_grad_norm={grad_norm:.4f}",
             flush=True,
         )
@@ -216,6 +218,7 @@ def _build_model(config: dict, device: torch.device, stat_dim_override: int | No
     drop = ma.get("dropout", 0.2)
     minutes_bias_weight = float(ma.get("minutes_bias_weight", 0.3))
     minutes_sum_min = float(ma.get("minutes_sum_min", 1e-6))
+    fallback_strategy = str(ma.get("attention_fallback_strategy", "minutes"))
     return DeepSetRank(
         num_emb,
         emb_dim,
@@ -225,6 +228,7 @@ def _build_model(config: dict, device: torch.device, stat_dim_override: int | No
         drop,
         minutes_bias_weight=minutes_bias_weight,
         minutes_sum_min=minutes_sum_min,
+        fallback_strategy=fallback_strategy,
     ).to(device)
 
 
@@ -265,6 +269,11 @@ def train_model_a_on_batches(
         if train_no_improve >= NOT_LEARNING_PATIENCE:
             print("Stopping: train loss did not improve for {} epoch(s).".format(NOT_LEARNING_PATIENCE), flush=True)
             print(NOT_LEARNING_ANALYSIS, flush=True)
+            if batches and bool(ma.get("attention_debug", False)):
+                try:
+                    _log_attention_debug_stats(model, batches[0], device)
+                except Exception:
+                    pass
             break
         if use_early:
             val_loss = eval_epoch(model, val_batches or [], device)
@@ -329,6 +338,11 @@ def train_model_a(
         if train_no_improve >= NOT_LEARNING_PATIENCE:
             print("Stopping: train loss did not improve for {} epoch(s).".format(NOT_LEARNING_PATIENCE), flush=True)
             print(NOT_LEARNING_ANALYSIS, flush=True)
+            if train_batches and bool(ma.get("attention_debug", False)):
+                try:
+                    _log_attention_debug_stats(model, train_batches[0], device)
+                except Exception:
+                    pass
             break
         if use_early:
             val_loss = eval_epoch(model, val_batches, device)

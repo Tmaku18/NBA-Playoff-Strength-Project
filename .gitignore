@@ -7,6 +7,14 @@ outputs/*
 !outputs/ANALYSIS.md
 outputs2/*
 !outputs2/.gitkeep
+!outputs2/sweeps/
+outputs2/sweeps/*
+!outputs2/sweeps/SWEEP_ANALYSIS_REPORT.md
+!outputs2/run_022/
+outputs2/run_022/*
+!outputs2/run_022/RESULTS_AND_OUTPUTS_EXPLAINED.md
+!outputs2/run_022/ANALYSIS_01.md
+!outputs2/run_022/ANALYSIS_02.md
 outputs3/*
 !outputs3/.gitkeep
 .current_run

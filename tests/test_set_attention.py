@@ -46,3 +46,23 @@ def test_set_attention_minutes_bias_zero_disabled():
     out, w = model(x, minutes=minutes)
     assert w.shape == (B, P)
     assert torch.allclose(w.sum(dim=1), torch.ones(B, device=w.device), atol=1e-5)
+
+
+def test_set_attention_fallback_strategies():
+    """Both fallback strategies produce valid normalized weights."""
+    B, P, D = 2, 8, 16
+    mask = torch.zeros(B, P, dtype=torch.bool)
+    mask[:, 6:] = True
+    minutes = torch.rand(B, P).clamp(min=0.01)
+    x = torch.randn(B, P, D)
+    for strategy in ("minutes", "uniform"):
+        model = SetAttention(
+            embed_dim=D, num_heads=2, dropout=0.0,
+            fallback_strategy=strategy,
+        )
+        out, w = model(x, key_padding_mask=mask, minutes=minutes)
+        assert out.shape == (B, D)
+        assert w.shape == (B, P)
+        assert torch.allclose(w.sum(dim=1), torch.ones(B, device=w.device), atol=1e-5)
+        # Masked positions should be 0
+        assert (w[mask] == 0.0).all()

@@ -1,12 +1,23 @@
-"""Team-context features for Model B: Four Factors, pace, SOS/SRS, Elo, rolling, motivation, injury. FORBIDDEN: net_rating."""
+"""Team-context features for Model B: Four Factors, pace, SOS/SRS, Elo, Massey, rolling, motivation, injury. FORBIDDEN: net_rating."""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import pandas as pd
 
 from .four_factors import four_factors_from_team_logs
 
 FORBIDDEN = {"net_rating", "NET_RATING", "net rating"}
+
+
+def _as_of_to_season(as_of: str | pd.Timestamp) -> str:
+    """Derive season string from as_of_date (e.g. 2024-01-15 -> 2023-24, 2024-11-01 -> 2024-25)."""
+    ad = pd.to_datetime(as_of).date()
+    y, m = ad.year, ad.month
+    if m >= 10:
+        return f"{y}-{str((y + 1) % 100).zfill(2)}"
+    return f"{y - 1}-{str(y % 100).zfill(2)}"
 
 # Extended feature cols when optional modules enabled
 EXTENDED_FEATURE_COLS: list[str] = [
@@ -71,6 +82,8 @@ def get_team_context_feature_cols(config: dict | None = None) -> list[str]:
     cfg = config or {}
     if cfg.get("elo", {}).get("enabled", False):
         base.append("elo")
+    if cfg.get("massey", {}).get("enabled", False):
+        base.append("massey_rating")
     if cfg.get("team_rolling", {}).get("enabled", True):
         base.extend(["eFG_L10", "DefRtg_L10", "won_prev_game"])
     if cfg.get("motivation", {}).get("enabled", False):
@@ -136,6 +149,27 @@ def build_team_context_as_of_dates(
         if not elo_df.empty:
             out = out.merge(elo_df, on=[team_id_col, "as_of_date"], how="left")
             out["elo"] = out["elo"].fillna(1500.0)
+
+    if cfg.get("massey", {}).get("enabled", False):
+        from .massey import get_massey_as_of_dates
+        massey_df = get_massey_as_of_dates(games, tgl, team_dates, seasons_cfg)
+        if not massey_df.empty:
+            out = out.merge(massey_df, on=[team_id_col, "as_of_date"], how="left")
+            out["massey_rating"] = out["massey_rating"].fillna(0.0)
+
+    if cfg.get("sos_srs", {}).get("enabled", False) and teams is not None and not teams.empty:
+        from ..data.kaggle_loader import load_team_records_srs
+        project_root = Path(__file__).resolve().parents[2]
+        srs_path = cfg.get("sos_srs", {}).get("data_path", "data/raw/Team_Records.csv")
+        srs_full = Path(srs_path) if Path(srs_path).is_absolute() else project_root / srs_path
+        sos_srs_df = load_team_records_srs(srs_full, teams)
+        if not sos_srs_df.empty and "season" in sos_srs_df.columns:
+            out["_season"] = out["as_of_date"].apply(_as_of_to_season)
+            out = out.merge(sos_srs_df, left_on=[team_id_col, "_season"], right_on=["team_id", "season"], how="left", suffixes=("", "_srs"))
+            out = out.drop(columns=["_season"], errors="ignore")
+            for c in ["sos", "srs"]:
+                if c in out.columns:
+                    out[c] = out[c].fillna(0.0)
 
     if cfg.get("team_rolling", {}).get("enabled", True):
         from .team_rolling import get_team_rolling_as_of_dates

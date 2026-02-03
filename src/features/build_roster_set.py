@@ -45,6 +45,16 @@ def get_roster_as_of_date(
             flush=True,
         )
     past = pgl.loc[mask]
+    if past.empty and season_start is not None:
+        # Fallback: season-scoped window may have no games (e.g. early season); use any prior games
+        mask_fallback = (pgl[team_id_col] == team_id) & (dates < ad)
+        past = pgl.loc[mask_fallback]
+        if not past.empty and debug:
+            print(
+                f"Roster debug: season-scoped empty for team_id={team_id} as_of={as_of_date}; "
+                "using all prior games (no season_start).",
+                flush=True,
+            )
     if past.empty:
         if debug:
             print(

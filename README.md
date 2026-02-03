@@ -129,6 +129,14 @@ All paths under the configured outputs dir (`outputs3/` for sweeps and new runs;
 - **OOF:** `outputs/oof_pooled.parquet` and `ridgecv_meta.joblib`.
 - **Season boundaries:** Hard-coded in `config/defaults.yaml` to avoid play-in ambiguity.
 
+### WSL / GPU and reproducibility
+
+Running in **WSL (Ubuntu)** with GPU vs **Windows** can yield different results due to CUDA/cuDNN versions, RNG, or numerical precision. To compare:
+
+- Fix seeds (`repro.seed` in config) and run the same config on both environments.
+- Compare first-epoch train loss and attention debug stats (`attn_sum_mean`, `attn_max_mean`, `attn_grad_norm`) from `python -m scripts.debug_model_a --dummy` or script 3 with `--attention-debug`.
+- Document environment (OS, Python, PyTorch, CUDA) for the run that reproduces run_021-style attention; use the debugger and attention_debug output to confirm attention is learning in both environments before trusting sweep results.
+
 ---
 
 ## Recent implementation (Update2)
