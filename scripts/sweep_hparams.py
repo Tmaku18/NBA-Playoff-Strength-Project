@@ -78,7 +78,12 @@ def _run_one_combo_worker(
 
 def _load_config() -> dict:
     with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        config = yaml.safe_load(f)
+    # From any worktree: use canonical DB with playoff data if NBA_DB_PATH is set
+    db_override = __import__("os").environ.get("NBA_DB_PATH")
+    if db_override and db_override.strip():
+        config.setdefault("paths", {})["db"] = db_override.strip()
+    return config
 
 
 def _write_config(path: Path, config: dict) -> None:

@@ -57,7 +57,20 @@ def _filtered_playoff_tgl(
         pg = pg.copy()
         pg["season"] = pg["game_date"].apply(_game_date_to_season)
     if "season" in pg.columns:
-        gids = set(pg.loc[pg["season"].astype(str) == str(season), "game_id"].astype(str))
+        season_str = str(season).strip()
+        gids = set(pg.loc[pg["season"].astype(str) == season_str, "game_id"].astype(str))
+        # Fallback: DB may store "2024" or "24" for "2023-24" (playoff year)
+        if not gids and "-" in season_str:
+            end_part = season_str.split("-")[-1].strip()
+            try:
+                end_year = int(end_part)
+                if end_year < 100:
+                    alt = str(2000 + end_year)  # "24" -> "2024"
+                else:
+                    alt = str(end_year)
+                gids = set(pg.loc[pg["season"].astype(str).isin((alt, end_part, season_str)), "game_id"].astype(str))
+            except ValueError:
+                pass
         if debug:
             print(
                 f"Playoff filtering: season={season}, games_matching={len(gids)}",

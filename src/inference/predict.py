@@ -557,6 +557,13 @@ def run_inference_from_db(
                     f"EOS/playoff rank failed (falling back to standings): {e}",
                     file=sys.stderr,
                 )
+        if not playoff_rank_map and target_season:
+            print(
+                f"Warning: No playoff_rank for season {target_season}; predictions will lack post_playoff_rank. "
+                "eval_report.json will not include playoff_metrics (sweep --objective playoff_spearman will be -inf). "
+                "Ensure DB has playoff_games and playoff_team_game_logs for this season.",
+                file=sys.stderr,
+            )
 
         if config.get("inference", {}).get("require_eos_final_rank", False) and eos_rank_source != "eos_final_rank":
             print(

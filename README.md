@@ -72,7 +72,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 **Run order (production, real data only):**
 
 1. **Setup:** `pip install -r requirements.txt`
-2. **Config:** Edit `config/defaults.yaml` if needed (seasons, paths, model params, `build_db.skip_if_exists`, `inference.run_id`). DB path: `data/processed/nba_build_run.duckdb`. **Future runs and sweeps use `outputs3/`** (`config.paths.outputs`). The first run in an empty outputs folder can start at `run_001` (or use `inference.run_id_base`); with `inference.run_id: null` (default) runs auto-increment.
+2. **Config:** Edit `config/defaults.yaml` if needed (seasons, paths, model params, `build_db.skip_if_exists`, `inference.run_id`). **DB:** `config.paths.db` should point to a DB with playoff data (`playoff_games`, `playoff_team_game_logs`) for sweeps and `--objective playoff_spearman`. From any worktree, set env `NBA_DB_PATH` to that DB path so the sweep uses it (e.g. the main project DB). **Future runs and sweeps use `outputs3/`** (`config.paths.outputs`). The first run in an empty outputs folder can start at `run_001` (or use `inference.run_id_base`); with `inference.run_id: null` (default) runs auto-increment.
 3. **Data:**  
    - `python -m scripts.1_download_raw` — fetch regular-season and playoff logs via nba_api (writes to `data/raw/`; reuses existing files when present).  
    - `python -m scripts.2_build_db` — build DuckDB from raw → `data/processed/nba_build_run.duckdb`, update `data/manifest.json`. If `build_db.skip_if_exists: true` (default) and the DB file already exists, the build is skipped to keep the current DB.

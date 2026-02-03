@@ -333,13 +333,20 @@ def main():
     elif by_season:
         last_season = sorted(by_season.keys())[-1]
         last_report = by_season[last_season]
-        report["test_metrics_ensemble"] = last_report["test_metrics_ensemble"]
+        report["test_metrics_ensemble"] = last_report["test_metrics_ensemble"].copy()
         report["test_metrics_model_a"] = last_report["test_metrics_model_a"]
         report["test_metrics_xgb"] = last_report["test_metrics_xgb"]
         report["test_metrics_rf"] = last_report["test_metrics_rf"]
         report["test_metrics_by_conference"] = last_report["test_metrics_by_conference"]
         report["notes"]["eos_rank_source"] = last_report["notes"].get("eos_rank_source", "standings")
         report["by_season"] = by_season
+        # Ensure playoff_metrics appear in main report if any season has them (sweep reads test_metrics_ensemble.playoff_metrics)
+        if not report["test_metrics_ensemble"].get("playoff_metrics"):
+            for _s, sreport in by_season.items():
+                pm = sreport.get("test_metrics_ensemble", {}).get("playoff_metrics")
+                if isinstance(pm, dict) and pm:
+                    report["test_metrics_ensemble"]["playoff_metrics"] = pm
+                    break
 
     report["notes"]["upset_definition"] = "sleeper = EOS_global_rank > predicted_strength"
     report["notes"]["mrr_top2"] = "1/rank of first team in top 2 (champion+runner-up) in predicted order."
