@@ -103,10 +103,12 @@ def main():
             else:
                 ck = torch.load(model_a_path, map_location=device, weights_only=False)
                 ma = config.get("model_a", {})
+                # Use stat_dim from batch so model matches checkpoint (trained with same data)
+                stat_dim = int(batches_a[0]["player_stats"].shape[-1])
                 model = DeepSetRank(
                     ma.get("num_embeddings", 500),
                     ma.get("embedding_dim", 32),
-                    7,
+                    stat_dim,
                     ma.get("encoder_hidden", [128, 64]),
                     ma.get("attention_heads", 4),
                     ma.get("dropout", 0.2),
