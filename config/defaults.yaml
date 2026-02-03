@@ -17,7 +17,9 @@ seasons:
   "2025-26": { start: "2025-10-01", end: "2026-04-15" }
 
 paths:
-  # Use absolute path to existing DB (e.g. main project); or relative for local data/processed
+  # Canonical DB with playoff data (playoff_games, playoff_team_game_logs) for sweeps and eval.
+  # Use this same absolute path in every worktree so --objective playoff_spearman gets real metrics.
+  # Override from any worktree with env: NBA_DB_PATH=/path/to/data/processed/nba_build.duckdb
   db: "C:/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/data/processed/nba_build.duckdb"
   raw: "data/raw"
   processed: "data/processed"
