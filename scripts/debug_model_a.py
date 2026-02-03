@@ -56,7 +56,8 @@ if lists:
         
         # Test forward pass
         ma = cfg.get("model_a", {})
-        stat_dim = int(ma.get("stat_dim", 21))
+        stat_dim = int(b["player_stats"].shape[-1])
+        attn_cfg = ma.get("attention", {})
         model = DeepSetRank(
             ma.get("num_embeddings", 500),
             ma.get("embedding_dim", 32),
@@ -66,6 +67,11 @@ if lists:
             ma.get("dropout", 0.2),
             minutes_bias_weight=float(ma.get("minutes_bias_weight", 0.3)),
             minutes_sum_min=float(ma.get("minutes_sum_min", 1e-6)),
+            fallback_strategy=str(ma.get("attention_fallback_strategy", "minutes")),
+            attention_temperature=float(attn_cfg.get("temperature", 1.0)),
+            attention_input_dropout=float(attn_cfg.get("input_dropout", 0.0)),
+            attention_use_pre_norm=bool(attn_cfg.get("use_pre_norm", True)),
+            attention_use_residual=bool(attn_cfg.get("use_residual", True)),
         )
         
         B, K, P, S = b["embedding_indices"].shape[0], b["embedding_indices"].shape[1], b["embedding_indices"].shape[2], b["player_stats"].shape[-1]

@@ -23,6 +23,10 @@ class DeepSetRank(nn.Module):
         minutes_bias_weight: float = 0.3,
         minutes_sum_min: float = 1e-6,
         fallback_strategy: str = "minutes",
+        attention_temperature: float = 1.0,
+        attention_input_dropout: float = 0.0,
+        attention_use_pre_norm: bool = True,
+        attention_use_residual: bool = True,
     ):
         super().__init__()
         self.emb = PlayerEmbedding(num_embeddings, embedding_dim)
@@ -34,6 +38,10 @@ class DeepSetRank(nn.Module):
             minutes_bias_weight=minutes_bias_weight,
             minutes_sum_min=minutes_sum_min,
             fallback_strategy=fallback_strategy,
+            temperature=attention_temperature,
+            input_dropout=attention_input_dropout,
+            use_pre_norm=attention_use_pre_norm,
+            use_residual=attention_use_residual,
         )
         self.scorer = nn.Linear(self.enc.output_dim, 1)
 

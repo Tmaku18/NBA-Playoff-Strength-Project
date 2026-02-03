@@ -91,6 +91,10 @@ def train_epoch(
     model.train()
     total = 0.0
     n = 0
+    fallback_events = 0.0
+    fallback_total = 0.0
+    entropy_min = float("inf")
+    entropy_max = 0.0
     for batch in batches:
         B, K, P, S = batch["embedding_indices"].shape[0], batch["embedding_indices"].shape[1], batch["embedding_indices"].shape[2], batch["player_stats"].shape[-1]
         embs = batch["embedding_indices"].to(device).reshape(B * K, P)
@@ -99,17 +103,56 @@ def train_epoch(
         mask = batch["key_padding_mask"].to(device).reshape(B * K, P)
         rel = batch["rel"].to(device)
 
-        score, _, _ = model(embs, stats, minutes, mask)
+        score, _, attn_w = model(embs, stats, minutes, mask)
         score = score.reshape(B, K)
         score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
         loss = listmle_loss(score, rel)
+        extra_loss = 0.0
+        entropy_weight = float(getattr(model, "attention_entropy_weight", 0.0))
+        diversity_weight = float(getattr(model, "attention_head_diversity_weight", 0.0))
+        if attn_w is not None:
+            attn_safe_all = torch.clamp(attn_w, min=1e-8)
+            entropies = -(attn_safe_all * attn_safe_all.log()).sum(dim=-1)
+            entropy_min = min(entropy_min, float(entropies.min().item()))
+            entropy_max = max(entropy_max, float(entropies.max().item()))
+        if entropy_weight > 0.0 and attn_w is not None:
+            attn_safe = torch.clamp(attn_w, min=1e-8)
+            entropy = -(attn_safe * attn_safe.log()).sum(dim=-1)
+            entropy_loss = -entropy.mean()
+            extra_loss = extra_loss + entropy_weight * entropy_loss
+        head_w = getattr(model.attn, "last_head_attention", None)
+        if diversity_weight > 0.0 and head_w is not None and head_w.ndim == 3:
+            hw = head_w
+            hw = hw / hw.sum(dim=-1, keepdim=True).clamp(min=1e-8)
+            norm_hw = hw / hw.norm(dim=-1, keepdim=True).clamp(min=1e-8)
+            sim = torch.matmul(norm_hw, norm_hw.transpose(1, 2))
+            num_heads = sim.shape[1]
+            if num_heads > 1:
+                eye = torch.eye(num_heads, device=sim.device, dtype=sim.dtype).unsqueeze(0)
+                off_diag = sim - eye
+                diversity_loss = off_diag.pow(2).mean()
+                extra_loss = extra_loss + diversity_weight * diversity_loss
+        collapsed_mask = getattr(model.attn, "last_collapsed_mask", None)
+        if collapsed_mask is not None:
+            fallback_events += float(collapsed_mask.float().sum().item())
+            fallback_total += float(collapsed_mask.numel())
+        loss = loss + extra_loss
         optimizer.zero_grad()
         if torch.isfinite(loss).all():
             loss.backward()
+            attn_clip = float(getattr(model, "attention_grad_clip", 0.0))
+            if attn_clip > 0.0:
+                torch.nn.utils.clip_grad_norm_(model.attn.parameters(), max_norm=attn_clip)
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             total += loss.item()
             n += 1
+    stats_summary = {
+        "fallback_frac": (fallback_events / fallback_total) if fallback_total else 0.0,
+        "entropy_min": entropy_min if entropy_min != float("inf") else 0.0,
+        "entropy_max": entropy_max,
+    }
+    model.last_train_stats = stats_summary
     return total / n if n else 0.0
 
 
@@ -219,7 +262,12 @@ def _build_model(config: dict, device: torch.device, stat_dim_override: int | No
     minutes_bias_weight = float(ma.get("minutes_bias_weight", 0.3))
     minutes_sum_min = float(ma.get("minutes_sum_min", 1e-6))
     fallback_strategy = str(ma.get("attention_fallback_strategy", "minutes"))
-    return DeepSetRank(
+    attn_cfg = ma.get("attention", {})
+    attn_temperature = float(attn_cfg.get("temperature", 1.0))
+    attn_input_dropout = float(attn_cfg.get("input_dropout", 0.0))
+    attn_use_pre_norm = bool(attn_cfg.get("use_pre_norm", True))
+    attn_use_residual = bool(attn_cfg.get("use_residual", True))
+    model = DeepSetRank(
         num_emb,
         emb_dim,
         stat_dim,
@@ -229,7 +277,17 @@ def _build_model(config: dict, device: torch.device, stat_dim_override: int | No
         minutes_bias_weight=minutes_bias_weight,
         minutes_sum_min=minutes_sum_min,
         fallback_strategy=fallback_strategy,
+        attention_temperature=attn_temperature,
+        attention_input_dropout=attn_input_dropout,
+        attention_use_pre_norm=attn_use_pre_norm,
+        attention_use_residual=attn_use_residual,
     ).to(device)
+    model.attention_entropy_weight = float(attn_cfg.get("entropy_weight", 0.0))
+    model.attention_head_diversity_weight = float(attn_cfg.get("head_diversity_weight", 0.0))
+    model.attention_grad_clip = float(attn_cfg.get("grad_clip", 0.0))
+    model.initial_minutes_bias_weight = float(minutes_bias_weight)
+    model.minutes_bias_warmup_epochs = int(attn_cfg.get("minutes_bias_warmup_epochs", 0))
+    return model
 
 
 def train_model_a_on_batches(
@@ -248,7 +306,8 @@ def train_model_a_on_batches(
         model = _build_model(config, device)
         return model
     model = _build_model(config, device, stat_dim_override=stat_dim_override)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    base_lr = float(ma.get("learning_rate", 1e-3))
+    optimizer = torch.optim.Adam(model.parameters(), lr=base_lr)
     epochs = int(max_epochs) if max_epochs is not None else int(ma.get("epochs", 20))
     patience = int(ma.get("early_stopping_patience", 3))
     min_delta = float(ma.get("early_stopping_min_delta", 0.0))
@@ -258,9 +317,25 @@ def train_model_a_on_batches(
     bad_epochs = 0
     best_train_loss = float("inf")
     train_no_improve = 0
+    warmup_steps = int(ma.get("lr_warmup_steps", 0))
+    bias_warmup = int(getattr(model, "minutes_bias_warmup_epochs", 0))
+    base_bias = float(getattr(model, "initial_minutes_bias_weight", getattr(model.attn, "minutes_bias_weight", 0.3)))
     for epoch in range(epochs):
+        if warmup_steps > 0:
+            scale = min(1.0, float(epoch + 1) / warmup_steps)
+            for group in optimizer.param_groups:
+                group["lr"] = base_lr * scale
+        if bias_warmup > 0:
+            model.attn.minutes_bias_weight = 0.0 if epoch < bias_warmup else base_bias
         loss = train_epoch(model, batches, optimizer, device)
-        print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
+        stats = getattr(model, "last_train_stats", {})
+        extra_log = ""
+        if stats:
+            extra_log = (
+                f" fallback={stats.get('fallback_frac', 0.0):.3f}"
+                f" entropy=[{stats.get('entropy_min', 0.0):.3f},{stats.get('entropy_max', 0.0):.3f}]"
+            )
+        print(f"epoch {epoch+1} loss={loss:.4f}{extra_log}", flush=True)
         if loss < best_train_loss:
             best_train_loss = loss
             train_no_improve = 0
@@ -287,6 +362,7 @@ def train_model_a_on_batches(
                 break
     if best_state is not None:
         model.load_state_dict(best_state)
+    model.attn.minutes_bias_weight = base_bias
     return model
 
 
@@ -310,7 +386,8 @@ def train_model_a(
     num_emb = ma.get("num_embeddings", 500)
     stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
     model = _build_model(config, device, stat_dim_override=stat_dim_override)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    base_lr = float(ma.get("learning_rate", 1e-3))
+    optimizer = torch.optim.Adam(model.parameters(), lr=base_lr)
 
     if batches is None:
         batches = [get_dummy_batch(4, 10, 15, stat_dim, num_emb, device) for _ in range(5)]
@@ -327,9 +404,25 @@ def train_model_a(
     bad_epochs = 0
     best_train_loss = float("inf")
     train_no_improve = 0
+    warmup_steps = int(ma.get("lr_warmup_steps", 0))
+    bias_warmup = int(getattr(model, "minutes_bias_warmup_epochs", 0))
+    base_bias = float(getattr(model, "initial_minutes_bias_weight", getattr(model.attn, "minutes_bias_weight", 0.3)))
     for epoch in range(epochs):
+        if warmup_steps > 0:
+            scale = min(1.0, float(epoch + 1) / warmup_steps)
+            for group in optimizer.param_groups:
+                group["lr"] = base_lr * scale
+        if bias_warmup > 0:
+            model.attn.minutes_bias_weight = 0.0 if epoch < bias_warmup else base_bias
         loss = train_epoch(model, train_batches, optimizer, device)
-        print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
+        stats = getattr(model, "last_train_stats", {})
+        extra_log = ""
+        if stats:
+            extra_log = (
+                f" fallback={stats.get('fallback_frac', 0.0):.3f}"
+                f" entropy=[{stats.get('entropy_min', 0.0):.3f},{stats.get('entropy_max', 0.0):.3f}]"
+            )
+        print(f"epoch {epoch+1} loss={loss:.4f}{extra_log}", flush=True)
         if loss < best_train_loss:
             best_train_loss = loss
             train_no_improve = 0
@@ -358,6 +451,7 @@ def train_model_a(
     if best_state is not None:
         model.load_state_dict(best_state)
 
+    model.attn.minutes_bias_weight = base_bias
     if batches and bool(ma.get("attention_debug", False)):
         try:
             _log_attention_debug_stats(model, batches[0], device)
