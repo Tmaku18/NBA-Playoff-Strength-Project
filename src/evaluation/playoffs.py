@@ -352,7 +352,7 @@ def compute_eos_playoff_standings(
     all_team_ids: list[int] | None = None,
 ) -> dict[int, int]:
     """
-    EOS playoff standings = final regular-season rank (1-30 by final reg-season win %).
+    Playoff standings = final regular-season rank (1-30 by final reg-season win %).
     Used for EOS_playoff_standings in outputs. Returns {} if no games.
     """
     reg_wp = get_reg_season_win_pct(

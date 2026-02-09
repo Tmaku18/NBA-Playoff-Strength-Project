@@ -123,7 +123,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 - [ ] **Time rule:** All features use only rows with `game_date < as_of_date` (strict t-1). Rolling stats use `shift(1)` before aggregation.
 - [ ] **Roster:** Minutes and roster selection use only games before `as_of_date`. Rosters use a **latest-team** map (player’s most recent team as of `as_of_date`) so traded players appear only on their current team; season boundaries from config scope games when building rosters.
 - [ ] **Model B:** Feature set must **not** include `net_rating`. Enforced in `src.features.team_context.FORBIDDEN` and `train_model_b`.
-- [ ] **ListMLE:** Targets configurable: `listmle_target: final_rank` (EOS standings; production default), `playoff_outcome` (EOS playoff result, champion=1), or `standings` (win-rate to date). Production uses `final_rank` (phase3 combo 18). Evaluation remains season-end.
+- [ ] **ListMLE:** Targets configurable: `listmle_target: final_rank` (playoff standings = EOS reg-season rank; production default), `playoff_outcome` (playoff outcome = champion=1, runner-up=2), or `standings` (win-rate to date). Production uses `final_rank` (phase3 combo 18). Evaluation remains season-end.
 - [ ] **Baselines only:** Net Rating is used only in `rank-by-Net-Rating` baseline, computed from off/def ratings, never as a model input.
 
 ---
@@ -147,6 +147,7 @@ All paths under the configured outputs dir. **outputs2/** holds run_020/021; **o
 - `outputs/best_deep_set.pt`, `outputs/xgb_model.joblib`, `outputs/rf_model.joblib` — trained Model A, Model B (XGBoost), and Model C (RF).
 - `docs/ANALYSIS_OF_ATTENTION_WEIGHTS.md` — Analysis of Model A attention weights: architecture walkthrough, run_023 inferences (star-dominant vs. distributed), hyperparameter/metric tracking framework, conference vs. league-wide. Updated with each run/sweep.
 - `docs/SWEEP_ANALYSIS.md` — Phase 2 & Phase 3 sweep analysis: best combos, Optuna importances, progression from run_022 to Phase 3 fine NDCG@16; production default (combo 18).
+- `docs/METRIC_MATRIX_EXPLORATION_PLAN.md` — 8-sweep matrix (playoff standings vs playoff outcome × Spearman/NDCG); Phase 2 exploration plan.
 
 ---
 

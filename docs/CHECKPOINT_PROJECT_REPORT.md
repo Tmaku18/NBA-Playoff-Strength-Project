@@ -24,7 +24,7 @@ This project builds a multi-modal stacking ensemble to predict NBA team strength
 
 - **Target:** Future W/L (next 5) or final playoff seed — never raw efficiency metrics as the primary target.
 - **No net-rating leakage:** `net_rating` is excluded from Model B features and from targets; enforced in `src.features.team_context.FORBIDDEN` and training code. Allowed only in baselines (e.g. rank-by-Net-Rating).
-- **ListMLE for Model A:** Listwise ranking loss over conference-date lists; teams in a list are ranked by strength; ListMLE encourages correct ordering of teams within each list. Model A ListMLE target = **final_rank** (EOS standings) in production (phase3 combo 18). Alternative: `playoff_outcome` (champion=1); phase4 sweep with playoff_outcome underperformed vs final_rank.
+- **ListMLE for Model A:** Listwise ranking loss over conference-date lists; teams in a list are ranked by strength; ListMLE encourages correct ordering of teams within each list. Model A ListMLE target = **final_rank** (playoff standings = EOS reg-season rank) in production (phase3 combo 18). Alternative: `playoff_outcome` (playoff outcome = champion=1, runner-up=2); phase4 sweep with playoff outcome underperformed vs playoff standings.
 - **RidgeCV for stacking:** Level-2 meta-learner is RidgeCV on pooled OOF (not Logistic Regression) for stability and to avoid overfitting when blending Model A, XGB, and RF ranks.
 - **Evaluation target evolution:** Early runs (009–017) used **regular-season standings** (or snapshot order) as ground truth. Later runs (020, 021) use **playoff outcome** (`eos_final_rank`: champion=1, runner-up=2, … first two eliminated=29–30). Metrics are **not comparable** across these two target types.
 
@@ -87,7 +87,7 @@ This project builds a multi-modal stacking ensemble to predict NBA team strength
 
 ### 3.4 Playoff-specific metrics
 
-- **Spearman (predicted vs playoff rank):** Correlation between predicted global rank and end-of-season playoff performance rank (champion=1, …, 30).
+- **Spearman (predicted vs playoff outcome):** Correlation between predicted global rank and playoff outcome (champion=1, runner-up=2, …, 30).
 - **NDCG@10 (ndcg10):** Same as main ndcg; explicit key for clarity. In playoff_metrics: `ndcg10_pred_vs_playoff` (NDCG@10 with playoff rank as relevance).
 - **Brier (championship odds):** One-hot champion vs predicted championship probabilities. See `brier_champion` in `src.evaluation.metrics`.
 - **rank_mae, rank_rmse:** Rank-distance metrics (pred vs actual playoff rank; lower = better). Used for model and standings baselines (`pred_vs_playoff`, `standings_vs_playoff`). See `rank_mae`, `rank_rmse` in `src.evaluation.metrics`.

@@ -10,7 +10,7 @@ This document explains what each output means, interprets the current results, c
 |--------|--------|---------|
 | `outputs/run_XXX/predictions.json` | Script 6 (inference) | Per-team predictions, analysis, roster dependence, ensemble diagnostics |
 | `outputs/run_XXX/predictions_{season}.json` | Script 6 (inference) | Per-season predictions when test_seasons configured |
-| `outputs/run_XXX/eos_playoff_standings_vs_eos_global_rank.png` | Script 6 (inference) | Scatter: EOS playoff standings vs playoff outcome (EOS) |
+| `outputs/run_XXX/eos_playoff_standings_vs_eos_global_rank.png` | Script 6 (inference) | Scatter: playoff standings vs playoff outcome (EOS) |
 | `outputs/eval_report.json` | Script 5 (evaluate) | Ranking and playoff metrics for the **latest** run’s predictions |
 | `outputs/split_info.json` | Script 3 (train Model A) | Train/test date split (75/25); read by scripts 4, 5, 6 |
 | `outputs/run_comparison.json` | `scripts/compare_runs.py` | NDCG, Spearman, MRR, ROC-AUC upset for every run_XXX with predictions |
@@ -60,7 +60,7 @@ Within each conference, Spearman is **negative** while global Spearman is **+0.7
 
 **To get playoff metrics:** Use a snapshot from a **completed** season (e.g. last date of 2023-24 after playoffs finished), or run inference with `inference.also_train_predictions: true` and evaluate `train_predictions.json` (last train date is in 2022-23, which has playoff data in the DB if playoff raw files were loaded).
 
-**EOS_global_rank (Option B):** When playoff data exists for the target season (16+ playoff teams), `EOS_global_rank` is the **end-of-season final rank** (champion=1, first 2 eliminated=29-30). Otherwise it is standings order at the snapshot. See `eos_rank_source` in predictions JSON. **EOS_playoff_standings** = final regular-season rank (1-30 by final reg-season win %). Metrics from runs before Option B used standings; newer runs with playoff data use EOS final rank. Do not compare NDCG/Spearman across these run types.
+**EOS_global_rank (Option B):** When playoff data exists for the target season (16+ playoff teams), `EOS_global_rank` is the **playoff outcome** (champion=1, first 2 eliminated=29-30). Otherwise it is standings order at the snapshot. See `eos_rank_source` in predictions JSON. **Playoff standings** (EOS_playoff_standings) = final regular-season rank (1-30 by final reg-season win %). Metrics from runs before Option B used standings; newer runs with playoff data use playoff outcome. Do not compare NDCG/Spearman across these run types.
 
 ---
 

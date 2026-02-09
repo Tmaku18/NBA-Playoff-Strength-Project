@@ -8,17 +8,19 @@ Comprehensive analysis of all sweeps in **outputs4** (run_024/run_025). outputs4
 
 | Sweep | Trials | Objective | listmle_target | Status | Best Spearman | Best NDCG@4 | Best NDCG@16 |
 |-------|--------|-----------|----------------|--------|---------------|------------|--------------|
-| **phase3_fine_ndcg16_final_rank** | 20 | ndcg16 | final_rank | **Complete** | **0.557** | 0.506 | **0.550** |
-| phase4_ndcg16_playoff_outcome | 25 | ndcg16 | playoff_outcome | Complete | 0.534 | 0.506 | 0.543 |
-| phase3_coarse_ndcg16_final_rank | 20 | ndcg16 | final_rank | Complete | 0.543 | 0.473 | 0.540 |
-| **phase2_coarse_spearman_final_rank** | 15 | spearman | final_rank | Complete | 0.535 | 0.511 | 0.543 |
-| phase3_coarse_ndcg4_final_rank | 20 | ndcg4 | final_rank | Complete | 0.492 | 0.506 | 0.547 |
-| phase3_fine_ndcg4_final_rank | 20 | ndcg4 | final_rank | Complete | 0.513 | 0.506 | 0.545 |
-| phase1_rolling_spearman_final_rank | 12 | spearman | final_rank | Complete | 0.496 | — | — |
-| phase1_spearman_final_rank | 12 | spearman | final_rank | Partial | — | — | — |
-| phase1_spearman_playoff_outcome | 12 | spearman | playoff_outcome | Partial | — | — | — |
-| phase1_ndcg4_final_rank | 12 | ndcg4 | final_rank | Partial | — | — | — |
-| phase1_ndcg4_playoff_outcome | 12 | ndcg4 | playoff_outcome | Partial | — | — | — |
+| **phase3_fine_ndcg16_final_rank** | 20 | ndcg16 | final_rank (playoff standings) | **Complete** | **0.557** | 0.506 | **0.550** |
+| phase4_ndcg16_playoff_outcome | 25 | ndcg16 | playoff_outcome (playoff outcome) | Complete | 0.534 | 0.506 | 0.543 |
+| phase5_ndcg16_playoff_broad | 35 | ndcg16 | playoff_outcome (playoff outcome) | Pending | — | — | — |
+| phase5_ndcg16_playoff_150lists | 35 | ndcg16 | playoff_outcome (playoff outcome) | Pending | — | — | — |
+| phase3_coarse_ndcg16_final_rank | 20 | ndcg16 | final_rank (playoff standings) | Complete | 0.543 | 0.473 | 0.540 |
+| **phase2_coarse_spearman_final_rank** | 15 | spearman | final_rank (playoff standings) | Complete | 0.535 | 0.511 | 0.543 |
+| phase3_coarse_ndcg4_final_rank | 20 | ndcg4 | final_rank (playoff standings) | Complete | 0.492 | 0.506 | 0.547 |
+| phase3_fine_ndcg4_final_rank | 20 | ndcg4 | final_rank (playoff standings) | Complete | 0.513 | 0.506 | 0.545 |
+| phase1_rolling_spearman_final_rank | 12 | spearman | final_rank (playoff standings) | Complete | 0.496 | — | — |
+| phase1_spearman_final_rank | 12 | spearman | final_rank (playoff standings) | Partial | — | — | — |
+| phase1_spearman_playoff_outcome | 12 | spearman | playoff_outcome (playoff outcome) | Partial | — | — | — |
+| phase1_ndcg4_final_rank | 12 | ndcg4 | final_rank (playoff standings) | Partial | — | — | — |
+| phase1_ndcg4_playoff_outcome | 12 | ndcg4 | playoff_outcome (playoff outcome) | Partial | — | — | — |
 
 ---
 
@@ -111,7 +113,7 @@ Phase 3 fine NDCG@16 (combo 18) is the best configuration across Spearman, playo
 
 ## 6. Phase 3 NDCG Sweeps — NDCG-Tuned Configs
 
-Phase 3 sweeps target NDCG@4 and NDCG@16 optimization (coarse → fine). All use `rolling_windows: [15, 30]`, `listmle_target: final_rank`, and the Phase 2 search space.
+Phase 3 sweeps target NDCG@4 and NDCG@16 optimization (coarse → fine). All use `rolling_windows: [15, 30]`, `listmle_target: final_rank` (playoff standings), and the Phase 2 search space.
 
 ### 6.1 Summary Table
 
@@ -197,10 +199,36 @@ Phase 3 fine ndcg16        → NDCG@16 0.550, Spearman 0.557 ← Best overall
 
 ---
 
-## 8. Phase 4: listmle_target playoff_outcome (phase4_ndcg16_playoff_outcome)
+## 8. Phase 4: listmle_target playoff outcome (phase4_ndcg16_playoff_outcome)
 
-**Sweep:** 25 Optuna trials, phase2_fine, objective ndcg16, `listmle_target: playoff_outcome`.
+**Sweep:** 25 Optuna trials, phase2_fine, objective ndcg16, `listmle_target: playoff_outcome` (playoff outcome = champion=1, runner-up=2).
 
 **Best combo 12:** epochs 20, lr 0.060, n_xgb 225, n_rf 168 — NDCG@16 0.543, Spearman 0.486, playoff_spearman 0.483.
 
-**Result:** Switching to `playoff_outcome` underperformed vs combo 18 (`final_rank`): NDCG@16 0.543 vs 0.550 (-0.007), Spearman 0.534 vs 0.557, playoff_spearman 0.525 vs 0.568. **Production uses `listmle_target: final_rank` (combo 18).**
+**Result:** Switching to playoff outcome underperformed vs combo 18 (playoff standings): NDCG@16 0.543 vs 0.550 (-0.007), Spearman 0.534 vs 0.557, playoff_spearman 0.525 vs 0.568. **Production uses `listmle_target: final_rank` (playoff standings; combo 18).**
+
+---
+
+## 9. Phase 5: Broader playoff outcome Search (phase5_ndcg16_playoff_broad, phase5_ndcg16_playoff_150lists)
+
+**Planned sweeps** (phase2_playoff_broad: epochs 24-28, lr 0.08-0.09; listmle_target: playoff outcome):
+
+| Sweep | Config | Trials | listmle_target | Status |
+|-------|--------|--------|----------------|--------|
+| phase5_ndcg16_playoff_broad | outputs4_phase1 (100/100) | 35 | playoff_outcome | Run manually |
+| phase5_ndcg16_playoff_150lists | outputs4_150_lists (150/150) | 35 | playoff_outcome | Run manually |
+
+**Commands (WSL):**
+```bash
+# Sweep A: 100/100 lists
+python -m scripts.sweep_hparams --config config/outputs4_phase1.yaml --method optuna --n-trials 35 --n-jobs 3 --objective ndcg16 --phase phase2_playoff_broad --listmle-target playoff_outcome --batch-id phase5_ndcg16_playoff_broad --no-run-explain
+
+# Sweep B: 150/150 lists
+python -m scripts.sweep_hparams --config config/outputs4_150_lists.yaml --method optuna --n-trials 35 --n-jobs 3 --objective ndcg16 --phase phase2_playoff_broad --listmle-target playoff_outcome --batch-id phase5_ndcg16_playoff_150lists --no-run-explain
+```
+
+---
+
+## 10. Metric-Matrix Exploration
+
+See **`docs/METRIC_MATRIX_EXPLORATION_PLAN.md`** for the 8-sweep matrix (2 loss targets × 4 objectives: spearman_standings, ndcg_standings, playoff_spearman, ndcg16). Promising non-best combos: `outputs4/sweeps/PROMISING_COMBOS.md`.

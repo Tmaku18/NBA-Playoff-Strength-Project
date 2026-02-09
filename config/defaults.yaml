@@ -74,7 +74,7 @@ training:
   rolling_windows: [15, 30]  # Phase 3 fine NDCG@16 combo 18
   roster_size: 15
   target_rank: "playoffs"  # or "standings" to train meta on standings-to-date
-  listmle_target: "final_rank"  # Production: phase3 fine ndcg16 combo 18. final_rank=EOS standings; playoff_outcome=champion=1, runner-up=2
+  listmle_target: "final_rank"  # Production: phase3 combo 18. final_rank=playoff standings (EOS reg-season rank); playoff_outcome=playoff outcome (champion=1, runner-up=2)
   # 75/25 train-test split (script 3 writes split_info.json; 4 and 6 read it)
   train_seasons: ["2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
   test_seasons: ["2023-24", "2024-25"]

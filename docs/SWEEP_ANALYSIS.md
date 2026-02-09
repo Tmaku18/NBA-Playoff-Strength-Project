@@ -8,19 +8,21 @@
 
 ## 1. Overview
 
-Comprehensive analysis of Phase 2 (Spearman-optimized) and Phase 3 (NDCG-optimized) sweeps. Raw results: `outputs4/sweeps/OUTPUTS4_ANALYSIS.md`.
+Comprehensive analysis of Phase 2 (Spearman-optimized), Phase 3 (NDCG-optimized), and Phase 4–5 sweeps. Raw results: `outputs4/sweeps/OUTPUTS4_ANALYSIS.md`. **Metric-matrix plan:** [docs/METRIC_MATRIX_EXPLORATION_PLAN.md](METRIC_MATRIX_EXPLORATION_PLAN.md).
 
 | Sweep | Trials | Objective | listmle_target | Status | Best Spearman | Best NDCG@4 | Best NDCG@16 |
 |-------|--------|-----------|----------------|--------|---------------|------------|--------------|
-| **phase3_fine_ndcg16_final_rank** | 20 | ndcg16 | final_rank | **Complete** | **0.557** | 0.506 | **0.550** |
-| phase4_ndcg16_playoff_outcome | 25 | ndcg16 | playoff_outcome | Complete | 0.534 | 0.506 | 0.543 |
-| phase3_coarse_ndcg16_final_rank | 20 | ndcg16 | final_rank | Complete | 0.543 | 0.473 | 0.540 |
-| **phase2_coarse_spearman_final_rank** | 15 | spearman | final_rank | Complete | 0.535 | 0.511 | 0.543 |
-| phase3_coarse_ndcg4_final_rank | 20 | ndcg4 | final_rank | Complete | 0.492 | 0.506 | 0.547 |
-| phase3_fine_ndcg4_final_rank | 20 | ndcg4 | final_rank | Complete | 0.513 | 0.506 | 0.545 |
-| phase1_rolling_spearman_final_rank | 12 | spearman | final_rank | Complete | 0.496 | — | — |
-| phase1_spearman_final_rank | 12 | spearman | final_rank | Partial | — | — | — |
-| phase1_ndcg4_final_rank | 12 | ndcg4 | final_rank | Partial | — | — | — |
+| **phase3_fine_ndcg16_final_rank** | 20 | ndcg16 | final_rank (playoff standings) | **Complete** | **0.557** | 0.506 | **0.550** |
+| phase4_ndcg16_playoff_outcome | 25 | ndcg16 | playoff_outcome (playoff outcome) | Complete | 0.534 | 0.506 | 0.543 |
+| phase3_coarse_ndcg16_final_rank | 20 | ndcg16 | final_rank (playoff standings) | Complete | 0.543 | 0.473 | 0.540 |
+| **phase2_coarse_spearman_final_rank** | 15 | spearman | final_rank (playoff standings) | Complete | 0.535 | 0.511 | 0.543 |
+| phase3_coarse_ndcg4_final_rank | 20 | ndcg4 | final_rank (playoff standings) | Complete | 0.492 | 0.506 | 0.547 |
+| phase3_fine_ndcg4_final_rank | 20 | ndcg4 | final_rank (playoff standings) | Complete | 0.513 | 0.506 | 0.545 |
+| phase1_rolling_spearman_final_rank | 12 | spearman | final_rank (playoff standings) | Complete | 0.496 | — | — |
+| phase1_spearman_final_rank | 12 | spearman | final_rank (playoff standings) | Partial | — | — | — |
+| phase1_ndcg4_final_rank | 12 | ndcg4 | final_rank (playoff standings) | Partial | — | — | — |
+| phase5_ndcg16_playoff_broad | 35 | ndcg16 | playoff_outcome (playoff outcome) | Pending | — | — | — |
+| phase5_ndcg16_playoff_150lists | 35 | ndcg16 | playoff_outcome (playoff outcome) | Pending | — | — | — |
 
 ---
 
@@ -79,7 +81,7 @@ Phase 3 fine ndcg16       → Spearman 0.557, playoff_spearman 0.568, NDCG@16 0.
 
 ## 4. Phase 3 NDCG Sweeps
 
-Phase 3 sweeps target NDCG@4 and NDCG@16 (coarse → fine). All use `rolling_windows: [15, 30]`, `listmle_target: final_rank`.
+Phase 3 sweeps target NDCG@4 and NDCG@16 (coarse → fine). All use `rolling_windows: [15, 30]`, `listmle_target: final_rank` (playoff standings).
 
 ### 4.1 Summary Table
 

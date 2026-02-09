@@ -1,0 +1,13 @@
+# Extends defaults; 150/150 list caps for fuller Model A coverage
+# Use with: --config config/outputs4_150_lists.yaml
+
+paths:
+  outputs: "outputs4"
+
+inference:
+  run_id: null
+  run_id_base: 25
+
+training:
+  max_lists_oof: 150
+  max_final_batches: 150

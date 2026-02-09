@@ -204,7 +204,7 @@ def _run_one_combo(
     if phase in ("phase1", "phase1_xgb", "rolling"):
         cfg.setdefault("inference", {})["run_id"] = "run_024"
         cfg.setdefault("inference", {})["run_id_base"] = 24
-    elif phase in ("phase2", "phase2_fine"):
+    elif phase in ("phase2", "phase2_fine", "phase2_playoff_broad"):
         cfg.setdefault("inference", {})["run_id"] = "run_025"
         cfg.setdefault("inference", {})["run_id_base"] = 25
     cfg["training"] = cfg.get("training", {})
@@ -264,7 +264,7 @@ def main() -> int:
         "--phase",
         type=str,
         default="full",
-        choices=("full", "phase1", "phase1_xgb", "phase2", "phase2_fine", "phase2_rf", "baseline", "rolling"),
+        choices=("full", "phase1", "phase1_xgb", "phase2", "phase2_fine", "phase2_playoff_broad", "phase2_rf", "baseline", "rolling"),
         help="full=config grid; phase1=narrowed Optuna ranges; phase2=coarse refinement; phase2_fine=fine refinement; phase1_xgb/phase2_rf=phased Model B; baseline=wide ranges; rolling=test rolling_windows",
     )
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML (default: config/defaults.yaml)")
@@ -279,7 +279,7 @@ def main() -> int:
         type=str,
         default=None,
         choices=("final_rank", "playoff_outcome"),
-        help="Override training.listmle_target (final_rank=standings, playoff_outcome=playoff result). Omit to use config.",
+        help="Override training.listmle_target (final_rank=playoff standings, playoff_outcome=playoff outcome). Omit to use config.",
     )
     parser.add_argument(
         "--n-jobs",
@@ -434,6 +434,17 @@ def main() -> int:
             lr_list = [0.075, 0.078, 0.08, 0.082, 0.085]
             n_xgb_list = list(range(190, 221))  # 190-220, center 204
             n_rf_list = list(range(195, 226))  # 195-225, center 209
+    elif phase == "phase2_playoff_broad":
+        # Broader search for playoff_outcome: epochs 24-28, higher LR, centered on combo 18
+        rolling_list = [[15, 30]]
+        max_depth_list = [5]
+        subsample_list = [0.8]
+        colsample_list = [0.7]
+        min_leaf_list = [5]
+        epochs_list = list(range(24, 29))  # 24-28
+        lr_list = [0.08, 0.09]  # higher LR range
+        n_xgb_list = list(range(210, 251))  # 210-250, center ~229
+        n_rf_list = list(range(160, 191))  # 160-190, center ~173
 
     listmle_target = getattr(args, "listmle_target", None)
 
