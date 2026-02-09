@@ -8,7 +8,7 @@ February 2026
 
 ## Abstract
 
-This project builds a multi-modal stacking ensemble to predict NBA team strength and playoff-relevant outcomes. The system combines a roster-aware Deep Set model (Model A) with a hybrid tabular ensemble of XGBoost and Random Forest (Model B), blended via K-fold out-of-sample (OOF) predictions and a RidgeCV meta-learner. The goal is to predict true team strength and identify *sleepers* (teams that outperform their predicted rank) versus *paper tigers* (teams that underperform), without circular evaluation or net-rating leakage. Evaluation evolved from regular-season standings to **playoff outcome** (end-of-season final rank). **Run 21 is the first real success:** Model A contributes (non-zero attention and primary contributors), and ensemble ranking versus playoff outcome improved (NDCG, Spearman, MRR) over run_020. From here, hyperparameter sweeps and future test runs write to `outputs3/` (sweeps → `outputs3/sweeps/<batch_id>/`). This report summarizes implementation findings, accuracy progress, metric development, methodology, key decisions, and issues encountered.
+This project builds a multi-modal stacking ensemble to predict NBA team strength and playoff-relevant outcomes. The system combines a roster-aware Deep Set model (Model A) with a hybrid tabular ensemble of XGBoost and Random Forest (Model B), blended via K-fold out-of-sample (OOF) predictions and a RidgeCV meta-learner. The goal is to predict true team strength and identify *sleepers* (teams that outperform their predicted rank) versus *paper tigers* (teams that underperform), without circular evaluation or net-rating leakage. Evaluation evolved from regular-season standings to **playoff outcome** (end-of-season final rank). **Run 21 is the first real success:** Model A contributes (non-zero attention and primary contributors), and ensemble ranking versus playoff outcome improved (NDCG, Spearman, MRR) over run_020. Production config: phase3 fine ndcg16 combo 18 (NDCG@16 0.550, Spearman 0.557, playoff_spearman 0.568); sweeps write to `outputs4/sweeps/<batch_id>/`. This report summarizes implementation findings, accuracy progress, metric development, methodology, key decisions, and issues encountered.
 
 ---
 
@@ -24,7 +24,7 @@ This project builds a multi-modal stacking ensemble to predict NBA team strength
 
 - **Target:** Future W/L (next 5) or final playoff seed — never raw efficiency metrics as the primary target.
 - **No net-rating leakage:** `net_rating` is excluded from Model B features and from targets; enforced in `src.features.team_context.FORBIDDEN` and training code. Allowed only in baselines (e.g. rank-by-Net-Rating).
-- **ListMLE for Model A:** Listwise ranking loss over conference-date lists; teams in a list are ranked by strength; ListMLE encourages correct ordering of teams within each list. Model A ListMLE target = **playoff outcome** (`eos_final_rank`, champion=1) when `listmle_target: playoff_outcome`. Fallback to standings for seasons without playoff data. Previously `final_rank` (EOS standings); now `playoff_outcome`.
+- **ListMLE for Model A:** Listwise ranking loss over conference-date lists; teams in a list are ranked by strength; ListMLE encourages correct ordering of teams within each list. Model A ListMLE target = **final_rank** (EOS standings) in production (phase3 combo 18). Alternative: `playoff_outcome` (champion=1); phase4 sweep with playoff_outcome underperformed vs final_rank.
 - **RidgeCV for stacking:** Level-2 meta-learner is RidgeCV on pooled OOF (not Logistic Regression) for stability and to avoid overfitting when blending Model A, XGB, and RF ranks.
 - **Evaluation target evolution:** Early runs (009–017) used **regular-season standings** (or snapshot order) as ground truth. Later runs (020, 021) use **playoff outcome** (`eos_final_rank`: champion=1, runner-up=2, … first two eliminated=29–30). Metrics are **not comparable** across these two target types.
 
@@ -186,7 +186,7 @@ Chronological narrative from commit history and plans:
 
 **Run 21** is the first run where Model A contributes meaningfully (attention and primary_contributors) and ensemble ranking versus playoff outcome clearly improves (NDCG, Spearman, MRR). From here:
 
-- **Hyperparameter sweeps:** Run `sweep_hparams`; results write to `outputs3/sweeps/<batch_id>/`. Grid over Model A epochs, Model B hyperparameters, rolling windows, etc.
+- **Hyperparameter sweeps:** Run `sweep_hparams`; results write to `outputs4/sweeps/<batch_id>/`. Grid over Model A epochs, Model B hyperparameters, rolling windows, etc.
 - **Optional features:** Elo, team rolling, motivation, injury (e.g. nbainjuries), Monte Carlo championship odds, SOS/SRS (e.g. Team_Records.csv). See `.cursor/plans/enable_optional_features_7b94a57e.plan.md`.
 - **Calibration and playoff residual:** Ideas in `.cursor/plans/comprehensive_feature_and_evaluation_expansion.plan.md` (ECE, Platt scaling, playoff residual model, NBA-specific XGBoost tuning).
 

@@ -13,6 +13,7 @@ Comprehensive analysis of Phase 2 (Spearman-optimized) and Phase 3 (NDCG-optimiz
 | Sweep | Trials | Objective | listmle_target | Status | Best Spearman | Best NDCG@4 | Best NDCG@16 |
 |-------|--------|-----------|----------------|--------|---------------|------------|--------------|
 | **phase3_fine_ndcg16_final_rank** | 20 | ndcg16 | final_rank | **Complete** | **0.557** | 0.506 | **0.550** |
+| phase4_ndcg16_playoff_outcome | 25 | ndcg16 | playoff_outcome | Complete | 0.534 | 0.506 | 0.543 |
 | phase3_coarse_ndcg16_final_rank | 20 | ndcg16 | final_rank | Complete | 0.543 | 0.473 | 0.540 |
 | **phase2_coarse_spearman_final_rank** | 15 | spearman | final_rank | Complete | 0.535 | 0.511 | 0.543 |
 | phase3_coarse_ndcg4_final_rank | 20 | ndcg4 | final_rank | Complete | 0.492 | 0.506 | 0.547 |

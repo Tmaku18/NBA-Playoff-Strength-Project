@@ -9,6 +9,7 @@ Comprehensive analysis of all sweeps in **outputs4** (run_024/run_025). outputs4
 | Sweep | Trials | Objective | listmle_target | Status | Best Spearman | Best NDCG@4 | Best NDCG@16 |
 |-------|--------|-----------|----------------|--------|---------------|------------|--------------|
 | **phase3_fine_ndcg16_final_rank** | 20 | ndcg16 | final_rank | **Complete** | **0.557** | 0.506 | **0.550** |
+| phase4_ndcg16_playoff_outcome | 25 | ndcg16 | playoff_outcome | Complete | 0.534 | 0.506 | 0.543 |
 | phase3_coarse_ndcg16_final_rank | 20 | ndcg16 | final_rank | Complete | 0.543 | 0.473 | 0.540 |
 | **phase2_coarse_spearman_final_rank** | 15 | spearman | final_rank | Complete | 0.535 | 0.511 | 0.543 |
 | phase3_coarse_ndcg4_final_rank | 20 | ndcg4 | final_rank | Complete | 0.492 | 0.506 | 0.547 |
@@ -189,7 +190,17 @@ Phase 3 fine ndcg16        → NDCG@16 0.550, Spearman 0.557 ← Best overall
 
 ## 7. Recommendations (Updated)
 
-1. **Lock Phase 3 fine NDCG@16 combo 18** as the current best config (Spearman 0.557, playoff_spearman 0.568, NDCG@16 0.550).
+1. **Lock Phase 3 fine NDCG@16 combo 18** as the production config (Spearman 0.557, playoff_spearman 0.568, NDCG@16 0.550). **config/defaults.yaml** uses combo 18 params.
 2. **Fallback:** Phase 2 coarse combo 8 remains strong for Spearman-focused runs.
 3. **Explain on best combo:** `python -m scripts.5b_explain --config outputs4/sweeps/phase3_fine_ndcg16_final_rank/combo_0018/config.yaml`
-4. Update production/default config with combo 18 params.
+4. **Combo 18 config path:** `outputs4/sweeps/phase3_fine_ndcg16_final_rank/combo_0018/config.yaml`
+
+---
+
+## 8. Phase 4: listmle_target playoff_outcome (phase4_ndcg16_playoff_outcome)
+
+**Sweep:** 25 Optuna trials, phase2_fine, objective ndcg16, `listmle_target: playoff_outcome`.
+
+**Best combo 12:** epochs 20, lr 0.060, n_xgb 225, n_rf 168 — NDCG@16 0.543, Spearman 0.486, playoff_spearman 0.483.
+
+**Result:** Switching to `playoff_outcome` underperformed vs combo 18 (`final_rank`): NDCG@16 0.543 vs 0.550 (-0.007), Spearman 0.534 vs 0.557, playoff_spearman 0.525 vs 0.568. **Production uses `listmle_target: final_rank` (combo 18).**
