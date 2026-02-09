@@ -1,6 +1,6 @@
 ---
 name: NDCG16 Playoff Outcome Sweep
-overview: Switch ListMLE training target to `playoff_outcome`, set NDCG@16 as the primary evaluation metric, and run a phase2_fine Optuna sweep to find a config that improves NDCG@16 over the current 0.550 baseline (phase3_fine_ndcg16 with final_rank).
+overview: Switch ListMLE training target to `playoff_outcome`, set NDCG@16 as the primary evaluation metric, and run a phase2_fine Optuna sweep to find a config that improves NDCG@16 over the current 0.550 baseline (phase3_fine_ndcg16 with final_rank). Triton enabled; run in WSL.
 todos: []
 isProject: false
 ---

@@ -16,7 +16,7 @@ Plan for the next round of hyperparameter sweeps, per [phased_sweep_roadmap_3hr_
 python -m scripts.sweep_hparams --method optuna --n-trials 12 --n-jobs 4 --no-run-explain --objective spearman --listmle-target final_rank --phase rolling --batch-id phase1_rolling_spearman_final_rank --config config/outputs4_phase1.yaml
 ```
 
-2. **Remaining Phase 1 sweeps (optional)** — ndcg4, ndcg16, ndcg20, playoff_spearman, rank_rmse. Run on WSL or after Triton fix. See [outputs4_phase_i_sweeps](.cursor/plans/outputs4_phase_i_sweeps_2638c514.plan.md) §2.4 for sequential commands.
+2. **Remaining Phase 1 sweeps (optional)** — ndcg4, ndcg16, ndcg20, playoff_spearman, rank_rmse. Run in WSL (Triton enabled). See [outputs4_phase_i_sweeps](.cursor/plans/outputs4_phase_i_sweeps_2638c514.plan.md) §2.4 for sequential commands.
 
 ---
 

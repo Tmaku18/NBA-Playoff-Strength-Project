@@ -160,6 +160,8 @@ All paths under the configured outputs dir. **outputs2/** holds run_020/021; **o
 
 ### WSL / GPU and reproducibility
 
+**Triton (torch.compile) is enabled** for Model A training; run sweeps and pipelines in **WSL** (Triton does not support Windows).
+
 Running in **WSL (Ubuntu)** with GPU vs **Windows** can yield different results due to CUDA/cuDNN versions, RNG, or numerical precision. To compare:
 
 - Fix seeds (`repro.seed` in config) and run the same config on both environments.

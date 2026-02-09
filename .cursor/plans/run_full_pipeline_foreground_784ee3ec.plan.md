@@ -1,6 +1,6 @@
 ---
 name: Run full pipeline foreground
-overview: Run the full pipeline by executing each of the 8 scripts as a separate, foreground command in sequence (no single chained command, no background). Requires project root and PYTHONPATH set once, then run each script and wait for it to finish before starting the next.
+overview: Run the full pipeline by executing each of the 8 scripts as a separate, foreground command in sequence (no single chained command, no background). Requires project root and PYTHONPATH set once, then run each script and wait for it to finish before starting the next. Triton enabled; run in WSL.
 todos: []
 isProject: false
 ---

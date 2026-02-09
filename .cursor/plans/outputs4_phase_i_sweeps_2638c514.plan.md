@@ -1,11 +1,13 @@
 ---
 name: Outputs4 Phase I Sweeps
-overview: Configure outputs4 and run_id 25, then execute all Phase I sweeps (including Spearman re-run) following the phased sweep roadmap with the official FAST implementation (AMP + batch cache + --no-run-explain).
+overview: Configure outputs4 and run_id 25, then execute all Phase I sweeps (including Spearman re-run) following the phased sweep roadmap with the official FAST implementation (AMP + batch cache + --no-run-explain). Triton (torch.compile) enabled; run in WSL.
 todos: []
 isProject: false
 ---
 
 # Outputs4 Phase I Sweeps Plan
+
+**Environment:** Triton enabled. Run in WSL (Linux); Triton does not support Windows.
 
 ## 1. Config and Path Changes
 

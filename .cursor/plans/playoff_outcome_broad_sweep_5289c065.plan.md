@@ -1,6 +1,6 @@
 ---
 name: Playoff Outcome Broad Sweep
-overview: Complete the ndcg16_playoff_outcome plan's optional follow-ups by adding a broader search phase (epochs 24-28, higher LR 0.08-0.09, 150/150 list caps), running a more robust sweep, and updating docs.
+overview: Complete the ndcg16_playoff_outcome plan's optional follow-ups by adding a broader search phase (epochs 24-28, higher LR 0.08-0.09, 150/150 list caps), running a more robust sweep, and updating docs. Triton enabled; run in WSL.
 todos: []
 isProject: false
 ---

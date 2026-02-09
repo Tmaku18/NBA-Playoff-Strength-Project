@@ -1,6 +1,6 @@
 ---
 name: Phased Sweep Roadmap 3hr
-overview: Phase 0 baseline sweeps (spearman, ndcg; standings + playoff; max features; minimal trials) to find promising ranges, then phased Optuna sweeps with 4 parallel jobs under 3 hours per objective batch.
+overview: Phase 0 baseline sweeps (spearman, ndcg; standings + playoff; max features; minimal trials) to find promising ranges, then phased Optuna sweeps with 4 parallel jobs under 3 hours per objective batch. Triton enabled; run in WSL.
 todos:
   - id: phase0-done
     content: Phase 0 baseline sweeps complete (4/4)

@@ -1,6 +1,6 @@
 ---
 name: Sweep foreground timing early exit
-overview: Run the hyperparameter sweep in the foreground with wall-clock timing, optional early exit when models are not learning or when attention/players become masked again, light verbose/debug option, and document what is deactivated for faster sweeps.
+overview: Run the hyperparameter sweep in the foreground with wall-clock timing, optional early exit when models are not learning or when attention/players become masked again, light verbose/debug option, and document what is deactivated for faster sweeps. Triton enabled; run in WSL.
 todos: []
 isProject: false
 ---

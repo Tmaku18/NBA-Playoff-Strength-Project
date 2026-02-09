@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -391,7 +390,7 @@ def train_model_a_on_batches(
         return model
     _configure_torch_performance()
     model = _build_model(config, device, stat_dim_override=stat_dim_override)
-    if hasattr(torch, "compile") and sys.platform != "win32":
+    if hasattr(torch, "compile"):
         model = torch.compile(model, mode="reduce-overhead")
     lr = float(ma.get("learning_rate", 1e-3))
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -470,7 +469,7 @@ def train_model_a(
     stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
     _configure_torch_performance()
     model = _build_model(config, device, stat_dim_override=stat_dim_override)
-    if hasattr(torch, "compile") and sys.platform != "win32":
+    if hasattr(torch, "compile"):
         model = torch.compile(model, mode="reduce-overhead")
     lr = float(ma.get("learning_rate", 1e-3))
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)

@@ -1,6 +1,6 @@
 ---
 name: Phased Sweep Execution Plan
-overview: "Actionable agent-executable plan for completing Phase 1 hyperparameter sweeps: commit/push current work, run 12 sweeps (6 objectives x 2 listmle_targets) with --phase phase1, and update docs after each sweep. Robust settings ensure each objective batch (2 sweeps + analysis) finishes in &lt; 4 hours with 4 parallel jobs."
+overview: "Actionable agent-executable plan for completing Phase 1 hyperparameter sweeps: commit/push current work, run 12 sweeps (6 objectives x 2 listmle_targets) with --phase phase1, and update docs after each sweep. Robust settings ensure each objective batch (2 sweeps + analysis) finishes in &lt; 4 hours with 4 parallel jobs. Triton enabled; run in WSL."
 todos:
   - id: git-commit-push
     content: Git add, commit, and push all Phase 0 outputs and code changes

@@ -1,6 +1,6 @@
 ---
 name: NBA True Strength Prediction
-overview: Attention-Based Deep Set Network with Ensemble Validation for NBA "True Strength" Prediction.
+overview: Attention-Based Deep Set Network with Ensemble Validation for NBA "True Strength" Prediction. Triton (torch.compile) enabled for Model A; run sweeps and pipelines in WSL.
 isProject: false
 ---
 

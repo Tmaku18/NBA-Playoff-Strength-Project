@@ -1,6 +1,6 @@
 ---
 name: Refined Sweep Rerun
-overview: Rerun the sweep around the new sweet spots with tighter increments for Model A epochs (8–28) and a two-phase local Model B grid, using a more robust validation split (val_frac=0.25) and writing outputs to new batch folders to avoid overwrites.
+overview: Rerun the sweep around the new sweet spots with tighter increments for Model A epochs (8–28) and a two-phase local Model B grid, using a more robust validation split (val_frac=0.25) and writing outputs to new batch folders to avoid overwrites. Triton enabled; run in WSL.
 todos: []
 isProject: false
 ---
