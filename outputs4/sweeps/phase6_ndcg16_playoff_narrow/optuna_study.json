@@ -1,0 +1,19 @@
+{
+  "best_value": -Infinity,
+  "best_params": {
+    "rolling_windows": [
+      15,
+      30
+    ],
+    "model_a_epochs": 28,
+    "max_depth": 5,
+    "learning_rate": 0.08571043717316994,
+    "n_estimators_xgb": 244,
+    "n_estimators_rf": 190,
+    "subsample": 0.8,
+    "colsample_bytree": 0.7,
+    "min_samples_leaf": 5
+  },
+  "n_trials": 20,
+  "objective": "ndcg16"
+}
