@@ -1,4 +1,13 @@
-"""Train Models B and C (XGBoost + Random Forest) on real DB team-context features. Option A: K-fold OOF, then final models."""
+"""Script 4: Train Model B (XGBoost) and Model C (Random Forest).
+
+What this does:
+- Loads team-context features (ELO, rolling stats, SOS/SRS, etc.) from DB.
+- Uses the same train/test split as script 3 (from split_info.json).
+- Trains XGBoost and Random Forest to predict team strength.
+- Produces K-fold OOF predictions for stacking (script 4b).
+- Saves oof_model_b.parquet, xgb_model.joblib, rf_model.joblib.
+
+Run after script 3. Required before stacking (4b) and inference (6)."""
 import argparse
 import sys
 from pathlib import Path
@@ -34,6 +43,7 @@ def main():
         print("Database not found. Run scripts 1_download_raw and 2_build_db first.", file=sys.stderr)
         sys.exit(1)
     games, tgl, teams, pgl = load_training_data(db_path)
+    # Same list structure as script 3: one row per (team, date) with target y (e.g. win rate or playoff rank).
     lists = build_lists(tgl, games, teams)
     if not lists:
         print("No lists from build_lists (empty games/tgl?). Exiting.", file=sys.stderr)
@@ -43,6 +53,7 @@ def main():
         for tid, wr in zip(lst["team_ids"], lst["win_rates"]):
             rows.append({"team_id": int(tid), "as_of_date": lst["as_of_date"], "y": float(wr)})
     flat = pd.DataFrame(rows)
+    # Build team-context features (rolling stats, ELO, etc.) for each (team_id, as_of_date).
     team_dates = [(int(a), str(b)) for a, b in flat[["team_id", "as_of_date"]].drop_duplicates().values.tolist()]
     feat_df = build_team_context_as_of_dates(
         tgl, games, team_dates,
@@ -59,7 +70,7 @@ def main():
         out = ROOT / out
     out.mkdir(parents=True, exist_ok=True)
 
-    # Restrict to train dates from split_info.json (script 3 must have run first)
+    # Use only dates that script 3 marked as train (so OOF and final models match the same split).
     split_info = load_split_info(out)
     train_dates_set = set(split_info.get("train_dates", []))
     if not train_dates_set:
@@ -79,7 +90,7 @@ def main():
         print(f"Saved {p1}, {p2} (too few dates for OOF)")
         return
 
-    # Assign fold by date (same time-based split as script 3)
+    # Assign each date to a fold so validation is time-based (same idea as script 3).
     fold_size = (len(dates_sorted) + n_folds - 1) // n_folds
     date_to_fold = {}
     for fold in range(n_folds):
@@ -127,7 +138,7 @@ def main():
             file=sys.stderr,
         )
 
-    # Final models on full data
+    # Train final XGB and RF on all train data (with a small validation holdout for early stopping if configured).
     X = df[feat_cols].values.astype(np.float32)
     y = df["y"].values.astype(np.float32)
     dates_sorted_full = sorted(df["as_of_date"].unique())

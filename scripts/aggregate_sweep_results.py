@@ -1,8 +1,9 @@
-"""Aggregate sweep results from existing combo outputs when sweep was interrupted.
+"""Aggregate sweep results from existing combo outputs without re-running trials.
 
-Reads combo_XXXX/config.yaml and combo_XXXX/outputs/eval_report.json, builds
-sweep_results.csv, sweep_results_summary.json, optuna_study.json, optuna_importances.json,
-and sweep_config.json without re-running trials.
+What this does:
+- Reads each combo_XXXX/config.yaml and combo_XXXX/outputs/eval_report.json.
+- Builds sweep_results.csv, sweep_results_summary.json, optuna_study.json.
+- Use when a sweep was interrupted or run with external tools; avoids re-training.
 
 Usage:
   python -m scripts.aggregate_sweep_results --batch-id baseline_ndcg_playoff_outcome --objective ndcg

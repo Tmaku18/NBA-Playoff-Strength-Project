@@ -1,4 +1,8 @@
-"""Write run manifest: config snapshot, git hash, data manifest hash. No external services."""
+"""Write run manifest to outputs: config snapshot, git hash, data manifest hash.
+
+What this does:
+- Creates run_manifest.json in outputs with config, git HEAD, data manifest hash.
+- Used for reproducibility tracking. No external services; runs locally."""
 from __future__ import annotations
 
 import hashlib

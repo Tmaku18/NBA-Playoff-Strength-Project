@@ -1,4 +1,9 @@
-"""Pre-flight check: verify DB, config, and model prerequisites."""
+"""Pre-flight check: verify DB, config, seasons, and model files before running pipeline.
+
+What this does:
+- Checks DB exists and has games/teams/player_game_logs.
+- Verifies seasons config and playoff data (min 16 teams).
+- Confirms Model A/B/stacking files exist for inference. Run before full pipeline to catch issues early."""
 from __future__ import annotations
 
 import argparse

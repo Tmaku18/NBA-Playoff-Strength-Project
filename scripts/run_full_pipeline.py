@@ -1,4 +1,9 @@
-"""Run the full pipeline: download -> build_db -> leakage tests -> train A/B -> stacking -> inference -> evaluate -> explain."""
+"""Run the full pipeline: 1→2→leakage→3→4→4b→6→5→5b.
+
+What this does:
+- Runs all pipeline scripts in order: download raw, build DB, leakage tests, train Model A/B,
+  stacking, inference, evaluate, explain.
+- Stops at first failure. Use for end-to-end runs from scratch."""
 from __future__ import annotations
 
 import subprocess

@@ -1,7 +1,16 @@
-"""Train Model A (DeepSet + ListMLE) on real DB data. Option A: K-fold OOF, then final model."""
+"""Script 3: Train Model A (DeepSet + ListMLE).
+
+What this does:
+- Builds lists of team rankings from DB (by date, conference).
+- Trains a DeepSet neural network with ListMLE loss to rank teams.
+- Uses K-fold out-of-fold (OOF) predictions for downstream stacking.
+- Optionally uses batch cache to avoid rebuilding batches across sweeps.
+- Saves best_deep_set.pt and oof_model_a.parquet to outputs/run_NNN/.
+
+Run after scripts 1 and 2. Required before Model B (script 4)."""
 import os
 
-# Set thread count for PyTorch/numpy before importing torch (helps CPU parallelism)
+# Set thread count for PyTorch/numpy before importing torch (speeds up CPU ops)
 if "OMP_NUM_THREADS" not in os.environ:
     os.environ["OMP_NUM_THREADS"] = "14"
 if "MKL_NUM_THREADS" not in os.environ:
@@ -27,7 +36,7 @@ except ImportError:
 
 
 def _compute_batch_cache_key(config: dict, db_path: Path) -> str:
-    """Compute SHA256-based cache key from config + DB identity (path, mtime, size)."""
+    """Build a cache key from config + DB so we reuse batches when config/DB unchanged."""
     training = config.get("training", {})
     model_a = config.get("model_a", {})
     key_data = {
@@ -53,7 +62,7 @@ def _compute_batch_cache_key(config: dict, db_path: Path) -> str:
 
 
 def _resolve_batch_cache_dir(config: dict) -> Path | None:
-    """Resolve batch cache directory; return None if caching disabled."""
+    """Return the batch cache directory (e.g. data/processed/batch_cache)."""
     p = config.get("paths", {}).get("batch_cache")
     if p is None or (isinstance(p, str) and p.strip().lower() in ("null", "")):
         p = ROOT / "data" / "processed" / "batch_cache"
@@ -125,7 +134,7 @@ from src.utils.split import compute_split, get_train_seasons_ordered, group_list
 
 
 def _run_walk_forward(config, train_lists, games, tgl, teams, pgl, out, root, playoff_games=None, playoff_tgl=None):
-    """Per-season walk-forward: train on 1..k, validate on k+1; final step trains on all and saves."""
+    """Walk-forward training: train on seasons 1..k, validate on k+1; last step trains on all and saves."""
     import torch
 
     seasons_cfg = config.get("seasons") or {}
@@ -226,6 +235,7 @@ def main():
     config_path = Path(args.config) if args.config else ROOT / "config" / "defaults.yaml"
     if not config_path.is_absolute():
         config_path = ROOT / config_path
+    # Load config and database; exit if DB is missing.
     print("Script 3: loading config and DB...", flush=True)
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -234,6 +244,7 @@ def main():
         print("Database not found. Run scripts 1_download_raw and 2_build_db first.", file=sys.stderr)
         sys.exit(1)
     games, tgl, teams, pgl = load_training_data(db_path)
+    # If we are training to predict playoff outcome, load playoff data for list labels.
     listmle_target = (config.get("training") or {}).get("listmle_target")
     playoff_games, playoff_tgl = None, None
     if listmle_target == "playoff_outcome":
@@ -250,9 +261,10 @@ def main():
     if not out.is_absolute():
         out = ROOT / out
     out.mkdir(parents=True, exist_ok=True)
-    # Reserve run_id for this pipeline run so inference (script 6) writes to the same folder
+    # Reserve run_id so script 6 (inference) writes to the same run folder when running the full pipeline.
     _reserve_run_id(out, config)
 
+    # Build ranking lists (e.g. one per snapshot date per conference) from standings or playoff outcome.
     lists = build_lists(
         tgl, games, teams,
         config=config,
@@ -279,7 +291,7 @@ def main():
         print(f"Saved {path} (no valid lists for OOF)")
         return
 
-    # 75/25 train-test split: compute and persist; use only train lists for OOF and final model
+    # Split lists into train vs test (e.g. 75/25 by time); only train lists are used for OOF and final model.
     train_lists, test_lists, split_info = compute_split(valid_lists, config)
     write_split_info(split_info, out)
     print(f"Split: {split_info['split_mode']} — train {split_info['n_train_lists']} lists, test {split_info['n_test_lists']} lists", flush=True)
@@ -391,7 +403,7 @@ def main():
             tmp.rename(cache_dir / f"{cache_key}.pt")
             print(f"Batch cache saved: {cache_key}.pt", flush=True)
 
-    # Time-based fold split: sort by as_of_date, chunk into n_folds (within train only)
+    # Split OOF lists into n_folds by time (sorted by date then conference) so validation is always in the future.
     sorted_indices = sorted(range(len(oof_lists)), key=lambda i: (oof_lists[i]["as_of_date"], oof_lists[i].get("conference", "")))
     fold_size = (len(sorted_indices) + n_folds - 1) // n_folds
     oof_rows = []
@@ -434,7 +446,7 @@ def main():
     else:
         print("No OOF rows collected (every fold had empty train or val batches).", file=sys.stderr)
 
-    # Final model: use cached all_batches if available (from batch cache), else build
+    # Train the final model on all train lists (or cached batches); this is what inference will load.
     if all_batches is None:
         all_lists = train_lists
         max_final = config.get("training", {}).get("max_final_batches", 50)

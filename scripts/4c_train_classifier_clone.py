@@ -1,5 +1,10 @@
-"""Train XGBoost Classifier (clone config): Train 2015-2022, Val 2023, Holdout 2024.
-Target: binary (playoff team = top-15). Eval: AUC-ROC, Brier."""
+"""Script 4c: Train optional playoff-classifier (binary: playoff team yes/no).
+
+What this does:
+- Trains XGBoost to classify teams as playoff (top-15) vs non-playoff.
+- Uses train 2015-22, val 2023, holdout 2024.
+- Evaluates with AUC-ROC and Brier score.
+- Optional; not part of main ranking pipeline. Use clone_classifier config."""
 import argparse
 import json
 import sys
@@ -24,6 +29,7 @@ def main():
         config = yaml.safe_load(f)
     with open(config_path, "r", encoding="utf-8") as f:
         clone_cfg = yaml.safe_load(f)
+    # Merge clone config (train/val/holdout seasons, XGB params) into main config.
     for k, v in clone_cfg.items():
         if isinstance(v, dict) and k in config and isinstance(config[k], dict):
             config[k].update(v)
@@ -66,6 +72,7 @@ def main():
             season_start=seasons_cfg.get(season, {}).get("start"),
             season_end=seasons_cfg.get(season, {}).get("end"),
         )
+        # Binary target: 1 if team made playoffs (top 15 by end-of-season standings), else 0.
         for tid, wr in zip(lst["team_ids"], lst["win_rates"]):
             tid = int(tid)
             rank = standings.get(tid, 30)

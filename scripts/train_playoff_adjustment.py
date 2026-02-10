@@ -1,8 +1,9 @@
-"""Stub: load playoff player logs, compute per-player playoff vs regular-season stat delta.
+"""Stub: load playoff player logs and compute per-player playoff contribution.
 
-Writes outputs2/playoff_adjustment_stub.json with placeholder structure.
-No training yet. Expand per PlayoffPerformanceLearning.md.
-"""
+What this does:
+- Loads playoff data, computes per-player playoff vs regular-season stat delta.
+- Writes playoff_adjustment_stub.json with placeholder structure.
+- No training yet. Expand per PlayoffPerformanceLearning.md. Optional exploratory script."""
 from __future__ import annotations
 
 import json

@@ -1,4 +1,9 @@
-"""Compare evaluation metrics across all run_XXX/predictions.json. One-off for analysis."""
+"""Compare evaluation metrics across all run_XXX folders.
+
+What this does:
+- Loads predictions.json from each run_* folder in outputs.
+- Computes NDCG, Spearman, MRR, etc. for each run.
+- Prints a comparison table. Use for one-off analysis when comparing runs."""
 import json
 import re
 import sys

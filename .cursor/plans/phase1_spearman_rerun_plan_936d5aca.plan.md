@@ -10,8 +10,8 @@ isProject: false
 ## Context
 
 - **outputs3** (old): phase1_spearman_final_rank and phase1_spearman_playoff_outcome completed successfully; best Spearman 0.499 / playoff_spearman 0.518 (combo 10, [10,30]).
-- **outputs4** (ours): same sweeps failed with -inf due to Triton on Windows. phase1_rolling succeeded on WSL.
-- **Triton**: `torch.compile` is enabled in [src/training/train_model_a.py](src/training/train_model_a.py). Run in WSL (Triton does not support Windows).
+- **outputs4** (ours): same sweeps failed with -inf due to Triton on Windows. phase1_rolling succeeded (WSL; Triton fix).
+- **Triton fix**: `torch.compile` is already skipped on Windows in [src/training/train_model_a.py](src/training/train_model_a.py) (lines 394-395, 473-474: `sys.platform != "win32"`). Reruns on Windows should work without changes.
 
 ## Goal
 
@@ -67,9 +67,10 @@ python -m scripts.sweep_hparams `
 ## Environment
 
 
-| Option  | Notes                                                 |
-| ------- | ----------------------------------------------------- |
-| **WSL** | Required. Triton (torch.compile) enabled; Linux only. |
+| Option      | Notes                                       |
+| ----------- | ------------------------------------------- |
+| **Windows** | Triton is skipped; sweeps should succeed.   |
+| **WSL**     | Also valid; phase1_rolling succeeded there. |
 
 
 Per [.cursor/rules/run-scripts-foreground-long.mdc](.cursor/rules/run-scripts-foreground-long.mdc): run in foreground with longest timeout; do not use background mode.

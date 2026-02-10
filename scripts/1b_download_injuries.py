@@ -1,5 +1,10 @@
-"""Download injury reports via nbainjuries. Maps Team/Player to IDs, writes JSON to data/raw/injury_reports/.
-Requires: nbainjuries, Java 8+ (for tabula-py). Data available since 2021-22 only."""
+"""Script 1b: Download injury reports.
+
+What this does:
+- Fetches injury reports from nbainjuries and maps Team/Player names to DB IDs.
+- Writes JSON to data/raw/injury_reports/ for optional injury-adjustment features.
+- Requires nbainjuries package and Java 8+ (for tabula-py). Data available since 2021-22 only.
+- Optional; run if you need injury features in Model B."""
 from __future__ import annotations
 
 import json
@@ -7,12 +12,13 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
+# Project root so we can import src and read config.
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
 def _last_first_to_first_last(name: str) -> str:
-    """'Last, First' or 'Last, Jr., First' -> 'First Last' or 'First Last Jr.'."""
+    """Convert 'Last, First' style names to 'First Last' so we can match our DB player names."""
     s = str(name).strip()
     if "," not in s:
         return s
@@ -23,6 +29,7 @@ def _last_first_to_first_last(name: str) -> str:
 
 
 def main():
+    # Load config for injury data path and season date ranges.
     with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
         import yaml
         config = yaml.safe_load(f)
@@ -30,6 +37,7 @@ def main():
     out_dir = ROOT / injury_path
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # If a different injury source is configured, we just write a README; user must add JSON manually.
     source = config.get("injury", {}).get("source", "nbainjuries")
     if source != "nbainjuries":
         readme = out_dir / "README.txt"
@@ -45,12 +53,14 @@ def main():
         print("Database not found. Run scripts 1_download_raw and 2_build_db first.", file=sys.stderr)
         return 1
 
+    # Load team and player IDs from the DB so we can map injury report names to our IDs.
     from src.data.db import get_connection
     con = get_connection(db_path, read_only=True)
     teams_df = con.execute("SELECT team_id, name, abbreviation FROM teams").df()
     players_df = con.execute("SELECT player_id, player_name FROM players").df()
     con.close()
 
+    # Build lookup: team name or abbreviation -> team_id.
     team_to_id: dict[str, int] = {}
     for _, r in teams_df.iterrows():
         n = str(r.get("name", "")).strip()
@@ -60,6 +70,7 @@ def main():
         if a:
             team_to_id[a] = int(r["team_id"])
 
+    # Build lookup: player name -> player_id; also support "First Last" form for names stored as "Last, First".
     player_to_id: dict[str, int] = {}
     for _, r in players_df.iterrows():
         nm = str(r.get("player_name", "")).strip()
@@ -69,11 +80,13 @@ def main():
     for k, v in player_to_id.items():
         first_last_map[k] = v
 
+    # Collect every date in the configured season ranges (nbainjuries has data from 2021-22 only).
     seasons_cfg = config.get("seasons", {})
     if not seasons_cfg:
         print("No seasons in config.", file=sys.stderr)
         return 1
 
+    # We only record players with status "Out" (or "OUT") so features can flag missing players.
     status_filter = {"Out", "OUT"}
     try:
         from nbainjuries import injury
@@ -96,6 +109,7 @@ def main():
             dates_to_fetch.append((d.strftime("%Y-%m-%d"), d))
             d = d + timedelta(days=1)
 
+    # For each date, fetch the injury report at 5:30pm ET, map to our IDs, and write one JSON file per day.
     print(f"Fetching {len(dates_to_fetch)} dates (nbainjuries, 5pm ET)...")
     written = 0
     errors = 0

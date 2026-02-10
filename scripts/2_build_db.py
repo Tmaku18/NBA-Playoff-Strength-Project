@@ -1,5 +1,12 @@
-"""Build DuckDB from raw logs; update data/manifest.json (processed, raw hashes).
-If raw file hashes match manifest and DB exists, skip rebuild. If raw changed, rebuild."""
+"""Script 2: Build DuckDB database from raw game logs.
+
+What this does:
+- Loads raw parquet/csv files from data/raw/ into a DuckDB database.
+- Includes both regular season and playoff data.
+- Skips rebuild if raw file hashes are unchanged and DB already exists.
+- Updates data/manifest.json with processed DB hash and raw hashes.
+
+Run after script 1. Required before training (scripts 3, 4, etc.)."""
 from __future__ import annotations
 
 import hashlib
@@ -19,7 +26,7 @@ def _hash_if_exists(path: Path) -> str | None:
 
 
 def _current_raw_hashes(raw_dir: Path, seasons: list[str]) -> dict[str, str]:
-    """Build filename -> hash for all raw files we would load (regular + playoff)."""
+    """Compute hashes for all raw files (regular + playoff) to detect changes."""
     out: dict[str, str] = {}
     for season in seasons:
         y1, y2 = season.split("-")[0], season.split("-")[1]
@@ -56,6 +63,7 @@ def main():
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = json.load(f)
 
+    # Skip rebuild if raw files unchanged and DB exists
     current_raw = _current_raw_hashes(raw_dir, seasons)
     stored_raw = manifest.get("raw") or {}
     raw_unchanged = current_raw == stored_raw and len(current_raw) > 0
@@ -77,9 +85,10 @@ def main():
     if manifest_path.exists():
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = json.load(f)
+    # Update manifest: store hash of the DB file and preserve or recompute raw file hashes.
     if db_path.exists():
         manifest["processed"] = hashlib.sha256(db_path.read_bytes()).hexdigest()
-    # preserve raw hashes if present; if 1_download_raw wasn't run, hash raw files that exist
+    # If script 1 was not run, we can still hash whatever raw files exist for the manifest.
     if "raw" not in manifest or not manifest["raw"]:
         manifest["raw"] = {}
         for p in (raw_dir).glob("*.parquet"):

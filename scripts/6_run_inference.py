@@ -1,4 +1,12 @@
-"""Run inference pipeline: predictions.json and figures."""
+"""Script 6: Run inference and write predictions.
+
+What this does:
+- Loads trained Model A (best_deep_set.pt), Model B (xgb/rf), and stacking meta.
+- Runs inference on test dates to produce team strength scores.
+- Writes predictions.json (and per-season predictions_YYYY.json) to outputs/run_NNN/.
+- Uses run_id from .current_run (set by script 3) so one pipeline = one run folder.
+
+Run after scripts 3, 4, 4b. Required before evaluation (script 5)."""
 import argparse
 import re
 import sys
@@ -42,8 +50,8 @@ def main():
         out = ROOT / out
     run_id = config.get("inference", {}).get("run_id")
     run_id_base = config.get("inference", {}).get("run_id_base")
+    # Prefer config run_id; else use the run_id that script 3 wrote to .current_run so pipeline uses one folder.
     if run_id is None or (isinstance(run_id, str) and run_id.strip().lower() in ("null", "")):
-        # Reuse run_id reserved by script 3 so one pipeline run = one run folder
         current_run_file = out / ".current_run"
         if current_run_file.exists():
             run_id = current_run_file.read_text(encoding="utf-8").strip()

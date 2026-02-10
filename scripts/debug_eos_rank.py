@@ -1,4 +1,9 @@
-"""Debug EOS final rank: print playoff wins and order for 2024-25."""
+"""Debug EOS final rank (playoff outcome): print playoff wins and team order for 2024-25.
+
+What this does:
+- Loads playoff data, computes playoff wins and reg-season win pct.
+- Prints sorted team order for EOS_global_rank (playoff outcome).
+- Use to verify playoff data and rank computation. Not part of main pipeline."""
 import sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]

@@ -1,4 +1,9 @@
-"""Check if canonical DB exists and has playoff data. Run: python -m scripts.check_playoff_db"""
+"""Check if canonical DB exists and contains playoff data.
+
+What this does:
+- Prints DB path and whether it exists.
+- Lists tables and row counts for playoff_games, playoff_team_game_logs.
+- Use to verify DB is ready for listmle_target=playoff_outcome or evaluation. Honors NBA_DB_PATH env var."""
 from pathlib import Path
 import sys
 

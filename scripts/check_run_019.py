@@ -1,3 +1,8 @@
+"""One-off script: compare run_019 vs run_014 predictions (EOS rank source, playoff data).
+
+What this does:
+- Loads predictions from run_019 and run_014, prints eos_rank_source and sample team ranks.
+- Used for debugging EOS/playoff rank changes. Not part of main pipeline."""
 import json
 
 p19 = json.load(open('outputs/run_019/predictions_2024-25.json'))

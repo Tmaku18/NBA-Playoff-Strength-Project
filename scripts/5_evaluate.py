@@ -1,4 +1,12 @@
-"""Run evaluation on real predictions; write outputs/eval_report.json. Requires predictions.json from script 6."""
+"""Script 5: Evaluate predictions and write metrics.
+
+What this does:
+- Loads predictions.json from the latest run (or specified run_id).
+- Computes NDCG, Spearman, rank MAE/RMSE, MRR, Brier, etc. vs actual playoff outcome.
+- Writes eval_report.json and optionally ANALYSIS_NN.md to the run folder.
+- Compares ensemble, Model A, XGB, and RF performance.
+
+Run after script 6 (inference). Can re-run on existing predictions to update metrics."""
 import argparse
 import json
 import re
@@ -46,7 +54,7 @@ def _latest_run_id(outputs_dir: Path) -> str | None:
 
 
 def _teams_to_arrays(teams: list) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[int], dict[int, str]]:
-    """Extract y_actual, y_score, pred_ranks, and team_id list; team_id -> conference for filtering."""
+    """From the teams list in predictions.json, extract actual ranks, predicted scores/ranks, team IDs, and conference map."""
     actual_ranks = []
     pred_scores = []
     pred_ranks = []
@@ -125,7 +133,7 @@ def _compute_metrics_from_arrays(
     *,
     k: int = 10,
 ) -> dict:
-    """Compute ndcg, spearman, mrr, roc_auc_upset from arrays."""
+    """Compute ranking metrics (NDCG, Spearman, MRR, ROC-AUC for upset prediction) from aligned arrays."""
     n = len(y_actual)
     if n < 2:
         return {"ndcg": 0.0, "ndcg10": 0.0, "ndcg_at_4": 0.0, "ndcg_at_12": 0.0, "ndcg_at_16": 0.0, "ndcg_at_20": 0.0, "spearman": 0.0, "mrr_top2": 0.0, "mrr_top4": 0.0, "roc_auc_upset": 0.5}
@@ -276,7 +284,7 @@ def main():
 
     report: dict = {"notes": {}}
 
-    # Split info (if script 3 has been run)
+    # Attach split info from script 3 (train/test dates, split mode) if available.
     try:
         split_info = load_split_info(out_dir)
         report["split_info"] = {
@@ -292,6 +300,7 @@ def main():
 
     by_season: dict[str, dict] = {}
 
+    # Evaluate per-season files (e.g. predictions_2024-25.json) and write eval_report_<season>.json.
     for pred_file in sorted(per_season_preds):
         season = pred_file.stem.replace("predictions_", "")
         with open(pred_file, "r", encoding="utf-8") as f:
@@ -380,13 +389,13 @@ def main():
             "rank_mae/rank_rmse: pred vs playoff_final_results; eos_standings vs playoff_final_results (baseline)."
         )
 
-    # Write to run_dir to preserve per-run (never overwrite previous run's report)
+    # Write report into the run folder so each run keeps its own evaluation.
     run_report_path = run_dir / "eval_report.json"
     run_dir.mkdir(parents=True, exist_ok=True)
     with open(run_report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
     print(f"Wrote {run_report_path}")
-    # Also write to outputs root for "latest" (backward compatibility)
+    # Also write a copy at outputs root as the "latest" report for backward compatibility.
     out = out_dir / "eval_report.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:

@@ -1,4 +1,9 @@
-"""Download RAPTOR CSV from FiveThirtyEight GitHub. Saves to data/raw/raptor/ or config path."""
+"""Script 1c: Download RAPTOR (player advanced stats) from FiveThirtyEight.
+
+What this does:
+- Downloads historical_RAPTOR_by_player.csv from FiveThirtyEight's GitHub.
+- Saves to data/raw/raptor/ (or config path) for optional RAPTOR features in Model B.
+- Optional; run if you want to add RAPTOR metrics to team context."""
 from __future__ import annotations
 
 import sys
@@ -13,6 +18,7 @@ URL = "https://raw.githubusercontent.com/fivethirtyeight/data/master/nba-raptor/
 def main():
     import urllib.request
 
+    # Output path can be overridden in config (raptor.data_path).
     with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
         import yaml
         config = yaml.safe_load(f)
@@ -20,6 +26,7 @@ def main():
     out_path = ROOT / path_cfg
     out_path.parent.mkdir(parents=True, exist_ok=True)
     try:
+        # Single file download; overwrites if already present.
         urllib.request.urlretrieve(URL, out_path)
         print(f"Downloaded RAPTOR to {out_path}")
         return 0

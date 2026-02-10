@@ -1,10 +1,9 @@
-"""Run pipeline from build_db through explain.
+"""Run pipeline from script 2 (build DB) through explain. Skips script 1 (download raw).
 
-- 2_build_db: if raw file hashes match manifest and DB exists, skip rebuild; else rebuild.
-- run_leakage_tests, 3_train_model_a, 4_train_models_b_and_c, 4b_train_stacking, 6_run_inference, 5_evaluate, 5b_explain.
-
-Runs in foreground; data loaders use in-process cache so the same DB is not reloaded within a step.
-"""
+What this does:
+- Runs 2→leakage→3→4→4b→6→5→5b. Skips download since raw data assumed present.
+- 2_build_db skips rebuild if raw hashes unchanged and DB exists.
+- Runs in foreground. Use when raw data already exists and you want to retrain/eval."""
 from __future__ import annotations
 
 import subprocess

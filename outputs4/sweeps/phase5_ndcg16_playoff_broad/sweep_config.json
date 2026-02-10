@@ -1,0 +1,9 @@
+{
+  "batch_id": "phase5_ndcg16_playoff_broad",
+  "method": "optuna",
+  "n_combos": 35,
+  "n_jobs": 3,
+  "config_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4",
+  "val_frac": 0.25,
+  "phase": "phase2_playoff_broad"
+}

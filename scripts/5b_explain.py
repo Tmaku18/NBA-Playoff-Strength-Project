@@ -1,9 +1,12 @@
-"""Run SHAP (Model B) and attention ablation (Model A) on real data from DB.
+"""Script 5b: Explain model predictions (SHAP + attention/IG).
 
-Usage:
-  python -m scripts.5b_explain
-  python -m scripts.5b_explain --config path/to/config.yaml   # e.g. sweep best combo
-"""
+What this does:
+- Runs SHAP on Model B (XGBoost) to show feature importance for team strength.
+- Runs attention/Integrated Gradients on Model A (DeepSet) for player-level explanations.
+- Writes shap_summary.png, attention plots, and IG outputs to run folder.
+- Use --config to point at a sweep combo (e.g. outputs4/sweeps/.../combo_0018/config.yaml).
+
+Run after inference (script 6). Optional; useful for interpreting which features/players matter."""
 import argparse
 import math
 import sys
@@ -19,7 +22,7 @@ sys.path.insert(0, str(ROOT))
 
 
 def _copy_to_run_dir(out: Path, src: Path, name: str, config: dict) -> None:
-    """Copy explain output to run_dir to preserve per-run when run_id is known."""
+    """Copy a file (e.g. shap_summary.png) into the current run folder when run_id is set or in .current_run."""
     import re
     run_id = config.get("inference", {}).get("run_id")
     if run_id is None or (isinstance(run_id, str) and run_id.strip().lower() in ("null", "")):
@@ -84,10 +87,11 @@ def main():
         print("No feature columns for SHAP.", file=sys.stderr)
         sys.exit(1)
     X_real = feat_df[feat_cols].fillna(0.0).values.astype(np.float32)
+    # Cap sample size so SHAP runs in reasonable time.
     if X_real.shape[0] > 500:
         X_real = X_real[:500]
 
-    # SHAP on real team-context X
+    # SHAP: explain Random Forest feature importance on team-context features.
     rf_path = out / "rf_model.joblib"
     if not rf_path.exists():
         print("RF model not found. Run script 4 first.", file=sys.stderr)
@@ -99,13 +103,12 @@ def main():
         shap_path = out / "shap_summary.png"
         shap_summary(rf, X_real, feature_names=feat_cols, out_path=shap_path)
         print("Wrote", shap_path)
-        # Preserve in run_dir when run_id known (e.g. pipeline)
         _copy_to_run_dir(out, shap_path, "shap_summary.png", config)
     except Exception as e:
         print("SHAP failed:", e, file=sys.stderr)
         sys.exit(1)
 
-    # Attention ablation on real list batch
+    # Attention ablation: mask top-k attention weights in Model A and see how score changes.
     model_a_path = out / "best_deep_set.pt"
     if not model_a_path.exists():
         print("Model A not found. Run script 3 first.", file=sys.stderr)

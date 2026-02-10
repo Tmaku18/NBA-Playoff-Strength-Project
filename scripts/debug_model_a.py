@@ -1,4 +1,9 @@
-"""Debug Model A training: inspect data, loss, gradients."""
+"""Debug Model A: inspect batch shapes, loss, gradients, and attention stats.
+
+What this does:
+- Loads DB, builds sample batches, runs a few training steps.
+- Prints batch shapes, rel values, loss, grad norms, attention stats.
+- Use to verify Model A is learning and attention is not collapsing. Can run with --dummy for synthetic data."""
 import sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]

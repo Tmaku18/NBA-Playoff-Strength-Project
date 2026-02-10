@@ -1,4 +1,11 @@
-"""Train RidgeCV meta-learner on pooled OOF from scripts 3 and 4 (real OOF parquets)."""
+"""Script 4b: Train stacking meta-learner.
+
+What this does:
+- Loads OOF predictions from Model A (oof_model_a.parquet) and Model B (oof_model_b.parquet).
+- Trains a RidgeCV meta-learner to blend Model A + XGBoost + RF into ensemble predictions.
+- Saves ridgecv_meta.joblib for use during inference (script 6).
+
+Run after scripts 3 and 4. Required before inference (6)."""
 import argparse
 import sys
 from pathlib import Path
@@ -39,6 +46,7 @@ def main():
     out = Path(config["paths"]["outputs"])
     if not out.is_absolute():
         out = ROOT / out
+    # Both scripts 3 and 4 must have produced OOF parquets so we can merge and train the meta-learner.
     path_a = out / "oof_model_a.parquet"
     path_b = out / "oof_model_b.parquet"
     if not path_a.exists() or not path_b.exists():
@@ -50,6 +58,7 @@ def main():
         sys.exit(1)
     df_a = pd.read_parquet(path_a)
     df_b = pd.read_parquet(path_b)
+    # Align Model A and Model B OOF by (team_id, as_of_date); drop duplicate y column from B.
     merged = df_a.merge(
         df_b,
         on=["team_id", "as_of_date"],
@@ -62,6 +71,7 @@ def main():
         print("No overlapping (team_id, as_of_date) between OOF files.", file=sys.stderr)
         sys.exit(1)
 
+    # Optionally replace y with playoff-based rank (e.g. final playoff finish) when target_rank is "playoffs".
     target_rank = (config.get("training") or {}).get("target_rank", "standings")
     if target_rank == "playoffs":
         db_path = Path(config.get("paths", {}).get("db", "data/processed/nba_build_run.duckdb"))
@@ -101,7 +111,7 @@ def main():
             except Exception as e:
                 print(f"Playoff target failed, using standings y: {e}", file=sys.stderr)
 
-    # Impute NaN in OOF columns (e.g. Model A numerical instability) so RidgeCV gets finite X
+    # Impute any NaN in OOF or target so Ridge regression gets finite inputs.
     for col in ["oof_a", "oof_xgb", "oof_rf", "y"]:
         if col in merged.columns and merged[col].isna().any():
             merged[col] = merged[col].fillna(merged[col].mean())
