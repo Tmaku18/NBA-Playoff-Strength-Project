@@ -10,7 +10,7 @@ Comprehensive analysis of all sweeps in **outputs4** (run_024/run_025). outputs4
 |-------|--------|-----------|----------------|--------|---------------|------------|--------------|
 | **phase3_fine_ndcg16_final_rank** | 20 | ndcg16 | final_rank (playoff standings) | **Complete** | **0.557** | 0.506 | **0.550** |
 | phase4_ndcg16_playoff_outcome | 25 | ndcg16 | playoff_outcome (playoff outcome) | Complete | 0.534 | 0.506 | 0.543 |
-| phase5_ndcg16_playoff_broad | 35 | ndcg16 | playoff_outcome (playoff outcome) | Pending | — | — | — |
+| phase5_ndcg16_playoff_broad | 35 | ndcg16 | playoff_outcome (playoff outcome) | **Complete** | 0.528 | 0.506 | **0.543** |
 | phase5_ndcg16_playoff_150lists | 35 | ndcg16 | playoff_outcome (playoff outcome) | Pending | — | — | — |
 | phase3_coarse_ndcg16_final_rank | 20 | ndcg16 | final_rank (playoff standings) | Complete | 0.543 | 0.473 | 0.540 |
 | **phase2_coarse_spearman_final_rank** | 15 | spearman | final_rank (playoff standings) | Complete | 0.535 | 0.511 | 0.543 |
@@ -211,24 +211,39 @@ Phase 3 fine ndcg16        → NDCG@16 0.550, Spearman 0.557 ← Best overall
 
 ## 9. Phase 5: Broader playoff outcome Search (phase5_ndcg16_playoff_broad, phase5_ndcg16_playoff_150lists)
 
-**Planned sweeps** (phase2_playoff_broad: epochs 24-28, lr 0.08-0.09; listmle_target: playoff outcome):
+**Sweep:** 35 Optuna trials, phase2_playoff_broad, objective ndcg16, `listmle_target: playoff_outcome`.
 
-| Sweep | Config | Trials | listmle_target | Status |
-|-------|--------|--------|----------------|--------|
-| phase5_ndcg16_playoff_broad | outputs4_phase1 (100/100) | 35 | playoff_outcome | Run manually |
-| phase5_ndcg16_playoff_150lists | outputs4_150_lists (150/150) | 35 | playoff_outcome | Run manually |
+**phase5_ndcg16_playoff_broad — Complete.** Best by NDCG@16: **combo_002** (NDCG@16 0.543, Spearman 0.505, playoff_spearman 0.507). Best by Spearman: combo_007 (0.528). Best by playoff_spearman: combo_009 (0.535).
+
+| Criterion | Best combo | Value | Key params |
+|-----------|------------|--------|------------|
+| NDCG@16 | 2 | 0.543 | rolling [15,30], epochs 26, lr 0.088, n_xgb 248, n_rf 172 |
+| Spearman | 7 | 0.528 | epochs 28, lr 0.080, n_xgb 225, n_rf 178 |
+| playoff_spearman | 9 | 0.535 | epochs 24, lr 0.086, n_xgb 221, n_rf 177 |
+
+**Optuna importances (phase5):** n_estimators_rf 0.37, learning_rate 0.34, n_estimators_xgb 0.25, model_a_epochs 0.03; subsample, rolling_windows, min_samples_leaf, max_depth, colsample_bytree = 0 (fix at default).
+
+**phase5_ndcg16_playoff_150lists** — Run manually if desired (150/150 lists).
 
 **Commands (WSL):**
 ```bash
-# Sweep A: 100/100 lists
+# Sweep A: 100/100 lists (completed)
 python -m scripts.sweep_hparams --config config/outputs4_phase1.yaml --method optuna --n-trials 35 --n-jobs 3 --objective ndcg16 --phase phase2_playoff_broad --listmle-target playoff_outcome --batch-id phase5_ndcg16_playoff_broad --no-run-explain
 
-# Sweep B: 150/150 lists
-python -m scripts.sweep_hparams --config config/outputs4_150_lists.yaml --method optuna --n-trials 35 --n-jobs 3 --objective ndcg16 --phase phase2_playoff_broad --listmle-target playoff_outcome --batch-id phase5_ndcg16_playoff_150lists --no-run-explain
+# Narrow sweep (fewer params; use after phase5): phase2_playoff_narrow
+python -m scripts.sweep_hparams --config config/outputs4_phase6_narrow.yaml --method optuna --n-trials 20 --n-jobs 4 --objective ndcg16 --phase phase2_playoff_narrow --listmle-target playoff_outcome --batch-id phase6_ndcg16_playoff_narrow
 ```
 
 ---
 
-## 10. Metric-Matrix Exploration
+## 10. Next steps
+
+1. **Canonical defaults:** Two NDCG@16 defaults are locked: **standings** = `config/defaults.yaml` (Phase 3 combo 18, final_rank, NDCG@16 0.550); **playoff outcome** = `config/defaults_playoff_outcome.yaml` (Phase 5 combo 2, playoff_outcome, NDCG@16 0.543). Use the latter with `--config config/defaults_playoff_outcome.yaml` for playoff-outcome–tuned runs.
+2. **Narrow sweep:** Use `optuna_importances` from phase5 to reduce search space: fix subsample=0.8, rolling_windows=[15,30], max_depth=5, colsample_bytree=0.7, min_samples_leaf=5; vary only learning_rate, n_estimators_xgb, n_estimators_rf, model_a_epochs. Config: `config/outputs4_phase6_narrow.yaml`; phase: `phase2_playoff_narrow`. Run for both targets: `--listmle-target playoff_outcome` (batch phase6_ndcg16_playoff_narrow) and `--listmle-target final_rank` (batch phase6_ndcg16_standings_narrow), each with `--n-jobs 6`.
+3. **Feature reduction:** Export Model B feature importances from best combos (see `scripts/export_feature_importances.py`); use `model_b.include_features` / `model_b.exclude_features` in config to reduce input features.
+
+---
+
+## 11. Metric-Matrix Exploration
 
 See **`docs/METRIC_MATRIX_EXPLORATION_PLAN.md`** for the 8-sweep matrix (2 loss targets × 4 objectives: spearman_standings, ndcg_standings, playoff_spearman, ndcg16). Promising non-best combos: `outputs4/sweeps/PROMISING_COMBOS.md`.

@@ -77,7 +77,9 @@ TEAM_CONTEXT_FEATURE_COLS: list[str] = ["eFG", "TOV_pct", "FT_rate", "ORB_pct", 
 
 # All feature cols (base + extended when enabled). Use for Model B when building feat_cols.
 def get_team_context_feature_cols(config: dict | None = None) -> list[str]:
-    """Return feature columns for Model B. Includes extended when config enables them."""
+    """Return feature columns for Model B. Includes extended when config enables them.
+    If model_b.include_features is set (non-null), returns intersection with full list (order by full list).
+    If model_b.exclude_features is set, returns full list minus those names."""
     base = list(TEAM_CONTEXT_FEATURE_COLS)
     cfg = config or {}
     if cfg.get("elo", {}).get("enabled", False):
@@ -94,6 +96,16 @@ def get_team_context_feature_cols(config: dict | None = None) -> list[str]:
         base.extend(["sos", "srs"])
     if cfg.get("raptor", {}).get("enabled", False):
         base.extend(["raptor_offense_sum_top5", "raptor_defense_sum_top5"])
+
+    mb = cfg.get("model_b") or {}
+    include = mb.get("include_features")
+    exclude = mb.get("exclude_features") or []
+    if include is not None:
+        include_set = set(include)
+        base = [c for c in base if c in include_set]
+    if exclude:
+        exclude_set = set(exclude)
+        base = [c for c in base if c not in exclude_set]
     return base
 
 

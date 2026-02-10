@@ -1,0 +1,19 @@
+# Playoff-outcome default: Phase 5 NDCG@16 combo 2 (listmle_target playoff_outcome).
+# Use with: --config config/defaults_playoff_outcome.yaml for pipeline or inference.
+# Extends config/defaults.yaml; overrides only listmle_target and combo_002 params.
+
+paths:
+  outputs: "outputs4"
+
+training:
+  listmle_target: "playoff_outcome"
+
+model_a:
+  epochs: 26  # Phase 5 combo_002
+
+model_b:
+  xgb:
+    n_estimators: 248
+    learning_rate: 0.0883  # Phase 5 combo_002
+  rf:
+    n_estimators: 172

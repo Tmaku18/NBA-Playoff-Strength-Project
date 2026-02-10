@@ -1,0 +1,67 @@
+{
+  "xgb": {
+    "eFG": 0.18579567968845367,
+    "TOV_pct": 0.041856635361909866,
+    "FT_rate": 0.041525568813085556,
+    "ORB_pct": 0.023999501019716263,
+    "pace": 0.046197470277547836,
+    "elo": 0.13253672420978546,
+    "massey_rating": 0.047049060463905334,
+    "days_until_playoffs": 0.0009865849278867245,
+    "elimination_status": 0.10699760168790817,
+    "late_season": 0.0,
+    "eliminated_x_late_season": 0.31470268964767456,
+    "raptor_offense_sum_top5": 0.03518667444586754,
+    "raptor_defense_sum_top5": 0.023165879771113396
+  },
+  "rf": {
+    "eFG": 0.6118072015070771,
+    "TOV_pct": 0.04688902176623332,
+    "FT_rate": 0.049286225840059254,
+    "ORB_pct": 0.029685768514858026,
+    "pace": 0.08844097111493926,
+    "elo": 0.13783643267023563,
+    "massey_rating": 0.016836612735599034,
+    "days_until_playoffs": 0.0005512632698815754,
+    "elimination_status": 7.356897697993241e-06,
+    "late_season": 0.0,
+    "eliminated_x_late_season": 1.8035980335284484e-05,
+    "raptor_offense_sum_top5": 0.008293096436893325,
+    "raptor_defense_sum_top5": 0.010348013266190174
+  },
+  "feature_names": [
+    "eFG",
+    "TOV_pct",
+    "FT_rate",
+    "ORB_pct",
+    "pace",
+    "elo",
+    "massey_rating",
+    "days_until_playoffs",
+    "elimination_status",
+    "late_season",
+    "eliminated_x_late_season",
+    "raptor_offense_sum_top5",
+    "raptor_defense_sum_top5"
+  ],
+  "combo": "combo_0002",
+  "config_path": "C:\\Users\\tmaku\\OneDrive\\Documents\\GSU\\Advanced Machine Learning\\NBA Playoff Strentgh Project\\outputs4\\sweeps\\phase5_ndcg16_playoff_broad\\combo_0002\\config.yaml",
+  "suggested_exclude_features": [
+    "TOV_pct",
+    "FT_rate",
+    "ORB_pct",
+    "massey_rating",
+    "days_until_playoffs",
+    "late_season",
+    "raptor_offense_sum_top5",
+    "raptor_defense_sum_top5"
+  ],
+  "suggested_include_features": [
+    "eFG",
+    "pace",
+    "elo",
+    "elimination_status",
+    "eliminated_x_late_season"
+  ],
+  "threshold": 0.05
+}

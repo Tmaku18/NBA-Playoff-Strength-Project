@@ -57,6 +57,9 @@ model_a:
   use_amp: true
 
 model_b:
+  # Feature subset: null = use full list from get_team_context_feature_cols. Set to reduce inputs (e.g. from export_feature_importances --threshold).
+  include_features: null   # allowlist: only these features (order preserved)
+  exclude_features: []     # blocklist: drop these (e.g. low-importance names)
   xgb:
     n_estimators: 229  # Phase 3 fine NDCG@16 combo 18
     max_depth: 5
@@ -74,7 +77,7 @@ training:
   rolling_windows: [15, 30]  # Phase 3 fine NDCG@16 combo 18
   roster_size: 15
   target_rank: "playoffs"  # or "standings" to train meta on standings-to-date
-  listmle_target: "final_rank"  # Production: phase3 combo 18. final_rank=playoff standings (EOS reg-season rank); playoff_outcome=playoff outcome (champion=1, runner-up=2)
+  listmle_target: "final_rank"  # Standings default (Phase 3 combo 18). final_rank=playoff standings; for playoff_outcome use config/defaults_playoff_outcome.yaml (Phase 5 combo 2).
   # 75/25 train-test split (script 3 writes split_info.json; 4 and 6 read it)
   train_seasons: ["2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
   test_seasons: ["2023-24", "2024-25"]

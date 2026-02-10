@@ -1,0 +1,30 @@
+# Phase 6 narrow sweep: fix low-importance params from phase5 optuna_importances.
+# Vary only: learning_rate, n_estimators_xgb, n_estimators_rf, model_a_epochs.
+# Use with: --phase phase2_playoff_narrow and --config config/outputs4_phase6_narrow.yaml
+# Extends outputs4_phase1; overrides only what the narrow phase uses.
+
+paths:
+  outputs: "outputs4"
+
+inference:
+  run_id: null
+  run_id_base: 25
+
+training:
+  max_lists_oof: 100
+  max_final_batches: 100
+
+# Sweep grid is driven by --phase phase2_playoff_narrow in sweep_hparams.py
+# (rolling_windows [15,30], max_depth 5, subsample 0.8, colsample_bytree 0.7, min_samples_leaf 5 fixed)
+sweep:
+  model_a_epochs: [24, 26, 28]
+  rolling_windows: [[15, 30]]
+  model_b:
+    max_depth: [5]
+    learning_rate: [0.08, 0.085, 0.09]
+    n_estimators_xgb: [225, 240, 248]
+    n_estimators_rf: [170, 178, 185]
+    subsample: [0.8]
+    colsample_bytree: [0.7]
+    min_samples_leaf: [5]
+  include_clone_classifier: false

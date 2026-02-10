@@ -1,0 +1,67 @@
+{
+  "xgb": {
+    "eFG": 0.1639649122953415,
+    "TOV_pct": 0.03408271446824074,
+    "FT_rate": 0.03833559527993202,
+    "ORB_pct": 0.019316576421260834,
+    "pace": 0.04044448956847191,
+    "elo": 0.12189607322216034,
+    "massey_rating": 0.0447905994951725,
+    "days_until_playoffs": 0.0007777471910230815,
+    "elimination_status": 0.08760340511798859,
+    "late_season": 0.0,
+    "eliminated_x_late_season": 0.4036862552165985,
+    "raptor_offense_sum_top5": 0.023145992308855057,
+    "raptor_defense_sum_top5": 0.021955659613013268
+  },
+  "rf": {
+    "eFG": 0.6118503474352647,
+    "TOV_pct": 0.04684425636236444,
+    "FT_rate": 0.049184426550887256,
+    "ORB_pct": 0.029815908615036447,
+    "pace": 0.08843476513034146,
+    "elo": 0.13784535508677506,
+    "massey_rating": 0.016838891085675312,
+    "days_until_playoffs": 0.0005495904758627498,
+    "elimination_status": 7.314372277773629e-06,
+    "late_season": 0.0,
+    "eliminated_x_late_season": 1.793172611369325e-05,
+    "raptor_offense_sum_top5": 0.008257478125716132,
+    "raptor_defense_sum_top5": 0.010353735033685163
+  },
+  "feature_names": [
+    "eFG",
+    "TOV_pct",
+    "FT_rate",
+    "ORB_pct",
+    "pace",
+    "elo",
+    "massey_rating",
+    "days_until_playoffs",
+    "elimination_status",
+    "late_season",
+    "eliminated_x_late_season",
+    "raptor_offense_sum_top5",
+    "raptor_defense_sum_top5"
+  ],
+  "combo": "combo_0018",
+  "config_path": "C:\\Users\\tmaku\\OneDrive\\Documents\\GSU\\Advanced Machine Learning\\NBA Playoff Strentgh Project\\outputs4\\sweeps\\phase3_fine_ndcg16_final_rank\\combo_0018\\config.yaml",
+  "suggested_exclude_features": [
+    "TOV_pct",
+    "FT_rate",
+    "ORB_pct",
+    "massey_rating",
+    "days_until_playoffs",
+    "elimination_status",
+    "late_season",
+    "raptor_offense_sum_top5",
+    "raptor_defense_sum_top5"
+  ],
+  "suggested_include_features": [
+    "eFG",
+    "pace",
+    "elo",
+    "eliminated_x_late_season"
+  ],
+  "threshold": 0.05
+}
