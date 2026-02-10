@@ -1,0 +1,295 @@
+{
+"date": "2023-02-08",
+"injuries": [
+{
+"player_id": 1630547,
+"team_id": 1610612766,
+"status": "Out"
+},
+{
+"player_id": 1630539,
+"team_id": 1610612766,
+"status": "Out"
+},
+{
+"player_id": 1630177,
+"team_id": 1610612766,
+"status": "Out"
+},
+{
+"player_id": 1628998,
+"team_id": 1610612766,
+"status": "Out"
+},
+{
+"player_id": 1626162,
+"team_id": 1610612766,
+"status": "Out"
+},
+{
+"player_id": 1630176,
+"team_id": 1610612764,
+"status": "Out"
+},
+{
+"player_id": 1630225,
+"team_id": 1610612764,
+"status": "Out"
+},
+{
+"player_id": 1630600,
+"team_id": 1610612739,
+"status": "Out"
+},
+{
+"player_id": 1629685,
+"team_id": 1610612739,
+"status": "Out"
+},
+{
+"player_id": 1628963,
+"team_id": 1610612765,
+"status": "Out"
+},
+{
+"player_id": 1630595,
+"team_id": 1610612765,
+"status": "Out"
+},
+{
+"player_id": 200768,
+"team_id": 1610612748,
+"status": "Out"
+},
+{
+"player_id": 203506,
+"team_id": 1610612748,
+"status": "Out"
+},
+{
+"player_id": 1629130,
+"team_id": 1610612748,
+"status": "Out"
+},
+{
+"player_id": 1630209,
+"team_id": 1610612748,
+"status": "Out"
+},
+{
+"player_id": 1631120,
+"team_id": 1610612738,
+"status": "Out"
+},
+{
+"player_id": 201568,
+"team_id": 1610612738,
+"status": "Out"
+},
+{
+"player_id": 203935,
+"team_id": 1610612738,
+"status": "Out"
+},
+{
+"player_id": 1630577,
+"team_id": 1610612755,
+"status": "Out"
+},
+{
+"player_id": 1629663,
+"team_id": 1610612755,
+"status": "Out"
+},
+{
+"player_id": 1630531,
+"team_id": 1610612755,
+"status": "Out"
+},
+{
+"player_id": 1631230,
+"team_id": 1610612759,
+"status": "Out"
+},
+{
+"player_id": 1629646,
+"team_id": 1610612759,
+"status": "Out"
+},
+{
+"player_id": 203473,
+"team_id": 1610612759,
+"status": "Out"
+},
+{
+"player_id": 1630200,
+"team_id": 1610612759,
+"status": "Out"
+},
+{
+"player_id": 1629641,
+"team_id": 1610612759,
+"status": "Out"
+},
+{
+"player_id": 1631110,
+"team_id": 1610612759,
+"status": "Out"
+},
+{
+"player_id": 1630170,
+"team_id": 1610612759,
+"status": "Out"
+},
+{
+"player_id": 203490,
+"team_id": 1610612761,
+"status": "Out"
+},
+{
+"player_id": 1629645,
+"team_id": 1610612745,
+"status": "Out"
+},
+{
+"player_id": 1629644,
+"team_id": 1610612758,
+"status": "Out"
+},
+{
+"player_id": 1629674,
+"team_id": 1610612758,
+"status": "Out"
+},
+{
+"player_id": 203085,
+"team_id": 1610612750,
+"status": "Out"
+},
+{
+"player_id": 1626157,
+"team_id": 1610612750,
+"status": "Out"
+},
+{
+"player_id": 1630548,
+"team_id": 1610612762,
+"status": "Out"
+},
+{
+"player_id": 1630695,
+"team_id": 1610612762,
+"status": "Out"
+},
+{
+"player_id": 202722,
+"team_id": 1610612742,
+"status": "Out"
+},
+{
+"player_id": 1628467,
+"team_id": 1610612742,
+"status": "Out"
+},
+{
+"player_id": 201939,
+"team_id": 1610612744,
+"status": "Out"
+},
+{
+"player_id": 2738,
+"team_id": 1610612744,
+"status": "Out"
+},
+{
+"player_id": 1630641,
+"team_id": 1610612757,
+"status": "Out"
+},
+{
+"player_id": 1626159,
+"team_id": 1610612757,
+"status": "Out"
+},
+{
+"player_id": 1631221,
+"team_id": 1610612743,
+"status": "Out"
+},
+{
+"player_id": 1628964,
+"team_id": 1610612753,
+"status": "Out"
+},
+{
+"player_id": 1629643,
+"team_id": 1610612753,
+"status": "Out"
+},
+{
+"player_id": 203552,
+"team_id": 1610612751,
+"status": "Out"
+},
+{
+"player_id": 201142,
+"team_id": 1610612751,
+"status": "Out"
+},
+{
+"player_id": 1628366,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1629750,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1630792,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1630637,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1630250,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1631213,
+"team_id": 1610612737,
+"status": "Out"
+},
+{
+"player_id": 1631495,
+"team_id": 1610612737,
+"status": "Out"
+},
+{
+"player_id": 1626164,
+"team_id": 1610612756,
+"status": "Out"
+},
+{
+"player_id": 203109,
+"team_id": 1610612756,
+"status": "Out"
+},
+{
+"player_id": 1626166,
+"team_id": 1610612756,
+"status": "Out"
+},
+{
+"player_id": 1629013,
+"team_id": 1610612756,
+"status": "Out"
+}
+]
+}

@@ -1,0 +1,15 @@
+{
+"date": "2022-04-11",
+"injuries": [
+{
+"player_id": 203925,
+"team_id": 1610612751,
+"status": "Out"
+},
+{
+"player_id": 1627732,
+"team_id": 1610612751,
+"status": "Out"
+}
+]
+}

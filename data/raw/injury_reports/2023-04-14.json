@@ -1,0 +1,55 @@
+{
+"date": "2023-04-14",
+"injuries": [
+{
+"player_id": 1628366,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1630183,
+"team_id": 1610612750,
+"status": "Out"
+},
+{
+"player_id": 1629675,
+"team_id": 1610612750,
+"status": "Out"
+},
+{
+"player_id": 1631096,
+"team_id": 1610612760,
+"status": "Out"
+},
+{
+"player_id": 1630197,
+"team_id": 1610612760,
+"status": "Out"
+},
+{
+"player_id": 1629026,
+"team_id": 1610612760,
+"status": "Out"
+},
+{
+"player_id": 1627732,
+"team_id": 1610612751,
+"status": "Out"
+},
+{
+"player_id": 201568,
+"team_id": 1610612738,
+"status": "Out"
+},
+{
+"player_id": 1629685,
+"team_id": 1610612739,
+"status": "Out"
+},
+{
+"player_id": 1629676,
+"team_id": 1610612752,
+"status": "Out"
+}
+]
+}

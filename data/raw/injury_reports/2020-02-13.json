@@ -1,0 +1,50 @@
+{
+"date": "2020-02-13",
+"injuries": [
+{
+"player_id": 1629605,
+"team_id": 1610612738,
+"status": "Out"
+},
+{
+"player_id": 1629682,
+"team_id": 1610612738,
+"status": "Out"
+},
+{
+"player_id": 1629057,
+"team_id": 1610612738,
+"status": "Out"
+},
+{
+"player_id": 1629597,
+"team_id": 1610612740,
+"status": "Out"
+},
+{
+"player_id": 1627982,
+"team_id": 1610612740,
+"status": "Out"
+},
+{
+"player_id": 203121,
+"team_id": 1610612740,
+"status": "Out"
+},
+{
+"player_id": 1629026,
+"team_id": 1610612740,
+"status": "Out"
+},
+{
+"player_id": 1629647,
+"team_id": 1610612760,
+"status": "Out"
+},
+{
+"player_id": 203460,
+"team_id": 1610612760,
+"status": "Out"
+}
+]
+}

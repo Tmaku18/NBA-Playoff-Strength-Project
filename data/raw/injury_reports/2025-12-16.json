@@ -1,0 +1,50 @@
+{
+"date": "2025-12-16",
+"injuries": [
+{
+"player_id": 1630540,
+"team_id": 1610612752,
+"status": "Out"
+},
+{
+"player_id": 1629013,
+"team_id": 1610612752,
+"status": "Out"
+},
+{
+"player_id": 1642855,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1642280,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1641801,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1642950,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1642866,
+"team_id": 1610612750,
+"status": "Out"
+},
+{
+"player_id": 201144,
+"team_id": 1610612750,
+"status": "Out"
+},
+{
+"player_id": 1642402,
+"team_id": 1610612750,
+"status": "Out"
+}
+]
+}

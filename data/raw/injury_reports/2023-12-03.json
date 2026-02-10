@@ -1,0 +1,15 @@
+{
+"date": "2023-12-03",
+"injuries": [
+{
+"player_id": 1641775,
+"team_id": 1610612738,
+"status": "Out"
+},
+{
+"player_id": 1630188,
+"team_id": 1610612754,
+"status": "Out"
+}
+]
+}

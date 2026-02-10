@@ -1,0 +1,150 @@
+{
+"date": "2020-12-13",
+"injuries": [
+{
+"player_id": 1627739,
+"team_id": 1610612737,
+"status": "Out"
+},
+{
+"player_id": 1630168,
+"team_id": 1610612737,
+"status": "Out"
+},
+{
+"player_id": 1629629,
+"team_id": 1610612737,
+"status": "Out"
+},
+{
+"player_id": 200765,
+"team_id": 1610612737,
+"status": "Out"
+},
+{
+"player_id": 203503,
+"team_id": 1610612737,
+"status": "Out"
+},
+{
+"player_id": 202329,
+"team_id": 1610612753,
+"status": "Out"
+},
+{
+"player_id": 1628964,
+"team_id": 1610612753,
+"status": "Out"
+},
+{
+"player_id": 203516,
+"team_id": 1610612753,
+"status": "Out"
+},
+{
+"player_id": 1628371,
+"team_id": 1610612753,
+"status": "Out"
+},
+{
+"player_id": 203082,
+"team_id": 1610612753,
+"status": "Out"
+},
+{
+"player_id": 1627747,
+"team_id": 1610612751,
+"status": "Out"
+},
+{
+"player_id": 203078,
+"team_id": 1610612764,
+"status": "Out"
+},
+{
+"player_id": 202722,
+"team_id": 1610612764,
+"status": "Out"
+},
+{
+"player_id": 1629010,
+"team_id": 1610612764,
+"status": "Out"
+},
+{
+"player_id": 202397,
+"team_id": 1610612764,
+"status": "Out"
+},
+{
+"player_id": 201566,
+"team_id": 1610612764,
+"status": "Out"
+},
+{
+"player_id": 1629686,
+"team_id": 1610612765,
+"status": "Out"
+},
+{
+"player_id": 1629690,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 202066,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 1627756,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 203943,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 201152,
+"team_id": 1610612741,
+"status": "Out"
+},
+{
+"player_id": 201567,
+"team_id": 1610612739,
+"status": "Out"
+},
+{
+"player_id": 1629645,
+"team_id": 1610612739,
+"status": "Out"
+},
+{
+"player_id": 1629012,
+"team_id": 1610612739,
+"status": "Out"
+},
+{
+"player_id": 202339,
+"team_id": 1610612740,
+"status": "Out"
+},
+{
+"player_id": 1629117,
+"team_id": 1610612740,
+"status": "Out"
+},
+{
+"player_id": 1630266,
+"team_id": 1610612740,
+"status": "Out"
+},
+{
+"player_id": 200755,
+"team_id": 1610612740,
+"status": "Out"
+}
+]
+}

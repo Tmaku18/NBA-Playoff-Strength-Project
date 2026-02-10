@@ -1,0 +1,25 @@
+{
+"date": "2022-04-14",
+"injuries": [
+{
+"player_id": 1628381,
+"team_id": 1610612737,
+"status": "Out"
+},
+{
+"player_id": 101150,
+"team_id": 1610612737,
+"status": "Out"
+},
+{
+"player_id": 1629012,
+"team_id": 1610612739,
+"status": "Out"
+},
+{
+"player_id": 1629731,
+"team_id": 1610612739,
+"status": "Out"
+}
+]
+}

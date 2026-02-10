@@ -1,0 +1,20 @@
+{
+"date": "2024-10-21",
+"injuries": [
+{
+"player_id": 1630173,
+"team_id": 1610612752,
+"status": "Out"
+},
+{
+"player_id": 1641755,
+"team_id": 1610612752,
+"status": "Out"
+},
+{
+"player_id": 1629011,
+"team_id": 1610612752,
+"status": "Out"
+}
+]
+}
