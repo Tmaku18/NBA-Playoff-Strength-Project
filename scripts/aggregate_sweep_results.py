@@ -60,6 +60,54 @@ def _collect_metrics(eval_path: Path) -> dict:
     return out
 
 
+def _build_by_conference_summary(results: list[dict]) -> dict:
+    """Build East/West summary for analytics. All future analytics must include this (see .cursor/rules/analytics-include-east-west.mdc)."""
+    e_ndcg = "test_metrics_by_conference_E_ndcg"
+    e_spearman = "test_metrics_by_conference_E_spearman"
+    w_ndcg = "test_metrics_by_conference_W_ndcg"
+    w_spearman = "test_metrics_by_conference_W_spearman"
+    valid = [
+        r for r in results
+        if all(
+            r.get(k) is not None
+            and isinstance(r.get(k), (int, float))
+            and math.isfinite(r.get(k))
+            for k in (e_ndcg, e_spearman, w_ndcg, w_spearman)
+        )
+    ]
+    if not valid:
+        return {}
+    return {
+        "E": {
+            "ndcg_min": min(r[e_ndcg] for r in valid),
+            "ndcg_max": max(r[e_ndcg] for r in valid),
+            "spearman_min": min(r[e_spearman] for r in valid),
+            "spearman_max": max(r[e_spearman] for r in valid),
+            "best_combo_ndcg": max(valid, key=lambda x: float(x[e_ndcg])).get("combo"),
+            "best_combo_spearman": max(valid, key=lambda x: float(x[e_spearman])).get("combo"),
+        },
+        "W": {
+            "ndcg_min": min(r[w_ndcg] for r in valid),
+            "ndcg_max": max(r[w_ndcg] for r in valid),
+            "spearman_min": min(r[w_spearman] for r in valid),
+            "spearman_max": max(r[w_spearman] for r in valid),
+            "best_combo_ndcg": max(valid, key=lambda x: float(x[w_ndcg])).get("combo"),
+            "best_combo_spearman": max(valid, key=lambda x: float(x[w_spearman])).get("combo"),
+        },
+        "per_combo": [
+            {
+                "combo": r.get("combo"),
+                "E_ndcg": r.get(e_ndcg),
+                "E_spearman": r.get(e_spearman),
+                "W_ndcg": r.get(w_ndcg),
+                "W_spearman": r.get(w_spearman),
+            }
+            for r in results
+            if r.get(e_ndcg) is not None
+        ],
+    }
+
+
 def _extract_params(config_path: Path) -> dict:
     """Extract sweep params from combo config.yaml."""
     if not config_path.exists():
@@ -215,6 +263,9 @@ def main() -> int:
     if valid_optuna:
         best_trial = max(valid_optuna, key=lambda x: float(x.get("value", -2)))
         summary["best_optuna_trial"] = best_trial
+    by_conf = _build_by_conference_summary(results)
+    if by_conf:
+        summary["by_conference_summary"] = by_conf
 
     with open(batch_dir / "sweep_results_summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)

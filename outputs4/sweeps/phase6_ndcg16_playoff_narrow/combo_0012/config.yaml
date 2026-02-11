@@ -40,8 +40,8 @@ paths:
     Strentgh Project/data/processed/nba_build.duckdb
   raw: data/raw
   processed: data/processed
-  outputs: C:\Users\tmaku\OneDrive\Documents\GSU\Advanced Machine Learning\NBA Playoff
-    Strentgh Project\outputs4\sweeps\phase6_ndcg16_playoff_narrow\combo_0012\outputs
+  outputs: /mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA
+    Playoff Strentgh Project/outputs4/sweeps/phase6_ndcg16_playoff_narrow/combo_0012/outputs
   batch_cache: null
 build_db:
   skip_if_exists: true
@@ -58,7 +58,7 @@ model_a:
   dropout: 0.2
   learning_rate: 0.0001
   grad_clip_max_norm: 5.0
-  epochs: 28
+  epochs: 25
   early_stopping_patience: 0
   early_stopping_min_delta: 0.0
   early_stopping_val_frac: 0.25
@@ -71,14 +71,14 @@ model_b:
   include_features: null
   exclude_features: []
   xgb:
-    n_estimators: 224
+    n_estimators: 223
     max_depth: 5
-    learning_rate: 0.0899093892346087
+    learning_rate: 0.0893151885344368
     early_stopping_rounds: 20
     subsample: 0.8
     colsample_bytree: 0.7
   rf:
-    n_estimators: 174
+    n_estimators: 188
     max_depth: 12
     min_samples_leaf: 5
 training:

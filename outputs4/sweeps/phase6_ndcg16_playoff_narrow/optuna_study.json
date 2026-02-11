@@ -1,5 +1,5 @@
 {
-  "best_value": -Infinity,
+  "best_value": 0.5430483202632829,
   "best_params": {
     "rolling_windows": [
       15,
@@ -7,8 +7,8 @@
     ],
     "model_a_epochs": 28,
     "max_depth": 5,
-    "learning_rate": 0.08571043717316994,
-    "n_estimators_xgb": 244,
+    "learning_rate": 0.0836998956653653,
+    "n_estimators_xgb": 230,
     "n_estimators_rf": 190,
     "subsample": 0.8,
     "colsample_bytree": 0.7,

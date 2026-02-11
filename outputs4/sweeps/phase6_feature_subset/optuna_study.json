@@ -1,0 +1,21 @@
+{
+  "best_value": 0.5382255069451961,
+  "best_params": {
+    "f_eFG": true,
+    "f_TOV_pct": true,
+    "f_FT_rate": true,
+    "f_ORB_pct": false,
+    "f_pace": true,
+    "f_elo": true,
+    "f_massey_rating": false,
+    "f_days_until_playoffs": true,
+    "f_elimination_status": false,
+    "f_late_season": true,
+    "f_eliminated_x_late_season": true,
+    "f_raptor_offense_sum_top5": true,
+    "f_raptor_defense_sum_top5": false
+  },
+  "n_trials": 10,
+  "objective": "ndcg16",
+  "phase": "feature_subset"
+}

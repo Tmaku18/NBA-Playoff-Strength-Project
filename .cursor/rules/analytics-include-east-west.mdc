@@ -1,0 +1,16 @@
+# Analytics must include East and West (by-conference) metrics
+
+Whenever you create or update **sweep analyses**, **analytics reports**, or **evaluation summaries** in this project (e.g. `SWEEP_ANALYSIS_*.md`, run summaries, or any document that summarizes model/sweep performance):
+
+1. **Always include East and West by-conference metrics** in addition to overall metrics:
+   - **East:** `test_metrics_by_conference_E_ndcg`, `test_metrics_by_conference_E_spearman` (or equivalent E NDCG / Spearman).
+   - **West:** `test_metrics_by_conference_W_ndcg`, `test_metrics_by_conference_W_spearman` (or equivalent W NDCG / Spearman).
+
+2. **Preferred format:** A table or section that shows, for each combo or run:
+   - East NDCG, East Spearman
+   - West NDCG, West Spearman  
+   Optionally include min/max/ranges across combos and which combo is best for East vs West.
+
+3. **Source of truth:** These values are in `eval_report.json` under `test_metrics_by_conference` (E/W), and in sweep outputs as `test_metrics_by_conference_E_ndcg`, `test_metrics_by_conference_E_spearman`, `test_metrics_by_conference_W_ndcg`, `test_metrics_by_conference_W_spearman` in `sweep_results.csv` and `sweep_results_summary.json` (each best_* entry and, when present, `by_conference_summary`).
+
+4. **Rationale:** Overall 16-team metrics can mask large East vs West differences; reporting both conferences ensures we don’t miss the ~0.7 West / ~0.25 East pattern and similar.

@@ -75,7 +75,6 @@ model_b:
   - ORB_pct
   - massey_rating
   - days_until_playoffs
-  - elimination_status
   - late_season
   - raptor_offense_sum_top5
   - raptor_defense_sum_top5
