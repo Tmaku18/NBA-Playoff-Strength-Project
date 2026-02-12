@@ -1,7 +1,6 @@
-# data/raw and data/processed DB are tracked (raw + nba_build.duckdb)
+# data/processed: keep dir, ignore DB and other generated files (do not track nba_build.duckdb)
 data/processed/*
 !data/processed/.gitkeep
-!data/processed/*.duckdb
 outputs/*
 !outputs/.gitkeep
 !outputs/ANALYSIS.md
@@ -35,7 +34,6 @@ __pycache__/
 venv/
 .env
 *.duckdb
-!data/processed/*.duckdb
 *.parquet
 
 # RAPTOR data and related docs (local/cache)
