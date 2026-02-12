@@ -38,6 +38,7 @@ class DeepSetRank(nn.Module):
             minutes_bias_weight=minutes_bias_weight,
             minutes_sum_min=minutes_sum_min,
             fallback_strategy=fallback_strategy,
+            attention_temperature=attention_temperature,
         )
         self.scorer = nn.Linear(self.enc.output_dim, 1)
 

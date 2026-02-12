@@ -129,6 +129,8 @@ def main():
                 ma = config.get("model_a", {})
                 # Use stat_dim from batch so model matches checkpoint (trained with same data)
                 stat_dim = int(batches_a[0]["player_stats"].shape[-1])
+                attn_cfg = ma.get("attention", {})
+                attention_temperature = float(attn_cfg.get("temperature", ma.get("attention_temperature", 1.0)))
                 model = DeepSetRank(
                     ma.get("num_embeddings", 500),
                     ma.get("embedding_dim", 32),
@@ -138,6 +140,8 @@ def main():
                     ma.get("dropout", 0.2),
                     minutes_bias_weight=float(ma.get("minutes_bias_weight", 0.3)),
                     minutes_sum_min=float(ma.get("minutes_sum_min", 1e-6)),
+                    fallback_strategy=str(ma.get("attention_fallback_strategy", "minutes")),
+                    attention_temperature=attention_temperature,
                 )
                 if "model_state" in ck:
                     from src.inference.predict import _state_dict_for_load

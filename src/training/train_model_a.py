@@ -360,6 +360,8 @@ def _build_model(config: dict, device: torch.device, stat_dim_override: int | No
     minutes_bias_weight = float(ma.get("minutes_bias_weight", 0.3))
     minutes_sum_min = float(ma.get("minutes_sum_min", 1e-6))
     fallback_strategy = str(ma.get("attention_fallback_strategy", "minutes"))
+    attn_cfg = ma.get("attention", {})
+    attention_temperature = float(attn_cfg.get("temperature", ma.get("attention_temperature", 1.0)))
     return DeepSetRank(
         num_emb,
         emb_dim,
@@ -370,6 +372,7 @@ def _build_model(config: dict, device: torch.device, stat_dim_override: int | No
         minutes_bias_weight=minutes_bias_weight,
         minutes_sum_min=minutes_sum_min,
         fallback_strategy=fallback_strategy,
+        attention_temperature=attention_temperature,
     ).to(device)
 
 

@@ -32,6 +32,7 @@ class SetAttention(nn.Module):
         minutes_bias_weight: float = 0.3,
         minutes_sum_min: float = 1e-6,
         fallback_strategy: Literal["minutes", "uniform"] = "minutes",
+        attention_temperature: float = 1.0,
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -42,6 +43,7 @@ class SetAttention(nn.Module):
         self.minutes_bias_weight = float(minutes_bias_weight)
         self.minutes_sum_min = float(minutes_sum_min)
         self.fallback_strategy = fallback_strategy
+        self.attention_temperature = max(1e-6, float(attention_temperature))
 
         # σReparam on Q, K, V to bound spectral norm of attention logits (prevents entropy collapse)
         self.q_proj = SpectralReparamLinear(embed_dim, embed_dim)
@@ -86,7 +88,7 @@ class SetAttention(nn.Module):
                 key_padding_mask.unsqueeze(1).unsqueeze(2),
                 float("-inf"),
             )
-        w = F.softmax(scores, dim=-1)
+        w = F.softmax(scores / self.attention_temperature, dim=-1)
         w = F.dropout(w, p=self.dropout_p, training=self.training)
         # out (B, H, 1, d)
         out = torch.matmul(w, V.transpose(1, 2))

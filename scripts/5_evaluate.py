@@ -364,7 +364,60 @@ def _metrics_by_conference(
             rel = (max_rank - ya + 1).clip(1, max_rank if max_rank > 0 else 1)
             ndcg = ndcg_score(rel, ys, k=min(10, len(rel)))
             sp = spearman(ya, ys)
-        out[conf] = {"ndcg": float(ndcg), "spearman": float(sp)}
+        # W/L record standings vs Playoff Outcome Rank (baseline) per conference
+        standings_list = []
+        actual_list = []
+        pred_ensemble = []
+        pred_model_a = []
+        pred_xgb = []
+        pred_rf = []
+        for t in conf_teams:
+            act = t.get("analysis", {}).get("EOS_global_rank")
+            stand = t.get("analysis", {}).get("EOS_playoff_standings")
+            diag = t.get("ensemble_diagnostics", {})
+            pred = t.get("prediction", {})
+            if act is not None and stand is not None:
+                actual_list.append(float(act))
+                standings_list.append(float(stand))
+                pred_ensemble.append(float(pred.get("predicted_strength") or 0))
+                pred_model_a.append(float(diag.get("deep_set_rank") or 0))
+                pred_xgb.append(float(diag.get("xgboost_rank") or diag.get("model_b_rank") or 0))
+                pred_rf.append(float(diag.get("random_forest_rank") or diag.get("model_c_rank") or 0))
+        conf_entry = {"ndcg": float(ndcg), "spearman": float(sp)}
+        if len(standings_list) >= 2:
+            actual_arr = np.array(actual_list, dtype=np.float32)
+            conf_entry["rank_mae_wl_record_standings_vs_playoff_outcome_rank"] = float(
+                rank_mae(np.array(standings_list), actual_arr)
+            )
+            conf_entry["rank_rmse_wl_record_standings_vs_playoff_outcome_rank"] = float(
+                rank_rmse(np.array(standings_list), actual_arr)
+            )
+            # Model pred vs playoff outcome rank per conference
+            conf_entry["rank_mae_ensemble_pred_vs_playoff_outcome_rank"] = float(
+                rank_mae(np.array(pred_ensemble), actual_arr)
+            )
+            conf_entry["rank_rmse_ensemble_pred_vs_playoff_outcome_rank"] = float(
+                rank_rmse(np.array(pred_ensemble), actual_arr)
+            )
+            conf_entry["rank_mae_model_a_pred_vs_playoff_outcome_rank"] = float(
+                rank_mae(np.array(pred_model_a), actual_arr)
+            )
+            conf_entry["rank_rmse_model_a_pred_vs_playoff_outcome_rank"] = float(
+                rank_rmse(np.array(pred_model_a), actual_arr)
+            )
+            conf_entry["rank_mae_xgb_pred_vs_playoff_outcome_rank"] = float(
+                rank_mae(np.array(pred_xgb), actual_arr)
+            )
+            conf_entry["rank_rmse_xgb_pred_vs_playoff_outcome_rank"] = float(
+                rank_rmse(np.array(pred_xgb), actual_arr)
+            )
+            conf_entry["rank_mae_rf_pred_vs_playoff_outcome_rank"] = float(
+                rank_mae(np.array(pred_rf), actual_arr)
+            )
+            conf_entry["rank_rmse_rf_pred_vs_playoff_outcome_rank"] = float(
+                rank_rmse(np.array(pred_rf), actual_arr)
+            )
+        out[conf] = conf_entry
     return out
 
 

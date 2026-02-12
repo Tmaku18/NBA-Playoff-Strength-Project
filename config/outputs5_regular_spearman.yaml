@@ -10,6 +10,8 @@ training:
 
 model_a:
   epochs: 24
+  attention:
+    temperature: 3  # experiment: softer attention to account for top 3 players per team
 
 model_b:
   xgb:
