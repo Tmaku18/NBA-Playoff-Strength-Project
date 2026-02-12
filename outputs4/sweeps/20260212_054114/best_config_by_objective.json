@@ -1,0 +1,62 @@
+{
+  "spearman": {
+    "batch_id": "20260212_054114",
+    "combo": 18,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/outputs"
+  },
+  "ndcg4": {
+    "batch_id": "20260212_054114",
+    "combo": 18,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/outputs"
+  },
+  "ndcg16": {
+    "batch_id": "20260212_054114",
+    "combo": 18,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/outputs"
+  },
+  "ndcg20": {
+    "batch_id": "20260212_054114",
+    "combo": 18,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/outputs"
+  },
+  "playoff_spearman": {
+    "batch_id": "20260212_054114",
+    "combo": 16,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0016/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0016/outputs"
+  },
+  "rank_rmse": {
+    "batch_id": "20260212_054114",
+    "combo": 18,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/outputs"
+  },
+  "spearman_standings": {
+    "batch_id": "20260212_054114",
+    "combo": 2,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0002/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0002/outputs"
+  },
+  "ndcg4_standings": {
+    "batch_id": "20260212_054114",
+    "combo": 1,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0001/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0001/outputs"
+  },
+  "ndcg16_standings": {
+    "batch_id": "20260212_054114",
+    "combo": 18,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0018/outputs"
+  },
+  "rank_rmse_standings": {
+    "batch_id": "20260212_054114",
+    "combo": 8,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0008/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs4/sweeps/20260212_054114/combo_0008/outputs"
+  }
+}

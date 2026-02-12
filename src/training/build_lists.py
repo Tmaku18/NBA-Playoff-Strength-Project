@@ -1,5 +1,5 @@
 """Training list construction for ListMLE: conference-date lists.
-Target: standings-to-date (win-rate), final_rank (playoff standings = EOS_playoff_standings), or playoff_outcome (playoff outcome = eos_final_rank).
+Target: standings-to-date (win-rate), final_rank (W/L record standings = EOS_playoff_standings), or playoff_outcome (Playoff Outcome Rank = eos_final_rank).
 """
 from __future__ import annotations
 
@@ -102,8 +102,8 @@ def build_lists(
     """
     Build many conference-date lists. Each element:
     { "conference": str, "as_of_date": str, "team_ids": [id,...], "win_rates": [float,...] }
-    or when listmle_target=final_rank: "final_rank": [int,...] (playoff standings = EOS_playoff_standings, 1-30).
-    or when listmle_target=playoff_outcome: "final_rank": [int,...] (playoff outcome = eos_final_rank, champion=1).
+    or when listmle_target=final_rank: "final_rank": [int,...] (W/L record standings = EOS_playoff_standings, 1-30).
+    or when listmle_target=playoff_outcome: "final_rank": [int,...] (Playoff Outcome Rank = eos_final_rank, champion=1).
     by_week: if True, group dates by week.
     config: if provided and training.listmle_target in ("final_rank","playoff_outcome"), use rank targets.
     playoff_games, playoff_tgl: required for listmle_target=playoff_outcome.

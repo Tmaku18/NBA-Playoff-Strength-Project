@@ -1,4 +1,4 @@
-# Reduced Model B features (export_feature_importances threshold 0.05). Only model_b.exclude_features differs from defaults.yaml.
+# Reduced Model B features (threshold 0.04: exclude only if avg importance < 0.04 in both combos). Only model_b.exclude_features differs from defaults.yaml.
 seasons:
   2014-15:
     start: '2014-10-01'
@@ -70,8 +70,6 @@ model_a:
 model_b:
   include_features: null
   exclude_features:
-  - TOV_pct
-  - FT_rate
   - ORB_pct
   - massey_rating
   - days_until_playoffs
@@ -85,9 +83,9 @@ model_b:
     early_stopping_rounds: 20
     subsample: 0.8
     colsample_bytree: 0.7
-  rf:
-    n_estimators: 173
-    max_depth: 12
+  lr:
+    C: 1.0
+    max_iter: 1000
     min_samples_leaf: 5
 training:
   n_folds: 5

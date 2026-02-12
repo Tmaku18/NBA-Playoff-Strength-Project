@@ -2,7 +2,7 @@
 
 What this does:
 - Loads OOF predictions from Model A (oof_model_a.parquet) and Model B (oof_model_b.parquet).
-- Trains a RidgeCV meta-learner to blend Model A + XGBoost + RF into ensemble predictions.
+- Trains a RidgeCV meta-learner to blend Model A + XGBoost (2 columns) into ensemble predictions.
 - Saves ridgecv_meta.joblib for use during inference (script 6).
 
 Run after scripts 3 and 4. Required before inference (6)."""
@@ -112,14 +112,15 @@ def main():
                 print(f"Playoff target failed, using standings y: {e}", file=sys.stderr)
 
     # Impute any NaN in OOF or target so Ridge regression gets finite inputs.
-    for col in ["oof_a", "oof_xgb", "oof_rf", "y"]:
+    for col in ["oof_a", "oof_xgb", "y"]:
         if col in merged.columns and merged[col].isna().any():
             merged[col] = merged[col].fillna(merged[col].mean())
     oof_a = merged["oof_a"].values.astype("float32")
     oof_xgb = merged["oof_xgb"].values.astype("float32")
-    oof_rf = merged["oof_rf"].values.astype("float32")
     y = merged["y"].values.astype("float32")
-    path = train_stacking(oof_a, oof_xgb, oof_rf, y, config, out)
+    conf_a = merged["conf_a"].values.astype("float32") if "conf_a" in merged.columns and "conf_xgb" in merged.columns else None
+    conf_xgb = merged["conf_xgb"].values.astype("float32") if "conf_a" in merged.columns and "conf_xgb" in merged.columns else None
+    path = train_stacking(oof_a, oof_xgb, y, config, out, conf_a=conf_a, conf_xgb=conf_xgb)
     print(f"Saved {path}, {out / 'oof_pooled.parquet'}")
 
 

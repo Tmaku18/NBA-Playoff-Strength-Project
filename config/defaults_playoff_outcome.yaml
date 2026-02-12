@@ -15,5 +15,6 @@ model_b:
   xgb:
     n_estimators: 248
     learning_rate: 0.0883  # Phase 5 combo_002
-  rf:
-    n_estimators: 172
+  lr:
+    C: 1.0
+    max_iter: 1000

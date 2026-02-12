@@ -15,13 +15,21 @@ Documentation of metrics added for model inputs and evaluation (see NBA_ANALYST_
 
 ## Rank-distance metrics (evaluation)
 
-- **rank_mae**: Mean absolute error of predicted vs actual rank (1=best, 30=worst). Lower = better. Usage: `pred_vs_playoff` (model predictions vs playoff outcome) and `standings_vs_playoff` (baseline: regular-season standings vs playoff outcome). Implemented in [src/evaluation/metrics.py](../src/evaluation/metrics.py).
+- **rank_mae**: Mean absolute error of predicted vs actual rank (1=best, 30=worst). Lower = better. Usage: `pred_vs_playoff_outcome_rank` (model predictions vs Playoff Outcome Rank) and `wl_record_standings_vs_playoff_outcome_rank` (baseline: W/L record standings vs Playoff Outcome Rank). Implemented in [src/evaluation/metrics.py](../src/evaluation/metrics.py).
 - **rank_rmse**: Root mean squared error of rank predictions. Penalizes large errors more than MAE. Lower = better. Same usage as rank_mae.
+- **Per-model MAE and RMSE:** Script 5 computes `rank_mae_pred_vs_playoff_outcome_rank` and `rank_rmse_pred_vs_playoff_outcome_rank` for the ensemble and for each model (Model A, XGB, RF) so each is scored against the same final outcome ranks.
+- **Model vs standings comparison:** Evaluation compares each model to regular-season W/L standings on the **same** outcome ranks: standings MAE/RMSE vs outcome, each model’s MAE/RMSE vs outcome, and improvement (standings_error − model_error). Positive improvement = model better than standings.
+- **Statistical significance:** Paired bootstrap over teams: resample teams with replacement, compute mean(standings_ae − model_ae) per replicate; 95% CI and p-value (H0: no improvement). Reported in `eval_report.json` under `model_vs_standings_comparison.significance` and in `ANALYSIS_*.md`.
 
 ## NDCG variants
 
-- **ndcg / ndcg10**: NDCG@10 — ranking quality over top 10 positions. Main `ndcg` key uses k=10; `ndcg10` is an explicit alias. Relevance = strength (higher = better).
-- **ndcg_at_4 (final four)**: NDCG truncated at top 4; used for playoff "final four" evaluation. Implemented in `ndcg_at_4`, `ndcg_at_10` in [src/evaluation/metrics.py](../src/evaluation/metrics.py).
+- **ndcg / ndcg_at_30**: NDCG@30 — full ranking quality over all 30 teams. Main `ndcg` key uses k=30. Relevance = strength (higher = better). Implemented in [src/evaluation/metrics.py](../src/evaluation/metrics.py).
+- **NDCG cutoff labels** (what each k represents):
+  - **ndcg_at_4** — Conference Finals (top 4)
+  - **ndcg_at_12** — Clinch Playoff (top 12)
+  - **ndcg_at_16** — One Play-In Tournament (top 16)
+  - **ndcg_at_20** — Qualify for Playoffs (top 20)
+  - **ndcg_at_30** — full order (all 30)
 
 ## Calibration and Phase 3 metrics
 

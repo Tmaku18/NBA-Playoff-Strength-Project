@@ -128,7 +128,8 @@ def _reserve_run_id(outputs_dir: Path, config: dict) -> None:
 
 from src.data.db_loader import load_playoff_data, load_training_data
 from src.training.data_model_a import build_batches_from_db, build_batches_from_lists
-from src.training.train_model_a import predict_batches, train_model_a, train_model_a_on_batches
+from src.training.train_model_a import predict_batches, predict_batches_with_attention, train_model_a, train_model_a_on_batches
+from src.models.confidence import confidence_from_attention
 from src.training.build_lists import build_lists
 from src.utils.split import compute_split, get_train_seasons_ordered, group_lists_by_season, write_split_info
 
@@ -192,14 +193,20 @@ def _run_walk_forward(config, train_lists, games, tgl, teams, pgl, out, root, pl
             config, train_batches, device, max_epochs=epochs, val_batches=val_batches or None
         )
         if val_batches and val_metas:
-            scores_list = predict_batches(model, val_batches, device)
-            for score_tensor, meta in zip(scores_list, val_metas):
+            conf_cfg = (config.get("model_a") or {}).get("confidence", {})
+            ent_w = float(conf_cfg.get("entropy_weight", 0.5))
+            max_w = float(conf_cfg.get("max_weight_weight", 0.5))
+            scores_list, attn_list = predict_batches_with_attention(model, val_batches, device)
+            for score_tensor, meta, attn_tensor in zip(scores_list, val_metas, attn_list):
                 K = score_tensor.shape[1]
                 for ki in range(K):
+                    attn_1d = attn_tensor[0, ki, :].numpy()
+                    conf_a = confidence_from_attention(attn_1d, entropy_weight=ent_w, max_weight_weight=max_w)
                     oof_rows.append({
                         "team_id": meta["team_ids"][ki],
                         "as_of_date": meta["as_of_date"],
                         "oof_a": float(score_tensor[0, ki].item()),
+                        "conf_a": float(conf_a),
                         "y": meta["win_rates"][ki],
                     })
             print(
@@ -425,15 +432,21 @@ def main():
             max_epochs=epochs,
             val_batches=val_batches,
         )
-        scores_list = predict_batches(model, val_batches, device)
-        for score_tensor, meta in zip(scores_list, val_metas):
+        conf_cfg = (config.get("model_a") or {}).get("confidence", {})
+        ent_w = float(conf_cfg.get("entropy_weight", 0.5))
+        max_w = float(conf_cfg.get("max_weight_weight", 0.5))
+        scores_list, attn_list = predict_batches_with_attention(model, val_batches, device)
+        for score_tensor, meta, attn_tensor in zip(scores_list, val_metas, attn_list):
             K = score_tensor.shape[1]
             for k in range(K):
                 y_val = meta.get("rel_values", meta["win_rates"])[k]
+                attn_1d = attn_tensor[0, k, :].numpy()
+                conf_a = confidence_from_attention(attn_1d, entropy_weight=ent_w, max_weight_weight=max_w)
                 oof_rows.append({
                     "team_id": meta["team_ids"][k],
                     "as_of_date": meta["as_of_date"],
                     "oof_a": float(score_tensor[0, k].item()),
+                    "conf_a": float(conf_a),
                     "y": y_val,
                 })
         print(f"Fold {fold+1}/{n_folds} OOF collected {len(val_batches)} lists")

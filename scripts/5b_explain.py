@@ -91,17 +91,17 @@ def main():
     if X_real.shape[0] > 500:
         X_real = X_real[:500]
 
-    # SHAP: explain Random Forest feature importance on team-context features.
-    rf_path = out / "rf_model.joblib"
-    if not rf_path.exists():
-        print("RF model not found. Run script 4 first.", file=sys.stderr)
+    # SHAP: explain Model B (XGB) feature importance on team-context features.
+    xgb_path = out / "xgb_model.joblib"
+    if not xgb_path.exists():
+        print("XGB model not found. Run script 4 first.", file=sys.stderr)
         sys.exit(1)
     try:
         import joblib
         from src.viz.shap_summary import shap_summary
-        rf = joblib.load(rf_path)
+        xgb = joblib.load(xgb_path)
         shap_path = out / "shap_summary.png"
-        shap_summary(rf, X_real, feature_names=feat_cols, out_path=shap_path)
+        shap_summary(xgb, X_real, feature_names=feat_cols, out_path=shap_path)
         print("Wrote", shap_path)
         _copy_to_run_dir(out, shap_path, "shap_summary.png", config)
     except Exception as e:
@@ -198,6 +198,32 @@ def main():
     except Exception as e:
         print("Attention ablation failed:", e, file=sys.stderr)
         sys.exit(1)
+
+    # Attention significance: bootstrap over teams for per-player CI and p-value
+    import re
+    run_id = config.get("inference", {}).get("run_id")
+    if run_id is None or (isinstance(run_id, str) and run_id.strip().lower() in ("null", "")):
+        current_run = out / ".current_run"
+        if current_run.exists():
+            run_id = current_run.read_text(encoding="utf-8").strip()
+    if run_id and re.match(r"^run_\d+$", run_id, re.I):
+        run_dir = out / run_id
+        pred_files = list(run_dir.glob("predictions_*.json")) or ([run_dir / "predictions.json"] if (run_dir / "predictions.json").exists() else [])
+        if pred_files:
+            import json
+            all_teams = []
+            for pf in sorted(pred_files)[:3]:  # cap to avoid huge load
+                with open(pf, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                all_teams.extend(data.get("teams", []))
+            if all_teams:
+                from src.evaluation.attention_significance import attention_bootstrap_over_teams
+                sig = attention_bootstrap_over_teams(all_teams, B=1000, seed=42)
+                if sig:
+                    sig_path = run_dir / "attention_significance.json"
+                    with open(sig_path, "w", encoding="utf-8") as f:
+                        json.dump({"per_player": sig, "n_teams": len(all_teams), "B": 1000}, f, indent=2)
+                    print("Wrote", sig_path)
 
 
 if __name__ == "__main__":

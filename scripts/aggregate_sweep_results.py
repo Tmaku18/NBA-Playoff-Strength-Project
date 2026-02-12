@@ -121,6 +121,7 @@ def _extract_params(config_path: Path) -> dict:
     mb = cfg.get("model_b") or {}
     xgb = mb.get("xgb") or {}
     rf = mb.get("rf") or {}
+    lr = mb.get("lr") or {}
     train = cfg.get("training") or {}
     rw = train.get("rolling_windows", [10, 30])
     return {
@@ -129,10 +130,11 @@ def _extract_params(config_path: Path) -> dict:
         "max_depth": xgb.get("max_depth", 4),
         "learning_rate": xgb.get("learning_rate", 0.08),
         "n_estimators_xgb": xgb.get("n_estimators", 250),
-        "n_estimators_rf": rf.get("n_estimators", 200),
+        "n_estimators_rf": rf.get("n_estimators") if rf else None,
+        "lr_C": lr.get("C", 1.0),
         "subsample": xgb.get("subsample", 0.8),
         "colsample_bytree": xgb.get("colsample_bytree", 0.7),
-        "min_samples_leaf": rf.get("min_samples_leaf", 5),
+        "min_samples_leaf": rf.get("min_samples_leaf") if rf else None,
     }
 
 
@@ -168,10 +170,11 @@ def main() -> int:
             "max_depth": params.get("max_depth", 4),
             "learning_rate": params.get("learning_rate", 0.08),
             "n_estimators_xgb": params.get("n_estimators_xgb", 250),
-            "n_estimators_rf": params.get("n_estimators_rf", 200),
+            "n_estimators_rf": params.get("n_estimators_rf"),
+            "lr_C": params.get("lr_C", 1.0),
             "subsample": params.get("subsample", 0.8),
             "colsample_bytree": params.get("colsample_bytree", 0.7),
-            "min_samples_leaf": params.get("min_samples_leaf", 5),
+            "min_samples_leaf": params.get("min_samples_leaf"),
             **{k: v for k, v in metrics.items() if isinstance(v, (int, float))},
         }
         # Optuna stores value = metric being optimized (maximized or negated for minimize)
@@ -180,8 +183,8 @@ def main() -> int:
             "ndcg4": "test_metrics_ensemble_ndcg_at_4",
             "ndcg16": "test_metrics_ensemble_ndcg_at_16",
             "ndcg20": "test_metrics_ensemble_ndcg_at_20",
-            "playoff_spearman": "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_final_results",
-            "rank_rmse": "test_metrics_ensemble_rank_rmse_pred_vs_playoff_final_results",
+            "playoff_spearman": "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_outcome_rank",
+            "rank_rmse": "test_metrics_ensemble_rank_rmse_pred_vs_playoff_outcome_rank",
         }[args.objective]
         val = metrics.get(metric_key)
         if val is not None and isinstance(val, (int, float)) and math.isfinite(val):
@@ -211,23 +214,23 @@ def main() -> int:
     ensemble_key = "test_metrics_ensemble_spearman"
     ndcg_key = "test_metrics_ensemble_ndcg"
     ndcg4_key = "test_metrics_ensemble_ndcg_at_4"
-    ndcg10_key = "test_metrics_ensemble_ndcg10"
     ndcg12_key = "test_metrics_ensemble_ndcg_at_12"
     ndcg16_key = "test_metrics_ensemble_ndcg_at_16"
     ndcg20_key = "test_metrics_ensemble_ndcg_at_20"
-    rank_mae_key = "test_metrics_ensemble_rank_mae_pred_vs_playoff_final_results"
-    rank_rmse_key = "test_metrics_ensemble_rank_rmse_pred_vs_playoff_final_results"
-    playoff_spearman_key = "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_final_results"
+    ndcg30_key = "test_metrics_ensemble_ndcg_at_30"
+    rank_mae_key = "test_metrics_ensemble_rank_mae_pred_vs_playoff_outcome_rank"
+    rank_rmse_key = "test_metrics_ensemble_rank_rmse_pred_vs_playoff_outcome_rank"
+    playoff_spearman_key = "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_outcome_rank"
 
     valid = [r for r in results if ensemble_key in r and r.get(ensemble_key) is not None]
     valid_optuna = [r for r in results if "value" in r and r.get("value") is not None]
     valid_mae = [r for r in results if rank_mae_key in r and isinstance(r.get(rank_mae_key), (int, float)) and math.isfinite(r.get(rank_mae_key))]
     valid_rmse = [r for r in results if rank_rmse_key in r and isinstance(r.get(rank_rmse_key), (int, float)) and math.isfinite(r.get(rank_rmse_key))]
     valid_ndcg4 = [r for r in results if ndcg4_key in r and isinstance(r.get(ndcg4_key), (int, float)) and math.isfinite(r.get(ndcg4_key))]
-    valid_ndcg10 = [r for r in results if ndcg10_key in r and isinstance(r.get(ndcg10_key), (int, float)) and math.isfinite(r.get(ndcg10_key))]
     valid_ndcg12 = [r for r in results if ndcg12_key in r and isinstance(r.get(ndcg12_key), (int, float)) and math.isfinite(r.get(ndcg12_key))]
     valid_ndcg16 = [r for r in results if ndcg16_key in r and isinstance(r.get(ndcg16_key), (int, float)) and math.isfinite(r.get(ndcg16_key))]
     valid_ndcg20 = [r for r in results if ndcg20_key in r and isinstance(r.get(ndcg20_key), (int, float)) and math.isfinite(r.get(ndcg20_key))]
+    valid_ndcg30 = [r for r in results if ndcg30_key in r and isinstance(r.get(ndcg30_key), (int, float)) and math.isfinite(r.get(ndcg30_key))]
     valid_playoff = [r for r in results if playoff_spearman_key in r and isinstance(r.get(playoff_spearman_key), (int, float)) and math.isfinite(r.get(playoff_spearman_key))]
 
     summary = {}
@@ -239,9 +242,10 @@ def main() -> int:
     if valid_ndcg4:
         best_ndcg4 = max(valid_ndcg4, key=lambda x: float(x.get(ndcg4_key, -1)))
         summary["best_by_ndcg4"] = best_ndcg4
-    if valid_ndcg10:
-        best_ndcg10 = max(valid_ndcg10, key=lambda x: float(x.get(ndcg10_key, -1)))
-        summary["best_by_ndcg10"] = best_ndcg10
+    valid_ndcg30 = [r for r in results if ndcg30_key in r and isinstance(r.get(ndcg30_key), (int, float)) and math.isfinite(r.get(ndcg30_key))]
+    if valid_ndcg30:
+        best_ndcg30 = max(valid_ndcg30, key=lambda x: float(x.get(ndcg30_key, -1)))
+        summary["best_by_ndcg30"] = best_ndcg30
     if valid_ndcg12:
         best_ndcg12 = max(valid_ndcg12, key=lambda x: float(x.get(ndcg12_key, -1)))
         summary["best_by_ndcg12"] = best_ndcg12
@@ -284,6 +288,7 @@ def main() -> int:
                 "learning_rate": bt.get("learning_rate"),
                 "n_estimators_xgb": bt.get("n_estimators_xgb"),
                 "n_estimators_rf": bt.get("n_estimators_rf"),
+                "lr_C": bt.get("lr_C", 1.0),
                 "subsample": bt.get("subsample"),
                 "colsample_bytree": bt.get("colsample_bytree"),
                 "min_samples_leaf": bt.get("min_samples_leaf"),

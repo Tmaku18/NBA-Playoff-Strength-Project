@@ -1,0 +1,24 @@
+# outputs5/regular_ndcg — ListMLE trained on W/L record standings; best NDCG from outputs5 ndcg_standing.
+# Run: --config config/outputs5_regular_ndcg.yaml --outputs outputs5/regular_ndcg
+
+paths:
+  outputs: "outputs5/regular_ndcg"
+
+training:
+  listmle_target: "final_rank"  # W/L record standings
+  rolling_windows: [15, 30]
+
+model_a:
+  epochs: 22
+
+model_b:
+  xgb:
+    n_estimators: 229
+    max_depth: 5
+    learning_rate: 0.072
+  lr:
+    C: 1.0
+    max_iter: 1000
+
+inference:
+  run_id_base: 26

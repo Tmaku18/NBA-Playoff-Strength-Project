@@ -10,7 +10,7 @@ This document explains what each output means, interprets the current results, c
 |--------|--------|---------|
 | `outputs4/run_XXX/predictions.json` | Script 6 (inference) | Per-team predictions, analysis, roster dependence, ensemble diagnostics |
 | `outputs4/run_XXX/predictions_{season}.json` | Script 6 (inference) | Per-season predictions when test_seasons configured |
-| `outputs4/run_XXX/eos_playoff_standings_vs_eos_global_rank.png` | Script 6 (inference) | Scatter: playoff standings vs playoff outcome (EOS) |
+| `outputs4/run_XXX/eos_playoff_standings_vs_eos_global_rank.png` | Script 6 (inference) | Scatter: W/L record standings vs EOS rank (Playoff Outcome Rank when available) |
 | `outputs4/eval_report.json` | Script 5 (evaluate) | Ranking and playoff metrics for the **latest** run’s predictions |
 | `outputs4/split_info.json` | Script 3 (train Model A) | Train/test date split (75/25); read by scripts 4, 5, 6 |
 | `outputs4/run_comparison.json` | `scripts/compare_runs.py` | NDCG, Spearman, MRR, ROC-AUC upset for every run_XXX with predictions |
@@ -29,22 +29,32 @@ This document explains what each output means, interprets the current results, c
 - **Inference:** Primary predictions use the **last test date** (held-out snapshot). EOS source: **eos_final_rank** (playoff outcome when playoff data exists).
 - **Training:** Model A and Model B (and stacking) are trained only on the **train** portion; no test-date leakage.
 
+### NDCG cutoff labels (what the numbers represent)
+
+| NDCG@k | Meaning |
+|--------|--------|
+| NDCG@4 | Conference Finals (top 4) |
+| NDCG@12 | Clinch Playoff (top 12) |
+| NDCG@16 | One Play-In Tournament (top 16) |
+| NDCG@20 | Qualify for Playoffs (top 20) |
+| NDCG@30 | Full order (all 30 teams) |
+
 ### Test metrics (eval_report.json)
 
 | Metric | Value | Interpretation |
 |--------|--------|----------------|
-| **NDCG@10** | 0.485 | Predicted ordering aligns with actual end-of-season strength (EOS global rank). |
+| **NDCG@30** | — | Full ranking quality (all 30 teams). Predicted ordering vs EOS global rank. |
 | **Spearman** | 0.477 | Strong positive correlation between predicted scores and actual strength; the model’s ranking is meaningfully related to true strength. |
-| **NDCG@16** | 0.527 | Top-16 ranking quality. |
+| **NDCG@16** | 0.527 | One Play-In Tournament (top 16). |
 | **MRR** (top-2) | 0.50 | The first “best” team in predicted order is not in the top 2 positions (or relevance ties); less critical than NDCG/Spearman for full ranking. |
 | **ROC-AUC upset** | 0.763 | Moderate ability to distinguish “sleepers” (under-ranked by standings) Ability to distinguish sleepers from non-sleepers. |
-| **Playoff Spearman** (pred vs playoff_final_results) | 0.467 | Correlation with actual playoff outcome. |
-| **Rank MAE** (pred vs playoff) | 6.93 | Mean absolute rank error vs playoff result. |
+| **Playoff Spearman** (pred vs Playoff Outcome Rank) | 0.467 | Correlation with actual playoff outcome. |
+| **Rank MAE** (pred vs Playoff Outcome Rank) | 6.93 | Mean absolute rank error vs playoff result. |
 | **Brier** (champion odds) | 0.032 | Calibration of championship probability. |
 
 ### Per-model (run_026)
 
-| Model | NDCG@10 | Spearman | NDCG@16 |
+| Model | NDCG@30 | Spearman | NDCG@16 |
 |-------|---------|----------|---------|
 | Ensemble | 0.485 | 0.477 | 0.527 |
 | Model A | 0.485 | 0.477 | 0.527 |
@@ -62,7 +72,7 @@ Within each conference, Spearman can differ from global; run_026 by conference: 
 
 ### Playoff metrics
 
-- **run_026** (outputs4): When the DB has playoff data for the evaluated season, `eval_report.json` includes `playoff_metrics` (Spearman pred vs playoff_final_results, NDCG@4 final four, Brier). If the test snapshot is before playoffs (e.g. 2024-25), playoff_metrics may be from the last season with complete playoff data or omitted. (test date 2025-04-13 is in 2024-25; playoffs had not started). So `eval_report.json` has no `playoff_metrics`. When playoff data exists (≥16 teams with post_playoff_rank), the report will include Spearman pred vs playoff_final_results, NDCG@4 final four, and Brier championship odds.
+- **run_026** (outputs4): When the DB has playoff data for the evaluated season, `eval_report.json` includes `playoff_metrics` (Spearman pred vs Playoff Outcome Rank, NDCG@4 Conference Finals, Brier). If the test snapshot is before playoffs (e.g. 2024-25), playoff_metrics may be from the last season with complete playoff data or omitted. (test date 2025-04-13 is in 2024-25; playoffs had not started). So `eval_report.json` has no `playoff_metrics`. When playoff data exists (≥16 teams with post_playoff_rank), the report will include Spearman pred vs Playoff Outcome Rank, NDCG@4 (Conference Finals), and Brier championship odds.
 
 #### Why is there no playoff data?
 
@@ -73,7 +83,7 @@ Within each conference, Spearman can differ from global; run_026 by conference: 
 
 **To get playoff metrics:** Use a snapshot from a **completed** season (e.g. last date of 2023-24 after playoffs finished), or run inference with `inference.also_train_predictions: true` and evaluate `train_predictions.json` (last train date is in 2022-23, which has playoff data in the DB if playoff raw files were loaded).
 
-**EOS_global_rank (Option B):** When playoff data exists for the target season (16+ playoff teams), `EOS_global_rank` is the **playoff outcome** (champion=1, first 2 eliminated=29-30). Otherwise it is standings order at the snapshot. See `eos_rank_source` in predictions JSON. **Playoff standings** (EOS_playoff_standings) = final regular-season rank (1-30 by final reg-season win %). Metrics from runs before Option B used standings; newer runs with playoff data use playoff outcome. Do not compare NDCG/Spearman across these run types.
+**EOS_global_rank (Option B):** When playoff data exists for the target season (16+ playoff teams), `EOS_global_rank` is the **Playoff Outcome Rank** (champion=1, first 2 eliminated=29-30). Otherwise it is W/L record order at the snapshot. See `eos_rank_source` in predictions JSON. **W/L record standings** (EOS_playoff_standings) = final regular-season rank (1-30 by final reg-season win %). Metrics from runs before Option B used standings; newer runs with playoff data use Playoff Outcome Rank. Do not compare NDCG/Spearman across these run types.
 
 ---
 
@@ -82,24 +92,26 @@ Within each conference, Spearman can differ from global; run_026 by conference: 
 **Run 021** and **run_022** are full-pipeline baseline runs (default config); neither was produced by a sweep optimized for a single metric.
 
 - **Run 021:** First "real success" per project README: Model A contributes (attention/contributors), ensemble ranking vs playoff outcome improved. Not tuned for NDCG-only or Spearman-only; same default hyperparameters as the rest of the pipeline.
-- **Run 022** (EOS source: **eos_final_rank**): Ensemble NDCG **0.482**, Spearman **0.4305**, playoff Spearman **0.4607**, NDCG@4 final four **0.4645**, Brier championship **0.032**. Per season: 2023-24 NDCG 0.559 / Spearman 0.31; 2024-25 NDCG 0.482 / Spearman 0.43. Per conference (2024-25): East NDCG 0.25 / Spearman 0.25; West NDCG 0.75 / Spearman 0.50. See `outputs2/run_022/ANALYSIS_01.md` and `outputs2/run_022/RESULTS_AND_OUTPUTS_EXPLAINED.md`.
+- **Run 022** (EOS source: **eos_final_rank** = Playoff Outcome Rank): Ensemble NDCG **0.482**, Spearman **0.4305**, playoff Spearman **0.4607**, NDCG@4 final four **0.4645**, Brier championship **0.032**. Per season: 2023-24 NDCG 0.559 / Spearman 0.31; 2024-25 NDCG 0.482 / Spearman 0.43. Per conference (2024-25): East NDCG 0.25 / Spearman 0.25; West NDCG 0.75 / Spearman 0.50. See `outputs2/run_022/ANALYSIS_01.md` and `outputs2/run_022/RESULTS_AND_OUTPUTS_EXPLAINED.md`.
 
 **Clarification:** Run_021 and run_022 were **not** optimized for NDCG or Spearman in isolation; they used the same default config. They often outperform early sweeps that optimized only Spearman because the default config balances multiple objectives. For fair comparison, run **separate sweeps** each optimizing a different target (see §4).
 
 ---
 
-## 3b. ListMLE outcome vs standings (outputs5)
+## 3b. ListMLE: Playoff Outcome Rank vs W/L record standings (outputs5)
 
-We compared training Model A (ListMLE) on **playoff outcome** (`listmle_target: playoff_outcome` = champion=1, runner-up=2, …) vs **playoff standings** (`listmle_target: final_rank` = EOS_playoff_standings = regular-season order 1–30). Evaluation in all cases uses **eos_final_rank** (playoff outcome).
+We compared training Model A (ListMLE) on **Playoff Outcome Rank** (`listmle_target: playoff_outcome` = champion=1, runner-up=2, …) vs **W/L record standings** (`listmle_target: final_rank` = EOS_playoff_standings = regular-season order 1–30). Evaluation in all cases uses **eos_final_rank** (Playoff Outcome Rank).
 
-| Config | ListMLE target | NDCG@10 | Spearman | Playoff Spearman | Rank MAE (pred vs playoff) |
-|--------|----------------|---------|----------|-----------------|-----------------------------|
-| **ndcg_standing** | standings | **0.490** | **0.529** | **0.531** | **6.47** |
-| ndcg_outcome | outcome | 0.489 | 0.491 | 0.475 | 6.60 |
-| **spearman_standing** | standings | **0.484** | **0.464** | **0.466** | **6.80** |
-| spearman_outcome | outcome | 0.482 | 0.465 | 0.469 | 7.07 |
+| Config | ListMLE target | NDCG@30 | Spearman | Playoff Spearman | Rank MAE (pred vs Playoff Outcome Rank) |
+|--------|----------------|---------|----------|-----------------|----------------------------------------|
+| **ndcg_standing** | W/L standings | **0.490** | **0.529** | **0.531** | **6.47** |
+| ndcg_outcome | Playoff Outcome Rank | 0.489 | 0.491 | 0.475 | 6.60 |
+| **spearman_standing** | W/L standings | **0.484** | **0.464** | **0.466** | **6.80** |
+| spearman_outcome | Playoff Outcome Rank | 0.482 | 0.465 | 0.469 | 7.07 |
 
-**Finding:** For predicting **playoff outcome**, training ListMLE on **standings** (`final_rank`) matched or beat training on **outcome** (`playoff_outcome`) in these runs. Best overall: **ndcg_standing** (Spearman 0.529, playoff Spearman 0.531). Configs: outcome = `config/defaults_playoff_outcome.yaml`; standings = `config/defaults.yaml`. Results: `outputs5/*/eval_report.json`.
+**Finding:** For predicting **Playoff Outcome Rank**, training ListMLE on **W/L record standings** (`final_rank`) matched or beat training on **Playoff Outcome Rank** (`playoff_outcome`) in these runs. Best overall: **ndcg_standing** (Spearman 0.529, playoff Spearman 0.531). Configs: Playoff Outcome Rank = `config/defaults_playoff_outcome.yaml`; W/L standings = `config/defaults.yaml`. Results: `outputs5/*/eval_report.json`.
+
+**outputs5 best-run configs (12 total):** regular_ndcg, regular_spearman, regular_ndcg16, regular_ndcg30, regular_rank_mae, regular_rank_rmse (ListMLE on W/L record standings); playoff_ndcg, playoff_spearman, playoff_ndcg16, playoff_ndcg30, playoff_rank_mae, playoff_rank_rmse (ListMLE on Playoff Outcome Rank). All write to `outputs5/<folder>/run_026` and iterate. Run: `python -m scripts.run_pipeline_from_model_a --config config/outputs5_regular_ndcg.yaml`.
 
 ---
 
@@ -109,8 +121,8 @@ We run **one objective per Optuna sweep** and compare best configs across object
 
 - **`--objective spearman`** — maximize `test_metrics_ensemble_spearman` (global ordering).
 - **`--objective ndcg`** — maximize `test_metrics_ensemble_ndcg` (top-heavy ranking).
-- **`--objective playoff_spearman`** — maximize `test_metrics_ensemble_playoff_spearman_pred_vs_playoff_final_results` (pred vs playoff_final_results).
-- **`--objective rank_mae`** — minimize `test_metrics_ensemble_rank_mae_pred_vs_playoff_final_results` (rank distance).
+- **`--objective playoff_spearman`** — maximize `test_metrics_ensemble_playoff_spearman_pred_vs_playoff_outcome_rank` (pred vs Playoff Outcome Rank).
+- **`--objective rank_mae`** — minimize `test_metrics_ensemble_rank_mae_pred_vs_playoff_outcome_rank` (rank distance).
 
 Example: run four sweeps (e.g. with `--n-trials 10` each), then compare the best combo from each in `sweep_results_summary.json` and `sweep_results.csv`. After each sweep, **5b_explain** runs automatically on the best combo for that objective (unless `--no-run-explain`). Use `python -m scripts.5b_explain --config <sweeps_dir>/<batch_id>/combo_<NNNN>/config.yaml` to explain any combo manually.
 
@@ -156,7 +168,7 @@ Metrics below are computed from each run’s `predictions.json` using the same l
 ## 5. Predictions (run_026) — Structure and Examples
 
 - **prediction:** `predicted_strength` (1–30, used for eval), `ensemble_score` (0–1), `conference_rank` (1–15), `championship_odds`.
-- **analysis:** `actual_conference_rank` (Actual Conference Rank, 1–15), `EOS_global_rank`, `classification` (e.g. “Under-ranked by 2 slots”), `post_playoff_rank`, `rank_delta_playoffs`.
+- **analysis:** `historic_conference_rank` (Historic Conference Rank, 1–15), `EOS_global_rank`, `classification` (e.g. “Under-ranked by 2 slots”), `post_playoff_rank`, `rank_delta_playoffs`.
 - **conference:** E/W (for per-conference evaluation).
 - **ensemble_diagnostics:** model_agreement (High/Medium/Low), per-model ranks (deep_set, xgboost, random_forest).
 - **roster_dependence:** primary_contributors (player + attention_weight); currently often empty or fallback with zero weights.

@@ -1,12 +1,12 @@
-"""Export Model B feature importances from a trained combo (XGB + RF).
+"""Export Model B (XGB) and Model C (LR) feature importances from a trained combo.
 
-Reads xgb_model.joblib and rf_model.joblib from a sweep combo's outputs/,
-extracts .feature_importances_ and writes feature_importances.json.
-Feature names come from get_team_context_feature_cols(config) using the combo's config.yaml.
+Reads xgb_model.joblib and lr_model.joblib from a sweep combo's outputs/.
+XGB: .feature_importances_; LR: absolute coefficients as importance.
+Feature names from get_team_context_feature_cols(config) using the combo's config.yaml.
 
 Usage:
   python -m scripts.export_feature_importances --config path/to/combo/config.yaml
-  python -m scripts.export_feature_importances --combo-dir outputs4/sweeps/phase5_ndcg16_playoff_broad/combo_0002
+  python -m scripts.export_feature_importances --combo-dir outputs4/sweeps/.../combo_0002
   python -m scripts.export_feature_importances --combo-dir ... --threshold 0.02  # suggest exclude list
 """
 from __future__ import annotations
@@ -23,7 +23,7 @@ import yaml
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Export XGB/RF feature importances from a sweep combo")
+    parser = argparse.ArgumentParser(description="Export XGB and LR (Model C) feature importances from a sweep combo")
     parser.add_argument("--config", type=str, default=None, help="Path to combo config.yaml")
     parser.add_argument("--combo-dir", type=str, default=None, help="Path to combo dir (e.g. outputs4/sweeps/.../combo_0002)")
     parser.add_argument("--threshold", type=float, default=None, help="If set, suggest exclude_features for importance below this (avg of xgb+rf)")
@@ -72,17 +72,18 @@ def main() -> int:
         return 1
 
     xgb_path = outputs_dir / "xgb_model.joblib"
-    rf_path = outputs_dir / "rf_model.joblib"
-    if not xgb_path.exists() or not rf_path.exists():
-        print(f"Models not found in {outputs_dir}. Need xgb_model.joblib and rf_model.joblib.", file=sys.stderr)
+    lr_path = outputs_dir / "lr_model.joblib"
+    if not xgb_path.exists() or not lr_path.exists():
+        print(f"Models not found in {outputs_dir}. Need xgb_model.joblib and lr_model.joblib.", file=sys.stderr)
         return 1
 
     import joblib
+    import numpy as np
 
     xgb_model = joblib.load(xgb_path)
-    rf_model = joblib.load(rf_path)
+    lr_model = joblib.load(lr_path)
 
-    def get_importances(model, name: str) -> dict[str, float]:
+    def get_importances_xgb(model, name: str) -> dict[str, float]:
         imp = getattr(model, "feature_importances_", None)
         if imp is None:
             return {}
@@ -92,12 +93,21 @@ def main() -> int:
         size = min(n, len(feat_cols))
         return {feat_cols[i]: float(imp[i]) for i in range(size)}
 
-    xgb_imp = get_importances(xgb_model, "XGB")
-    rf_imp = get_importances(rf_model, "RF")
+    def get_importances_lr(model, name: str) -> dict[str, float]:
+        coef = getattr(model, "coef_", None)
+        if coef is None:
+            return {}
+        c = np.asarray(coef).ravel()
+        n = len(c)
+        size = min(n, len(feat_cols))
+        return {feat_cols[i]: float(abs(c[i])) for i in range(size)}
+
+    xgb_imp = get_importances_xgb(xgb_model, "XGB")
+    lr_imp = get_importances_lr(lr_model, "LR")
 
     out_obj = {
         "xgb": xgb_imp,
-        "rf": rf_imp,
+        "lr": lr_imp,
         "feature_names": feat_cols,
         "combo": combo_name,
         "config_path": str(config_path),
@@ -107,8 +117,8 @@ def main() -> int:
         avg_imp = {}
         for f in feat_cols:
             xv = xgb_imp.get(f, 0.0)
-            rv = rf_imp.get(f, 0.0)
-            avg_imp[f] = (xv + rv) / 2.0
+            lv = lr_imp.get(f, 0.0)
+            avg_imp[f] = (xv + lv) / 2.0
         below = [f for f, v in avg_imp.items() if v < args.threshold]
         above = [f for f, v in avg_imp.items() if v >= args.threshold]
         out_obj["suggested_exclude_features"] = below

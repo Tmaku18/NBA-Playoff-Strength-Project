@@ -1,0 +1,24 @@
+# outputs5/regular_spearman — ListMLE on W/L record standings; best Spearman (phase6 combo 8).
+# Run: --config config/outputs5_regular_spearman.yaml --outputs outputs5/regular_spearman
+
+paths:
+  outputs: "outputs5/regular_spearman"
+
+training:
+  listmle_target: "final_rank"  # W/L record standings
+  rolling_windows: [15, 30]
+
+model_a:
+  epochs: 24
+
+model_b:
+  xgb:
+    n_estimators: 230
+    max_depth: 5
+    learning_rate: 0.085
+  lr:
+    C: 1.0
+    max_iter: 1000
+
+inference:
+  run_id_base: 26

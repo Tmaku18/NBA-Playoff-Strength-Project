@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import torch
 
+from src.models.confidence import confidence_from_attention
+
 
 def _state_dict_for_load(state: dict | None) -> dict:
     """Strip torch.compile _orig_mod. prefix so checkpoint saved from compiled model loads into plain model."""
@@ -22,14 +24,15 @@ def _state_dict_for_load(state: dict | None) -> dict:
 def load_models(
     model_a_path: str | Path | None = None,
     xgb_path: str | Path | None = None,
+    lr_path: str | Path | None = None,
     rf_path: str | Path | None = None,
     meta_path: str | Path | None = None,
     config: dict | None = None,
 ):
-    """Load Model A, XGB, RF, RidgeCV meta. Returns (model_a, xgb, rf, meta) or Nones."""
+    """Load Model A, XGB, LR (Model C), RidgeCV meta. Returns (model_a, xgb, lr, meta). Ensemble uses A + XGB only; LR for diagnostics."""
     from src.models.deep_set_rank import DeepSetRank
 
-    model_a, xgb, rf, meta = None, None, None, None
+    model_a, xgb, lr, meta = None, None, None, None
     cfg = config or {}
     ma = cfg.get("model_a", {})
 
@@ -68,11 +71,12 @@ def load_models(
         xgb = joblib.load(xgb_path)
         if isinstance(xgb, dict) or not callable(getattr(xgb, "predict", None)):
             xgb = None
-    if rf_path and Path(rf_path).exists():
+    path_lr = lr_path or rf_path
+    if path_lr and Path(path_lr).exists():
         import joblib
-        rf = joblib.load(rf_path)
-        if isinstance(rf, dict) or not callable(getattr(rf, "predict", None)):
-            rf = None
+        lr = joblib.load(path_lr)
+        if isinstance(lr, dict) or not callable(getattr(lr, "predict_proba", None)):
+            lr = None
     if meta_path and Path(meta_path).exists():
         import joblib
         meta = joblib.load(meta_path)
@@ -81,7 +85,7 @@ def load_models(
         if meta is None or not callable(getattr(meta, "predict", None)):
             meta = None
 
-    return model_a, xgb, rf, meta
+    return model_a, xgb, lr, meta
 
 
 def predict_teams(
@@ -91,6 +95,8 @@ def predict_teams(
     xgb_scores: np.ndarray | None = None,
     rf_scores: np.ndarray | None = None,
     meta_model: Any = None,
+    conf_a: np.ndarray | None = None,
+    conf_xgb: np.ndarray | None = None,
     actual_ranks: dict[int, int] | None = None,
     actual_global_ranks: dict[int, int] | None = None,
     attention_by_team: dict[int, list[tuple[str, float]]] | None = None,
@@ -108,7 +114,7 @@ def predict_teams(
     """
     Combine base scores, run meta if present. For each team output:
     conference_rank (1-15), predicted_strength (global rank 1-30, used internally for eval), ensemble_score,
-    championship_odds, delta, classification, analysis.actual_conference_rank, post_playoff_rank and rank_delta_playoffs when available.
+    championship_odds, delta, classification, analysis.historic_conference_rank, post_playoff_rank and rank_delta_playoffs when available.
     """
     n = len(team_ids)
     if model_a_scores is not None and len(model_a_scores) == n:
@@ -119,6 +125,7 @@ def predict_teams(
         sx = np.asarray(xgb_scores).ravel()
     else:
         sx = np.zeros(n)
+    # lr_scores (or rf_scores for backward compat): Model C diagnostics only, not in ensemble
     if rf_scores is not None and len(rf_scores) == n:
         sr = np.asarray(rf_scores).ravel()
     else:
@@ -127,11 +134,25 @@ def predict_teams(
     sx = np.nan_to_num(sx, nan=0.0, posinf=0.0, neginf=0.0)
     sr = np.nan_to_num(sr, nan=0.0, posinf=0.0, neginf=0.0)
 
-    X = np.column_stack([sa, sx, sr])
-    if meta_model is not None and not isinstance(meta_model, dict) and callable(getattr(meta_model, "predict", None)):
-        ens = meta_model.predict(X).ravel()
+    # Ensemble: 2 or 4 columns for meta (4 when meta has confidence and we pass conf_a, conf_xgb)
+    use_4col = (
+        meta_model is not None
+        and not isinstance(meta_model, dict)
+        and hasattr(meta_model, "coef_")
+        and (getattr(meta_model, "coef_", None) is not None and len(np.asarray(meta_model.coef_).ravel()) == 4)
+    )
+    if use_4col:
+        c_a = np.asarray(conf_a).ravel() if conf_a is not None and len(conf_a) == n else np.full(n, 0.5, dtype=np.float64)
+        c_x = np.asarray(conf_xgb).ravel() if conf_xgb is not None and len(conf_xgb) == n else np.full(n, 0.5, dtype=np.float64)
+        c_a = np.nan_to_num(c_a, nan=0.5, posinf=0.5, neginf=0.5)
+        c_x = np.nan_to_num(c_x, nan=0.5, posinf=0.5, neginf=0.5)
+        X_meta = np.column_stack([sa, sx, c_a, c_x])
     else:
-        ens = (sa + sx + sr) / 3.0
+        X_meta = np.column_stack([sa, sx])
+    if meta_model is not None and not isinstance(meta_model, dict) and callable(getattr(meta_model, "predict", None)):
+        ens = meta_model.predict(X_meta).ravel()
+    else:
+        ens = (sa + sx) / 2.0
     ens = np.nan_to_num(ens, nan=0.0, posinf=0.0, neginf=0.0)
 
     pred_rank = np.argsort(np.argsort(-ens)) + 1  # global rank 1-30
@@ -141,9 +162,11 @@ def predict_teams(
     else:
         tss = (ens - ens.min()) / (ens.max() - ens.min() + 1e-12)
 
-    # Championship odds: softmax(ens / temperature)
+    # Championship odds: softmax on strength scale so odds differentiate (stacker raw output can be narrow → uniform odds)
+    # Use percentile/scale (tss) which is spread over [0,1]; higher = stronger → higher odds.
     T = max(odds_temperature, 1e-6)
-    exp_s = np.exp(np.clip(ens / T, -50, 50))
+    strength_for_odds = tss if true_strength_scale == "percentile" else (ens - ens.min()) / (ens.max() - ens.min() + 1e-12)
+    exp_s = np.exp(np.clip(strength_for_odds / T, -50, 50))
     odds = exp_s / exp_s.sum()
 
     # Conference rank (1-15 within E/W)
@@ -183,8 +206,8 @@ def predict_teams(
             classification = "Unknown"
 
         # deep_set_rank: global rank (1-30) by Model A score. Note: Model A was trained with ListMLE
-        # on standings-ordered lists; actual_conference_rank is that same list position. So deep_set_rank often
-        # matches actual_conference_rank within conference—that is by design (same target), not independent accuracy.
+        # on standings-ordered lists; historic_conference_rank is that same list position. So deep_set_rank often
+        # matches historic_conference_rank within conference—that is by design (same target), not independent accuracy.
         r_a = np.argsort(np.argsort(-sa))[i] + 1 if model_presence.get("a", True) and len(sa) == n else None
         r_x = np.argsort(np.argsort(-sx))[i] + 1 if model_presence.get("xgb", True) and len(sx) == n else None
         r_r = np.argsort(np.argsort(-sr))[i] + 1 if model_presence.get("rf", True) and len(sr) == n else None
@@ -217,7 +240,7 @@ def predict_teams(
         }
         eos_standings = eos_playoff_standings.get(tid) if eos_playoff_standings else None
         analysis_dict: dict[str, Any] = {
-            "actual_conference_rank": int(act) if act is not None else None,
+            "historic_conference_rank": int(act) if act is not None else None,
             "EOS_global_rank": int(act_global) if act_global is not None else None,
             "EOS_playoff_standings": int(eos_standings) if eos_standings is not None else None,
             "classification": classification,
@@ -269,10 +292,10 @@ def run_inference_from_db(
     out.mkdir(parents=True, exist_ok=True)
     # Load models from the outputs directory (same as script 3/4/4b)
     outputs_path = Path(output_dir).resolve()
-    model_a, xgb, rf, meta = load_models(
+    model_a, xgb, lr, meta = load_models(
         model_a_path=outputs_path / "best_deep_set.pt",
         xgb_path=outputs_path / "xgb_model.joblib",
-        rf_path=outputs_path / "rf_model.joblib",
+        lr_path=outputs_path / "lr_model.joblib",
         meta_path=outputs_path / "ridgecv_meta.joblib",
         config=config,
     )
@@ -371,6 +394,7 @@ def run_inference_from_db(
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         tid_to_score_a: dict[int, float] = {}
+        tid_to_conf_a: dict[int, float] = {}
         attention_by_team: dict[int, list[tuple[str, float]]] = {}  # team_id -> [(player_name, weight), ...]
         attention_fallback_by_team: dict[int, bool] = {}
         team_id_to_batch: dict[int, tuple[int, int]] = {}
@@ -402,6 +426,12 @@ def run_inference_from_db(
                             attn_debug["empty_roster"] += 1
                             continue
                         attn_debug["teams"] += 1
+                        conf_cfg = (config.get("model_a") or {}).get("confidence", {})
+                        ent_w = float(conf_cfg.get("entropy_weight", 0.5))
+                        max_w = float(conf_cfg.get("max_weight_weight", 0.5))
+                        tid_to_conf_a[tid] = confidence_from_attention(
+                            attn_weights, entropy_weight=ent_w, max_weight_weight=max_w
+                        )
                         attn_sum = float(np.sum(attn_weights))
                         attn_max = float(np.max(attn_weights)) if max_len else 0.0
                         attn_debug["attn_sum"].append(attn_sum)
@@ -463,26 +493,41 @@ def run_inference_from_db(
                 flush=True,
             )
         sa = np.array([tid_to_score_a.get(tid, 0.0) for tid in unique_team_ids], dtype=np.float32)
+        conf_a_arr = np.array([tid_to_conf_a.get(tid, 0.5) for tid in unique_team_ids], dtype=np.float32)
 
         sx = np.zeros(len(unique_team_ids), dtype=np.float32)
         sr = np.zeros(len(unique_team_ids), dtype=np.float32)
+        conf_xgb_arr = np.full(len(unique_team_ids), 0.5, dtype=np.float32)
         feat_df = build_team_context_as_of_dates(
             tgl, games, team_dates,
             config=config, teams=teams, pgl=pgl,
         )
-        if not feat_df.empty and xgb is not None and rf is not None:
+        if not feat_df.empty and (xgb is not None or lr is not None):
             from src.features.team_context import get_team_context_feature_cols
             all_feat = get_team_context_feature_cols(config)
             feat_cols = [c for c in all_feat if c in feat_df.columns]
             if feat_cols:
+                X_rows = []
                 for i, tid in enumerate(unique_team_ids):
                     row = feat_df[(feat_df["team_id"] == tid) & (feat_df["as_of_date"] == team_id_to_as_of.get(tid, as_of_date))]
                     if not row.empty:
-                        X_row = row[feat_cols].values.astype(np.float32)
-                        if xgb is not None:
-                            sx[i] = float(xgb.predict(X_row)[0])
-                        if rf is not None:
-                            sr[i] = float(rf.predict(X_row)[0])
+                        X_rows.append((i, row[feat_cols].values.astype(np.float32)))
+                if X_rows:
+                    idx_order = [r[0] for r in X_rows]
+                    X_full = np.vstack([r[1] for r in X_rows])
+                    if xgb is not None:
+                        try:
+                            from src.models.xgb_model import predict_with_uncertainty
+                            pred_xgb, tree_std = predict_with_uncertainty(xgb, X_full)
+                            for j, i in enumerate(idx_order):
+                                sx[i] = float(pred_xgb[j])
+                                conf_xgb_arr[i] = float(1.0 / (1.0 + min(tree_std[j], 1e6)))
+                        except Exception:
+                            for j, i in enumerate(idx_order):
+                                sx[i] = float(xgb.predict(X_full[j : j + 1])[0])
+                    for j, i in enumerate(idx_order):
+                        if lr is not None and hasattr(lr, "predict_proba"):
+                            sr[i] = float(lr.predict_proba(X_full[j : j + 1])[0, 1])
 
         actual_ranks = {tid: team_id_to_actual_rank.get(tid) for tid in unique_team_ids}
         team_names = []
@@ -594,6 +639,8 @@ def run_inference_from_db(
             xgb_scores=sx,
             rf_scores=sr,
             meta_model=meta,
+            conf_a=conf_a_arr,
+            conf_xgb=conf_xgb_arr,
             actual_ranks=actual_ranks,
             actual_global_ranks=actual_global_rank,
             attention_by_team=attention_by_team if attention_by_team else None,
@@ -601,7 +648,7 @@ def run_inference_from_db(
             team_id_to_conference=team_id_to_conf,
             playoff_rank=playoff_rank_map if playoff_rank_map else None,
             eos_playoff_standings=eos_playoff_standings_map if eos_playoff_standings_map else None,
-            model_presence={"a": model_a is not None, "xgb": xgb is not None, "rf": rf is not None},
+            model_presence={"a": model_a is not None, "xgb": xgb is not None, "rf": lr is not None},
             true_strength_scale=config.get("output", {}).get("true_strength_scale", "percentile"),
             odds_temperature=float(config.get("output", {}).get("odds_temperature", 1.0)),
             championship_odds_method=config.get("output", {}).get("championship_odds_method", "softmax"),
@@ -690,21 +737,21 @@ def run_inference_from_db(
                 if not pred_list:
                     ax.text(0.5, 0.5, f"No {title} teams", ha="center", va="center", transform=ax.transAxes)
                     ax.set_title(title)
-                    ax.set_xlabel("Actual Conference Rank")
+                    ax.set_xlabel("Historic Conference Rank")
                     ax.set_ylabel("Predicted Conference Rank")
                     ax.grid(True, linestyle="--", alpha=0.7)
                     return
                 points = []
                 for t in pred_list:
                     pr = t["prediction"].get("conference_rank")
-                    ar = t["analysis"].get("actual_conference_rank") or t["analysis"].get("EOS_conference_rank")
+                    ar = t["analysis"].get("historic_conference_rank") or t["analysis"].get("actual_conference_rank") or t["analysis"].get("EOS_conference_rank")
                     if pr is None or ar is None:
                         continue
                     points.append((ar, pr, t["team_name"]))
                 if not points:
                     ax.text(0.5, 0.5, f"No valid {title} ranks", ha="center", va="center", transform=ax.transAxes)
                     ax.set_title(title)
-                    ax.set_xlabel("Actual Conference Rank")
+                    ax.set_xlabel("Historic Conference Rank")
                     ax.set_ylabel("Predicted Conference Rank")
                     ax.grid(True, linestyle="--", alpha=0.7)
                     return
@@ -715,7 +762,7 @@ def run_inference_from_db(
                 for i, (a, p) in enumerate(zip(ar, pr)):
                     color = cmap(i % 20)
                     ax.scatter(a, p, c=[color], label=names[i], s=60, marker=marker, edgecolors="k", linewidths=0.5)
-                ax.set_xlabel("Actual Conference Rank")
+                ax.set_xlabel("Historic Conference Rank")
                 ax.set_ylabel("Predicted Conference Rank")
                 ax.set_title(title)
                 ax.grid(True, linestyle="--", alpha=0.7)
@@ -725,7 +772,7 @@ def run_inference_from_db(
 
             _draw_panel(ax_east, east_preds, "East", marker="o")
             _draw_panel(ax_west, west_preds, "West", marker="D")
-            fig.suptitle("Predicted vs actual rank (conference rank 1-15)", fontsize=12)
+            fig.suptitle("Predicted vs Historic Conference Rank (1-15)", fontsize=12)
             fig.tight_layout()
             fig.savefig(out / f"pred_vs_actual{fig_suffix}.png", bbox_inches="tight")
             plt.close()

@@ -51,3 +51,35 @@ def fit_xgb(
         kwargs.pop("early_stopping_rounds", None)
         model.fit(X_train, y_train, **kwargs)
     return model
+
+
+def predict_with_uncertainty(model: Any, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return (predictions, per-sample std across trees) for XGB confidence.
+
+    Uses get_booster() and iteration_range to get per-tree predictions, then
+    std across trees per sample. Higher std -> lower confidence.
+
+    Returns:
+        pred: shape (n_samples,) same as model.predict(X).
+        std: shape (n_samples,) std across trees; use e.g. c_X = 1/(1+std).
+    """
+    if not _HAS_XGB:
+        raise ImportError("xgboost is required")
+    X = np.asarray(X, dtype=np.float32)
+    pred = model.predict(X)
+    try:
+        booster = model.get_booster()
+        n_trees = booster.num_boosted_rounds()
+        if n_trees == 0:
+            return pred, np.zeros_like(pred)
+        dmat = xgb.DMatrix(X)
+        tree_preds = []
+        for i in range(n_trees):
+            p = booster.predict(dmat, iteration_range=(i, i + 1))
+            tree_preds.append(np.asarray(p).ravel())
+        tree_preds = np.stack(tree_preds, axis=0)
+        std = np.std(tree_preds, axis=0)
+        std = np.nan_to_num(std, nan=0.0, posinf=0.0, neginf=0.0)
+        return np.asarray(pred).ravel(), std
+    except Exception:
+        return np.asarray(pred).ravel(), np.zeros(np.asarray(pred).size)

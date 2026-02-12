@@ -1,0 +1,25 @@
+# outputs5/playoff_ndcg30 — ListMLE on Playoff Outcome Rank; optimized for NDCG@30 (full ranking).
+# Run: --config config/outputs5_playoff_ndcg30.yaml
+# Params from 20260212 combo 18 (best NDCG@16 for outcome).
+
+paths:
+  outputs: "outputs5/playoff_ndcg30"
+
+training:
+  listmle_target: "playoff_outcome"  # Playoff Outcome Rank
+  rolling_windows: [10, 30]
+
+model_a:
+  epochs: 28
+
+model_b:
+  xgb:
+    n_estimators: 276
+    max_depth: 3
+    learning_rate: 0.08
+  lr:
+    C: 1.0
+    max_iter: 1000
+
+inference:
+  run_id_base: 26

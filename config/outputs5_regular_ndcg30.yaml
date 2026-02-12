@@ -1,0 +1,25 @@
+# outputs5/regular_ndcg30 — ListMLE on W/L record standings; optimized for NDCG@30 (full ranking).
+# Run: --config config/outputs5_regular_ndcg30.yaml
+# Params from phase6 best NDCG@16 (combo 19); NDCG@30 optimizes full 30-team order.
+
+paths:
+  outputs: "outputs5/regular_ndcg30"
+
+training:
+  listmle_target: "final_rank"  # W/L record standings
+  rolling_windows: [15, 30]
+
+model_a:
+  epochs: 25
+
+model_b:
+  xgb:
+    n_estimators: 236
+    max_depth: 5
+    learning_rate: 0.08
+  lr:
+    C: 1.0
+    max_iter: 1000
+
+inference:
+  run_id_base: 26

@@ -144,8 +144,8 @@ def _check_models(outputs_dir: Path, force_retrain: bool, warnings: list[str]) -
     model_files = [
         outputs_dir / "best_deep_set.pt",
         outputs_dir / "xgb_model.joblib",
-        outputs_dir / "rf_model.joblib",
-        outputs_dir / "meta_model.joblib",
+        outputs_dir / "lr_model.joblib",
+        outputs_dir / "ridgecv_meta.joblib",
     ]
     existing = [p for p in model_files if p.exists()]
     if force_retrain and existing:

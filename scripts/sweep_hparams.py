@@ -10,7 +10,7 @@ What this does:
 Usage:
   python -m scripts.sweep_hparams [--batch-id BATCH_ID] [--dry-run] [--max-combos N]
   python -m scripts.sweep_hparams [--val-frac FRAC] [--phase full|phase1_xgb|phase2_rf]
-  python -m scripts.sweep_hparams --method optuna [--n-trials N] [--objective spearman|ndcg4|ndcg16|ndcg20|playoff_spearman|rank_rmse]
+  python -m scripts.sweep_hparams --method optuna [--n-trials N] [--objective spearman|ndcg4|ndcg16|ndcg20|ndcg30|playoff_spearman|rank_rmse]
 
 --method grid: Full grid search (default). Config sweep section is a smaller default grid; expand in config or use --phase for phased grids.
 --method optuna: Bayesian optimization with Optuna; --objective sets the metric to optimize.
@@ -258,9 +258,10 @@ def _run_one_combo(
     cfg["model_b"]["xgb"]["n_estimators"] = int(n_xgb)
     cfg["model_b"]["xgb"]["subsample"] = float(subsample)
     cfg["model_b"]["xgb"]["colsample_bytree"] = float(colsample)
-    cfg["model_b"]["rf"] = cfg["model_b"].get("rf", {})
-    cfg["model_b"]["rf"]["n_estimators"] = int(n_rf)
-    cfg["model_b"]["rf"]["min_samples_leaf"] = int(min_leaf)
+    cfg["model_b"]["lr"] = cfg["model_b"].get("lr", {})
+    cfg["model_b"]["lr"]["C"] = float(cfg["model_b"]["lr"].get("C", 1.0))
+    cfg["model_b"]["lr"]["max_iter"] = int(cfg["model_b"]["lr"].get("max_iter", 1000))
+    # n_rf/min_leaf no longer used (Model C is LR, not RF); kept in signature for grid/backward compat
     cfg["paths"] = cfg.get("paths", {})
     cfg["paths"]["outputs"] = str(combo_out.resolve())
     config_path = combo_dir / "config.yaml"
@@ -292,8 +293,11 @@ def main() -> int:
         "--objective",
         type=str,
         default="spearman",
-        choices=("spearman", "ndcg4", "ndcg16", "ndcg20", "playoff_spearman", "rank_rmse"),
-        help="Optuna: metric to optimize (rank_rmse = minimize; others = maximize). Default spearman.",
+        choices=(
+            "spearman", "ndcg4", "ndcg16", "ndcg20", "ndcg30", "playoff_spearman", "rank_rmse",
+            "spearman_standings", "ndcg4_standings", "ndcg16_standings", "ndcg30_standings", "rank_rmse_standings",
+        ),
+        help="Optuna: metric to optimize (rank_rmse/rank_rmse_standings = minimize; others = maximize). Default spearman.",
     )
     parser.add_argument("--no-run-explain", action="store_true", help="Skip running 5b_explain on best combo after sweep")
     parser.add_argument("--val-frac", type=float, default=0.25, help="Model A early-stopping validation fraction (default 0.25)")
@@ -512,11 +516,17 @@ def main() -> int:
             "ndcg4": "test_metrics_ensemble_ndcg_at_4",
             "ndcg16": "test_metrics_ensemble_ndcg_at_16",
             "ndcg20": "test_metrics_ensemble_ndcg_at_20",
-            "playoff_spearman": "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_final_results",
-            "rank_rmse": "test_metrics_ensemble_rank_rmse_pred_vs_playoff_final_results",
+            "ndcg30": "test_metrics_ensemble_ndcg_at_30",
+            "playoff_spearman": "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_outcome_rank",
+            "rank_rmse": "test_metrics_ensemble_rank_rmse_pred_vs_playoff_outcome_rank",
+            "spearman_standings": "test_metrics_ensemble_spearman_standings",
+            "ndcg4_standings": "test_metrics_ensemble_ndcg_at_4_standings",
+            "ndcg16_standings": "test_metrics_ensemble_ndcg_at_16_standings",
+            "ndcg30_standings": "test_metrics_ensemble_ndcg_at_30_standings",
+            "rank_rmse_standings": "test_metrics_ensemble_rank_rmse_standings",
         }
         metric_key = _OBJECTIVE_KEYS[args.objective]
-        direction = "minimize" if args.objective == "rank_rmse" else "maximize"
+        direction = "minimize" if args.objective in ("rank_rmse", "rank_rmse_standings") else "maximize"
         # Fixed hyperparams (phase5-style); only feature subset varies
         fixed_rolling = [15, 30]
         fixed_epochs, fixed_md = 26, 5
@@ -604,11 +614,17 @@ def main() -> int:
             "ndcg4": "test_metrics_ensemble_ndcg_at_4",
             "ndcg16": "test_metrics_ensemble_ndcg_at_16",
             "ndcg20": "test_metrics_ensemble_ndcg_at_20",
-            "playoff_spearman": "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_final_results",
-            "rank_rmse": "test_metrics_ensemble_rank_rmse_pred_vs_playoff_final_results",
+            "ndcg30": "test_metrics_ensemble_ndcg_at_30",
+            "playoff_spearman": "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_outcome_rank",
+            "rank_rmse": "test_metrics_ensemble_rank_rmse_pred_vs_playoff_outcome_rank",
+            "spearman_standings": "test_metrics_ensemble_spearman_standings",
+            "ndcg4_standings": "test_metrics_ensemble_ndcg_at_4_standings",
+            "ndcg16_standings": "test_metrics_ensemble_ndcg_at_16_standings",
+            "ndcg30_standings": "test_metrics_ensemble_ndcg_at_30_standings",
+            "rank_rmse_standings": "test_metrics_ensemble_rank_rmse_standings",
         }
         metric_key = _OBJECTIVE_KEYS[args.objective]
-        direction = "minimize" if args.objective == "rank_rmse" else "maximize"
+        direction = "minimize" if args.objective in ("rank_rmse", "rank_rmse_standings") else "maximize"
 
         def objective(trial: "optuna.Trial") -> float:
             rolling_windows = trial.suggest_categorical("rolling_windows", [tuple(x) for x in rolling_list])
@@ -682,7 +698,7 @@ def main() -> int:
                 )
         except Exception as e:
             print(f"Warning: could not compute Optuna importances: {e}", flush=True)
-        actual_best = -study.best_value if args.objective == "rank_rmse" else study.best_value
+        actual_best = -study.best_value if args.objective in ("rank_rmse", "rank_rmse_standings") else study.best_value
         print(f"Optuna best {metric_key}={actual_best:.4f} (objective={args.objective}) params={study.best_params}", flush=True)
     elif args.method == "halving":
         combos = list(itertools.product(
@@ -925,13 +941,13 @@ def main() -> int:
     ensemble_key = "test_metrics_ensemble_spearman"
     ndcg_key = "test_metrics_ensemble_ndcg"
     ndcg4_key = "test_metrics_ensemble_ndcg_at_4"
-    ndcg10_key = "test_metrics_ensemble_ndcg10"
     ndcg12_key = "test_metrics_ensemble_ndcg_at_12"
     ndcg16_key = "test_metrics_ensemble_ndcg_at_16"
     ndcg20_key = "test_metrics_ensemble_ndcg_at_20"
-    rank_mae_key = "test_metrics_ensemble_rank_mae_pred_vs_playoff_final_results"
-    rank_rmse_key = "test_metrics_ensemble_rank_rmse_pred_vs_playoff_final_results"
-    playoff_spearman_key = "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_final_results"
+    ndcg30_key = "test_metrics_ensemble_ndcg_at_30"
+    rank_mae_key = "test_metrics_ensemble_rank_mae_pred_vs_playoff_outcome_rank"
+    rank_rmse_key = "test_metrics_ensemble_rank_rmse_pred_vs_playoff_outcome_rank"
+    playoff_spearman_key = "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_outcome_rank"
     valid = [r for r in results if ensemble_key in r and r.get(ensemble_key) is not None]
     valid_optuna = [r for r in results if "value" in r and r.get("value") is not None]
     valid_mae = [
@@ -952,12 +968,6 @@ def main() -> int:
         and isinstance(r.get(ndcg4_key), (int, float))
         and math.isfinite(r.get(ndcg4_key))
     ]
-    valid_ndcg10 = [
-        r for r in results
-        if ndcg10_key in r
-        and isinstance(r.get(ndcg10_key), (int, float))
-        and math.isfinite(r.get(ndcg10_key))
-    ]
     valid_ndcg12 = [
         r for r in results
         if ndcg12_key in r
@@ -976,11 +986,42 @@ def main() -> int:
         and isinstance(r.get(ndcg20_key), (int, float))
         and math.isfinite(r.get(ndcg20_key))
     ]
+    valid_ndcg30 = [
+        r for r in results
+        if ndcg30_key in r
+        and isinstance(r.get(ndcg30_key), (int, float))
+        and math.isfinite(r.get(ndcg30_key))
+    ]
     valid_playoff = [
         r for r in results
         if playoff_spearman_key in r
         and isinstance(r.get(playoff_spearman_key), (int, float))
         and math.isfinite(r.get(playoff_spearman_key))
+    ]
+    spearman_standings_key = "test_metrics_ensemble_spearman_standings"
+    ndcg4_standings_key = "test_metrics_ensemble_ndcg_at_4_standings"
+    ndcg16_standings_key = "test_metrics_ensemble_ndcg_at_16_standings"
+    ndcg30_standings_key = "test_metrics_ensemble_ndcg_at_30_standings"
+    rank_rmse_standings_key = "test_metrics_ensemble_rank_rmse_standings"
+    valid_spearman_standings = [
+        r for r in results
+        if spearman_standings_key in r and isinstance(r.get(spearman_standings_key), (int, float)) and math.isfinite(r.get(spearman_standings_key))
+    ]
+    valid_ndcg4_standings = [
+        r for r in results
+        if ndcg4_standings_key in r and isinstance(r.get(ndcg4_standings_key), (int, float)) and math.isfinite(r.get(ndcg4_standings_key))
+    ]
+    valid_ndcg16_standings = [
+        r for r in results
+        if ndcg16_standings_key in r and isinstance(r.get(ndcg16_standings_key), (int, float)) and math.isfinite(r.get(ndcg16_standings_key))
+    ]
+    valid_ndcg30_standings = [
+        r for r in results
+        if ndcg30_standings_key in r and isinstance(r.get(ndcg30_standings_key), (int, float)) and math.isfinite(r.get(ndcg30_standings_key))
+    ]
+    valid_rank_rmse_standings = [
+        r for r in results
+        if rank_rmse_standings_key in r and isinstance(r.get(rank_rmse_standings_key), (int, float)) and math.isfinite(r.get(rank_rmse_standings_key))
     ]
     summary = {}
     if valid:
@@ -991,9 +1032,6 @@ def main() -> int:
     if valid_ndcg4:
         best_ndcg4 = max(valid_ndcg4, key=lambda x: float(x.get(ndcg4_key, -1)))
         summary["best_by_ndcg4"] = best_ndcg4
-    if valid_ndcg10:
-        best_ndcg10 = max(valid_ndcg10, key=lambda x: float(x.get(ndcg10_key, -1)))
-        summary["best_by_ndcg10"] = best_ndcg10
     if valid_ndcg12:
         best_ndcg12 = max(valid_ndcg12, key=lambda x: float(x.get(ndcg12_key, -1)))
         summary["best_by_ndcg12"] = best_ndcg12
@@ -1003,6 +1041,9 @@ def main() -> int:
     if valid_ndcg20:
         best_ndcg20 = max(valid_ndcg20, key=lambda x: float(x.get(ndcg20_key, -1)))
         summary["best_by_ndcg20"] = best_ndcg20
+    if valid_ndcg30:
+        best_ndcg30 = max(valid_ndcg30, key=lambda x: float(x.get(ndcg30_key, -1)))
+        summary["best_by_ndcg30"] = best_ndcg30
     if valid_mae:
         best_mae = min(valid_mae, key=lambda x: float(x.get(rank_mae_key, float("inf"))))
         summary["best_by_rank_mae"] = best_mae
@@ -1012,6 +1053,16 @@ def main() -> int:
     if valid_playoff:
         best_playoff = max(valid_playoff, key=lambda x: float(x.get(playoff_spearman_key, -2)))
         summary["best_by_playoff_spearman"] = best_playoff
+    if valid_spearman_standings:
+        summary["best_by_spearman_standings"] = max(valid_spearman_standings, key=lambda x: float(x.get(spearman_standings_key, -2)))
+    if valid_ndcg4_standings:
+        summary["best_by_ndcg4_standings"] = max(valid_ndcg4_standings, key=lambda x: float(x.get(ndcg4_standings_key, -1)))
+    if valid_ndcg16_standings:
+        summary["best_by_ndcg16_standings"] = max(valid_ndcg16_standings, key=lambda x: float(x.get(ndcg16_standings_key, -1)))
+    if valid_ndcg30_standings:
+        summary["best_by_ndcg30_standings"] = max(valid_ndcg30_standings, key=lambda x: float(x.get(ndcg30_standings_key, -1)))
+    if valid_rank_rmse_standings:
+        summary["best_by_rank_rmse_standings"] = min(valid_rank_rmse_standings, key=lambda x: float(x.get(rank_rmse_standings_key, float("inf"))))
     if valid_optuna:
         best_trial = max(valid_optuna, key=lambda x: float(x.get("value", -2)))
         summary["best_optuna_trial"] = best_trial
@@ -1020,6 +1071,62 @@ def main() -> int:
         summary["by_conference_summary"] = by_conf
     with open(batch_dir / "sweep_results_summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
+
+    # Best config per objective for full metric matrix and significance comparison
+    objective_to_summary_key = {
+        "spearman": "best_by_spearman",
+        "ndcg4": "best_by_ndcg4",
+        "ndcg16": "best_by_ndcg16",
+        "ndcg20": "best_by_ndcg20",
+        "ndcg30": "best_by_ndcg30",
+        "playoff_spearman": "best_by_playoff_spearman",
+        "rank_rmse": "best_by_rank_rmse",
+        "spearman_standings": "best_by_spearman_standings",
+        "ndcg4_standings": "best_by_ndcg4_standings",
+        "ndcg16_standings": "best_by_ndcg16_standings",
+        "ndcg30_standings": "best_by_ndcg30_standings",
+        "rank_rmse_standings": "best_by_rank_rmse_standings",
+    }
+    best_config_by_objective = {}
+    for obj, sum_key in objective_to_summary_key.items():
+        best_row = summary.get(sum_key)
+        if best_row is None:
+            continue
+        combo = best_row.get("combo")
+        if combo is None:
+            continue
+        config_path = batch_dir / f"combo_{combo:04d}" / "config.yaml"
+        best_config_by_objective[obj] = {
+            "batch_id": batch_id,
+            "combo": combo,
+            "config_path": str(config_path) if config_path.exists() else None,
+            "combo_outputs": str(batch_dir / f"combo_{combo:04d}" / "outputs"),
+        }
+    with open(batch_dir / "best_config_by_objective.json", "w", encoding="utf-8") as f:
+        json.dump(best_config_by_objective, f, indent=2)
+
+    # Run paired bootstrap: best outcome vs best standings (for significance)
+    outcome_obj = "playoff_spearman"
+    standings_objs = ["spearman_standings", "ndcg4_standings", "ndcg16_standings", "ndcg30_standings", "rank_rmse_standings"]
+    outcome_cfg = best_config_by_objective.get(outcome_obj)
+    standings_cfg = None
+    for so in standings_objs:
+        if best_config_by_objective.get(so):
+            standings_cfg = best_config_by_objective[so]
+            break
+    if outcome_cfg and standings_cfg and not args.dry_run:
+        out_a = outcome_cfg.get("combo_outputs")
+        out_b = standings_cfg.get("combo_outputs")
+        if out_a and out_b:
+            sig_out = batch_dir / "bootstrap_significance_outcome_vs_standings.json"
+            code = _run_cmd(
+                "scripts/compare_runs_bootstrap.py",
+                ["--run-dir-a", out_a, "--run-dir-b", out_b, "--out", str(sig_out)],
+            )
+            if code == 0:
+                print(f"Bootstrap significance written to {sig_out}", flush=True)
+            else:
+                print("Warning: bootstrap comparison failed (re-run manually if needed).", flush=True)
 
     n_combos = len(combos) if args.method in ("grid", "halving") else args.n_trials
     with open(batch_dir / "sweep_config.json", "w", encoding="utf-8") as f:

@@ -33,33 +33,67 @@ def run(script: str, config_path: str | None = None) -> int:
     ).returncode
 
 
+def _deep_update(base: dict, overlay: dict) -> None:
+    """Update base in-place with overlay (recursive for dicts)."""
+    for k, v in overlay.items():
+        if k in base and isinstance(base[k], dict) and isinstance(v, dict):
+            _deep_update(base[k], v)
+        else:
+            base[k] = v
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run pipeline 2→leakage→3→4→4b→6→5→5b.")
     parser.add_argument("--config", type=str, default=None, help="Config YAML for scripts 3,4,4b,6,5,5b (e.g. config/defaults_reduced_features.yaml)")
-    parser.add_argument("--outputs", type=str, default=None, help="Override paths.outputs (e.g. outputs5 or outputs5/ndcg_outcome)")
+    parser.add_argument("--outputs", type=str, default=None, help="Override paths.outputs (e.g. outputs5 or outputs5/regular_ndcg)")
     args = parser.parse_args()
 
     config_path = args.config
     temp_config_path: Path | None = None
 
-    if args.outputs is not None:
-        if not args.config:
-            print("--outputs requires --config.", file=sys.stderr)
-            return 1
-        config_path_resolved = ROOT / args.config if not Path(args.config).is_absolute() else Path(args.config)
-        with open(config_path_resolved, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        out_val = args.outputs
-        out_path = Path(out_val)
-        config.setdefault("paths", {})["outputs"] = str(out_path.resolve() if out_path.is_absolute() else (ROOT / out_val).resolve())
-        fd, temp_config_path = tempfile.mkstemp(suffix=".yaml", prefix="pipeline_config_")
-        try:
-            with open(fd, "w", encoding="utf-8") as f:
-                yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
-            config_path = temp_config_path
-        except Exception:
-            Path(temp_config_path).unlink(missing_ok=True)
-            raise
+    config_path_resolved = (ROOT / args.config if args.config and not Path(args.config).is_absolute() else Path(args.config)) if args.config else None
+    # outputs5_*.yaml configs are overlays: merge on top of defaults (and defaults_playoff_outcome for playoff_*).
+    if config_path_resolved and config_path_resolved.exists():
+        name = config_path_resolved.name
+        if "outputs5_" in name:
+            with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+            if "playoff_" in name:
+                with open(ROOT / "config" / "defaults_playoff_outcome.yaml", "r", encoding="utf-8") as f:
+                    _deep_update(config, yaml.safe_load(f))
+            with open(config_path_resolved, "r", encoding="utf-8") as f:
+                _deep_update(config, yaml.safe_load(f))
+            out_val = args.outputs if args.outputs is not None else config.get("paths", {}).get("outputs", "")
+            if out_val:
+                out_path = Path(out_val)
+                config.setdefault("paths", {})["outputs"] = str(out_path.resolve() if out_path.is_absolute() else (ROOT / out_val).resolve())
+            else:
+                config.setdefault("paths", {})["outputs"] = str((ROOT / "outputs5").resolve())
+            fd, temp_config_path = tempfile.mkstemp(suffix=".yaml", prefix="pipeline_config_")
+            try:
+                with open(fd, "w", encoding="utf-8") as f:
+                    yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+                config_path = temp_config_path
+            except Exception:
+                Path(temp_config_path).unlink(missing_ok=True)
+                raise
+        elif args.outputs is not None:
+            if not args.config:
+                print("--outputs requires --config.", file=sys.stderr)
+                return 1
+            with open(config_path_resolved, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+            out_val = args.outputs
+            out_path = Path(out_val)
+            config.setdefault("paths", {})["outputs"] = str(out_path.resolve() if out_path.is_absolute() else (ROOT / out_val).resolve())
+            fd, temp_config_path = tempfile.mkstemp(suffix=".yaml", prefix="pipeline_config_")
+            try:
+                with open(fd, "w", encoding="utf-8") as f:
+                    yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+                config_path = temp_config_path
+            except Exception:
+                Path(temp_config_path).unlink(missing_ok=True)
+                raise
 
     steps = [
         "2_build_db.py",           # conditional: skip if raw unchanged

@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.evaluation.evaluate import evaluate_ranking, evaluate_upset
-from src.evaluation.metrics import brier_champion, ndcg_at_4, ndcg_at_10, ndcg_score, rank_mae, rank_rmse, spearman
+from src.evaluation.metrics import brier_champion, ndcg_at_4, ndcg_at_30, ndcg_score, rank_mae, rank_rmse, spearman
 from src.utils.split import load_split_info
 
 
@@ -83,7 +83,7 @@ def _teams_to_arrays(teams: list) -> tuple[np.ndarray, np.ndarray, np.ndarray, l
 def _teams_to_arrays_by_model(
     teams: list,
 ) -> tuple[dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]], list[int], dict[int, str]]:
-    """Extract y_actual, y_score, pred_ranks for ensemble, model_a, xgb, rf."""
+    """Extract y_actual, y_score, pred_ranks for ensemble, model_a, xgb, rf (Model C: LR diagnostics)."""
     actual_ranks = []
     team_ids = []
     team_id_to_conf: dict[int, str] = {}
@@ -107,7 +107,7 @@ def _teams_to_arrays_by_model(
         pred_ranks_by_model["ensemble"].append(float(pr) if pr is not None else 0.0)
         r_a = diag.get("deep_set_rank")
         r_x = diag.get("xgboost_rank")
-        r_r = diag.get("random_forest_rank")
+        r_r = diag.get("model_c_rank") or diag.get("random_forest_rank")
         scores_by_model["model_a"].append(31.0 - float(r_a) if r_a is not None else 0.0)
         scores_by_model["xgb"].append(31.0 - float(r_x) if r_x is not None else 0.0)
         scores_by_model["rf"].append(31.0 - float(r_r) if r_r is not None else 0.0)
@@ -131,20 +131,27 @@ def _compute_metrics_from_arrays(
     y_score: np.ndarray,
     pred_ranks_arr: np.ndarray,
     *,
-    k: int = 10,
+    k: int = 30,
 ) -> dict:
     """Compute ranking metrics (NDCG, Spearman, MRR, ROC-AUC for upset prediction) from aligned arrays."""
     n = len(y_actual)
     if n < 2:
-        return {"ndcg": 0.0, "ndcg10": 0.0, "ndcg_at_4": 0.0, "ndcg_at_12": 0.0, "ndcg_at_16": 0.0, "ndcg_at_20": 0.0, "spearman": 0.0, "mrr_top2": 0.0, "mrr_top4": 0.0, "roc_auc_upset": 0.5}
+        return {
+            "ndcg": 0.0, "ndcg_at_4": 0.0, "ndcg_at_12": 0.0, "ndcg_at_16": 0.0, "ndcg_at_20": 0.0, "ndcg_at_30": 0.0,
+            "spearman": 0.0, "mrr_top2": 0.0, "mrr_top4": 0.0, "roc_auc_upset": 0.5,
+            "rank_mae_pred_vs_playoff_outcome_rank": float("nan"), "rank_rmse_pred_vs_playoff_outcome_rank": float("nan"),
+        }
     max_rank = int(np.max(y_actual)) if n else 0
     y_true_relevance = (max_rank - y_actual + 1).clip(1, max_rank if max_rank > 0 else 1)
     m = evaluate_ranking(y_true_relevance, y_score, k=min(k, n))
-    m["ndcg10"] = m["ndcg"]  # ndcg already uses k=10; explicit key for clarity
     m["ndcg_at_4"] = float(ndcg_score(y_true_relevance, y_score, k=min(4, n)))
     m["ndcg_at_12"] = float(ndcg_score(y_true_relevance, y_score, k=min(12, n)))
     m["ndcg_at_16"] = float(ndcg_score(y_true_relevance, y_score, k=min(16, n)))
     m["ndcg_at_20"] = float(ndcg_score(y_true_relevance, y_score, k=min(20, n)))
+    m["ndcg_at_30"] = float(ndcg_score(y_true_relevance, y_score, k=min(30, n)))
+    # MAE and RMSE of predicted rank vs actual outcome rank (same outcome as standings are scored against)
+    m["rank_mae_pred_vs_playoff_outcome_rank"] = float(rank_mae(pred_ranks_arr, y_actual))
+    m["rank_rmse_pred_vs_playoff_outcome_rank"] = float(rank_rmse(pred_ranks_arr, y_actual))
     delta = y_actual - pred_ranks_arr
     y_bin = (delta > 0).astype(np.float32)
     if np.unique(y_bin).size >= 2:
@@ -155,14 +162,14 @@ def _compute_metrics_from_arrays(
     return m
 
 
-def _compute_metrics(teams: list, *, k: int = 10) -> dict:
+def _compute_metrics(teams: list, *, k: int = 30) -> dict:
     """Compute ndcg, spearman, mrr, roc_auc_upset and optionally playoff_metrics from teams list."""
     y_actual, y_score, pred_ranks_arr, _, _ = _teams_to_arrays(teams)
     m = _compute_metrics_from_arrays(y_actual, y_score, pred_ranks_arr, k=k)
-    # Rank-distance metrics: predicted rank vs playoff_final_results (lower is better)
-    m["rank_mae_pred_vs_playoff_final_results"] = float(rank_mae(pred_ranks_arr, y_actual))
-    m["rank_rmse_pred_vs_playoff_final_results"] = float(rank_rmse(pred_ranks_arr, y_actual))
-    # eos_standings vs playoff_final_results (baseline: how far reg-season rank was from playoff outcome)
+    # Rank-distance metrics: predicted rank vs Playoff Outcome Rank (lower is better)
+    m["rank_mae_pred_vs_playoff_outcome_rank"] = float(rank_mae(pred_ranks_arr, y_actual))
+    m["rank_rmse_pred_vs_playoff_outcome_rank"] = float(rank_rmse(pred_ranks_arr, y_actual))
+    # W/L record standings vs Playoff Outcome Rank (baseline: how far reg-season rank was from playoff outcome)
     standings_list = []
     actual_list = []
     for t in teams:
@@ -172,8 +179,32 @@ def _compute_metrics(teams: list, *, k: int = 10) -> dict:
             actual_list.append(float(act))
             standings_list.append(float(stand))
     if len(actual_list) >= 16:
-        m["rank_mae_eos_standings_vs_playoff_final_results"] = float(rank_mae(np.array(standings_list), np.array(actual_list)))
-        m["rank_rmse_eos_standings_vs_playoff_final_results"] = float(rank_rmse(np.array(standings_list), np.array(actual_list)))
+        m["rank_mae_wl_record_standings_vs_playoff_outcome_rank"] = float(rank_mae(np.array(standings_list), np.array(actual_list)))
+        m["rank_rmse_wl_record_standings_vs_playoff_outcome_rank"] = float(rank_rmse(np.array(standings_list), np.array(actual_list)))
+    # Standings-based metrics: pred vs W/L record standings (EOS_playoff_standings)
+    standings_arr = []
+    pred_scores_for_standings = []
+    pred_ranks_for_standings = []
+    for t in teams:
+        stand = t.get("analysis", {}).get("EOS_playoff_standings")
+        if stand is None:
+            continue
+        tss = t.get("prediction", {}).get("ensemble_score")
+        pr = t.get("prediction", {}).get("predicted_strength")
+        standings_arr.append(float(stand))
+        pred_scores_for_standings.append(float(tss) if tss is not None else 0.0)
+        pred_ranks_for_standings.append(float(pr) if pr is not None else 0.0)
+    if len(standings_arr) >= 2:
+        standings_arr = np.array(standings_arr, dtype=np.float32)
+        pred_scores_for_standings = np.array(pred_scores_for_standings, dtype=np.float32)
+        pred_ranks_for_standings = np.array(pred_ranks_for_standings, dtype=np.float32)
+        max_rank_s = int(np.max(standings_arr))
+        relevance_standings = (max_rank_s - standings_arr + 1).clip(1, max_rank_s if max_rank_s > 0 else 1)
+        m["spearman_standings"] = float(spearman(standings_arr, pred_scores_for_standings))
+        m["ndcg_at_4_standings"] = float(ndcg_score(relevance_standings, pred_scores_for_standings, k=min(4, len(standings_arr))))
+        m["ndcg_at_16_standings"] = float(ndcg_score(relevance_standings, pred_scores_for_standings, k=min(16, len(standings_arr))))
+        m["ndcg_at_30_standings"] = float(ndcg_score(relevance_standings, pred_scores_for_standings, k=min(30, len(standings_arr))))
+        m["rank_rmse_standings"] = float(rank_rmse(pred_ranks_for_standings, standings_arr))
     playoff_rows = []
     for t in teams:
         p_rank = t.get("analysis", {}).get("post_playoff_rank")
@@ -188,16 +219,95 @@ def _compute_metrics(teams: list, *, k: int = 10) -> dict:
         odds_pct = np.array([float(r[2].rstrip("%")) / 100.0 for r in playoff_rows], dtype=np.float32)
         champion_onehot = (p_rank == 1).astype(np.float32)
         m["playoff_metrics"] = {
-            "spearman_pred_vs_playoff_final_results": float(spearman(p_rank, g_rank)),
+            "spearman_pred_vs_playoff_outcome_rank": float(spearman(p_rank, g_rank)),
             "ndcg_at_4_final_four": float(ndcg_at_4(p_rank, -g_rank)),
-            "ndcg10_pred_vs_playoff_final_results": float(ndcg_at_10(p_rank, -g_rank)),
+            "ndcg_at_30_pred_vs_playoff_outcome_rank": float(ndcg_at_30(p_rank, -g_rank)),
             "brier_championship_odds": float(brier_champion(champion_onehot, odds_pct)),
-            "rank_mae_pred_vs_playoff_final_results": m["rank_mae_pred_vs_playoff_final_results"],
-            "rank_rmse_pred_vs_playoff_final_results": m["rank_rmse_pred_vs_playoff_final_results"],
-            "rank_mae_eos_standings_vs_playoff_final_results": m.get("rank_mae_eos_standings_vs_playoff_final_results", float("nan")),
-            "rank_rmse_eos_standings_vs_playoff_final_results": m.get("rank_rmse_eos_standings_vs_playoff_final_results", float("nan")),
+            "rank_mae_pred_vs_playoff_outcome_rank": m["rank_mae_pred_vs_playoff_outcome_rank"],
+            "rank_rmse_pred_vs_playoff_outcome_rank": m["rank_rmse_pred_vs_playoff_outcome_rank"],
+            "rank_mae_wl_record_standings_vs_playoff_outcome_rank": m.get("rank_mae_wl_record_standings_vs_playoff_outcome_rank", float("nan")),
+            "rank_rmse_wl_record_standings_vs_playoff_outcome_rank": m.get("rank_rmse_wl_record_standings_vs_playoff_outcome_rank", float("nan")),
         }
     return m
+
+
+def _model_vs_standings_comparison(
+    teams: list,
+    *,
+    B: int = 2000,
+    seed: int = 42,
+) -> dict:
+    """Compare each model to regular-season W/L standings vs same outcome ranks. Includes MAE/RMSE per model,
+    improvement over standings, and paired bootstrap significance (model better than standings?)."""
+    y_actual_list = []
+    standings_list = []
+    pred_by_model: dict[str, list[float]] = {"ensemble": [], "model_a": [], "xgb": [], "rf": []}
+    for t in teams:
+        act = t.get("analysis", {}).get("EOS_global_rank")
+        stand = t.get("analysis", {}).get("EOS_playoff_standings")
+        if act is None or stand is None:
+            continue
+        y_actual_list.append(float(act))
+        standings_list.append(float(stand))
+        pred = t.get("prediction", {})
+        diag = t.get("ensemble_diagnostics", {})
+        pr = pred.get("predicted_strength")
+        pred_by_model["ensemble"].append(float(pr) if pr is not None else 0.0)
+        r_a = diag.get("deep_set_rank")
+        r_x = diag.get("xgboost_rank")
+        r_r = diag.get("model_c_rank") or diag.get("random_forest_rank")
+        pred_by_model["model_a"].append(float(r_a) if r_a is not None else 0.0)
+        pred_by_model["xgb"].append(float(r_x) if r_x is not None else 0.0)
+        pred_by_model["rf"].append(float(r_r) if r_r is not None else 0.0)
+    n = len(y_actual_list)
+    if n < 10:
+        return {}
+    y_actual = np.array(y_actual_list, dtype=np.float64)
+    standings = np.array(standings_list, dtype=np.float64)
+    out: dict = {
+        "n_teams": n,
+        "standings_vs_outcome": {
+            "rank_mae": float(rank_mae(standings, y_actual)),
+            "rank_rmse": float(rank_rmse(standings, y_actual)),
+        },
+        "models": {},
+        "significance": {},
+    }
+    rng = np.random.default_rng(seed)
+    for name, pred_list in pred_by_model.items():
+        pred_arr = np.array(pred_list, dtype=np.float64)
+        mae = float(rank_mae(pred_arr, y_actual))
+        rmse = float(rank_rmse(pred_arr, y_actual))
+        stand_mae = out["standings_vs_outcome"]["rank_mae"]
+        stand_rmse = out["standings_vs_outcome"]["rank_rmse"]
+        out["models"][name] = {
+            "rank_mae_pred_vs_outcome": mae,
+            "rank_rmse_pred_vs_outcome": rmse,
+            "improvement_mae_vs_standings": stand_mae - mae,
+            "improvement_rmse_vs_standings": stand_rmse - rmse,
+        }
+        # Paired bootstrap: per-team absolute errors; diff_i = err_standings_i - err_model_i
+        err_standings = np.abs(standings - y_actual)
+        err_model = np.abs(pred_arr - y_actual)
+        diffs = err_standings - err_model  # positive when model is better
+        mean_improvement = float(np.mean(diffs))
+        boot_means = []
+        for _ in range(B):
+            idx = rng.integers(0, n, size=n)
+            boot_means.append(float(np.mean(diffs[idx])))
+        boot_means = np.array(boot_means)
+        ci_low = float(np.percentile(boot_means, 2.5))
+        ci_high = float(np.percentile(boot_means, 97.5))
+        # p-value: proportion of bootstrap samples where improvement <= 0 (null: no improvement)
+        p_value = float(np.mean(boot_means <= 0))
+        out["significance"][name] = {
+            "mean_mae_improvement": mean_improvement,
+            "bootstrap_95_ci_low": ci_low,
+            "bootstrap_95_ci_high": ci_high,
+            "p_value_model_better_than_standings": p_value,
+            "method": "paired bootstrap over teams (resample teams, mean(standings_ae - model_ae)); H0: no improvement",
+        }
+    return out
 
 
 def _metrics_by_conference(
@@ -209,7 +319,7 @@ def _metrics_by_conference(
     When use_conference_ranks=True (default), relevance is defined **within conference** using
     EOS global rank: within each conference, teams are ranked 1..n by EOS_global_rank (ascending),
     so best team in conference gets rank 1. NDCG uses that relevance vs ensemble_score;
-    Spearman uses derived actual conference rank vs prediction.conference_rank.
+    Spearman uses derived Historic Conference Rank vs prediction.conference_rank.
     """
     out: dict[str, dict[str, float]] = {}
     for conf in ("E", "W"):
@@ -318,12 +428,14 @@ def main():
         metrics_xgb = _compute_metrics_from_arrays(by_model["xgb"][0], by_model["xgb"][1], by_model["xgb"][2]) if "xgb" in by_model else {}
         metrics_rf = _compute_metrics_from_arrays(by_model["rf"][0], by_model["rf"][1], by_model["rf"][2]) if "rf" in by_model else {}
         conf_metrics = _metrics_by_conference(teams)
+        model_vs_standings = _model_vs_standings_comparison(teams)
         season_report: dict = {
             "test_metrics_ensemble": metrics_ensemble,
             "test_metrics_model_a": metrics_model_a,
             "test_metrics_model_b": metrics_xgb,
             "test_metrics_model_c": metrics_rf,
             "test_metrics_by_conference": conf_metrics,
+            "model_vs_standings_comparison": model_vs_standings,
             "notes": {"eos_rank_source": eos_source},
         }
         by_season[season] = season_report
@@ -345,6 +457,7 @@ def main():
             report["test_metrics_model_b"] = _compute_metrics_from_arrays(by_model["xgb"][0], by_model["xgb"][1], by_model["xgb"][2]) if "xgb" in by_model else {}
             report["test_metrics_model_c"] = _compute_metrics_from_arrays(by_model["rf"][0], by_model["rf"][1], by_model["rf"][2]) if "rf" in by_model else {}
             report["test_metrics_by_conference"] = _metrics_by_conference(primary_teams)
+            report["model_vs_standings_comparison"] = _model_vs_standings_comparison(primary_teams)
     elif by_season:
         last_season = sorted(by_season.keys())[-1]
         last_report = by_season[last_season]
@@ -362,10 +475,21 @@ def main():
                 if isinstance(pm, dict) and pm:
                     report["test_metrics_ensemble"]["playoff_metrics"] = pm
                     break
+        # Model vs standings comparison and significance (from last season's teams)
+        last_season = sorted(by_season.keys())[-1]
+        last_pred_file = run_dir / f"predictions_{last_season}.json"
+        if last_pred_file.exists():
+            with open(last_pred_file, "r", encoding="utf-8") as f:
+                last_teams = json.load(f).get("teams", [])
+            if last_teams:
+                report["model_vs_standings_comparison"] = _model_vs_standings_comparison(last_teams)
+                report["model_vs_standings_comparison"]["season"] = last_season
 
+    report["notes"]["eos_rank_source_meaning"] = "standings = W/L record standings; eos_final_rank = Playoff Outcome Rank"
     report["notes"]["upset_definition"] = "sleeper = EOS_global_rank > predicted_strength"
     report["notes"]["mrr_top2"] = "1/rank of first team in top 2 (champion+runner-up) in predicted order."
-    report["notes"]["mrr_top4"] = "1/rank of first team in top 4 (conference finals) in predicted order."
+    report["notes"]["mrr_top4"] = "1/rank of first team in top 4 (Conference Finals) in predicted order."
+    report["notes"]["ndcg_cutoff_labels"] = "ndcg_at_4=Conference Finals (top 4); ndcg_at_12=Clinch Playoff (top 12); ndcg_at_16=One Play-In Tournament (top 16); ndcg_at_20=Qualify for Playoffs (top 20); ndcg_at_30=full order."
     report["notes"]["per_conference_relevance"] = "Within E/W: actual rank derived from EOS_global_rank (1=best in conf); NDCG/Spearman use this relevance."
 
     # Train metrics (if train_predictions.json exists)
@@ -385,8 +509,14 @@ def main():
 
     if report.get("test_metrics_ensemble", {}).get("playoff_metrics"):
         report["notes"]["playoff_metrics"] = (
-            "Spearman (pred global vs playoff_final_results), NDCG@4 (final four), Brier (champion vs odds). "
-            "rank_mae/rank_rmse: pred vs playoff_final_results; eos_standings vs playoff_final_results (baseline)."
+            "Spearman (pred global vs Playoff Outcome Rank), NDCG@4 (Conference Finals), Brier (champion vs odds). "
+            "rank_mae/rank_rmse: pred vs Playoff Outcome Rank; W/L record standings vs Playoff Outcome Rank (baseline)."
+        )
+    if report.get("model_vs_standings_comparison"):
+        report["notes"]["model_vs_standings"] = (
+            "Regular-season W/L standings vs same final outcome ranks as models. Each model has MAE and RMSE vs outcome; "
+            "improvement_mae/improvement_rmse = standings_error - model_error (positive = model better). "
+            "Significance: paired bootstrap over teams (resample teams, mean(standings_ae - model_ae)); p_value = proportion of bootstrap <= 0."
         )
 
     # Write report into the run folder so each run keeps its own evaluation.
@@ -407,6 +537,7 @@ def main():
     nn = _next_analysis_number(run_dir)
     analysis_path = run_dir / f"ANALYSIS_{nn:02d}.md"
     ens = report.get("test_metrics_ensemble") or report.get("test_metrics", {}) or {}
+    ndcg_note = report.get("notes", {}).get("ndcg_cutoff_labels", "")
     lines = [
         f"# Analysis {nn:02d} — Evaluation summary",
         "",
@@ -416,12 +547,61 @@ def main():
         "## Test metrics (ensemble)",
         "",
     ]
+    # Short labels so NDCG numbers are clearly defined in reports
+    NDCG_LABELS = {
+        "ndcg_at_4": "Conference Finals (top 4)",
+        "ndcg_at_12": "Clinch Playoff (top 12)",
+        "ndcg_at_16": "One Play-In Tournament (top 16)",
+        "ndcg_at_20": "Qualify for Playoffs (top 20)",
+    }
+    if ndcg_note:
+        lines.append(f"*NDCG cutoffs: {ndcg_note}*")
+        lines.append("")
     for k, v in ens.items():
+        label = NDCG_LABELS.get(k, "")
+        disp = f" ({label})" if label else ""
         if isinstance(v, (int, float)):
-            lines.append(f"- {k}: {v:.4f}" if isinstance(v, float) else f"- {k}: {v}")
+            lines.append(f"- {k}{disp}: {v:.4f}" if isinstance(v, float) else f"- {k}{disp}: {v}")
         elif isinstance(v, dict):
-            lines.append(f"- {k}: " + ", ".join(f"{kk}={vv:.4f}" if isinstance(vv, float) else f"{kk}={vv}" for kk, vv in list(v.items())[:8]))
-    lines.extend(["", "See `eval_report.json` and `eval_report_<season>.json` for full report.", ""])
+            lines.append(f"- {k}{disp}: " + ", ".join(f"{kk}={vv:.4f}" if isinstance(vv, float) else f"{kk}={vv}" for kk, vv in list(v.items())[:8]))
+    # Model vs standings comparison and statistical significance
+    mvs = report.get("model_vs_standings_comparison") or {}
+    if mvs.get("standings_vs_outcome") and mvs.get("models"):
+        lines.extend([
+            "",
+            "## Model vs regular-season standings (same outcome ranks)",
+            "",
+            "All metrics compare predicted/standings rank to the **same** final outcome rank (EOS_global_rank).",
+            "",
+            "| Source | MAE vs outcome | RMSE vs outcome | Δ MAE vs standings | Δ RMSE vs standings |",
+            "|--------|----------------|-----------------|--------------------|---------------------|",
+        ])
+        stand = mvs["standings_vs_outcome"]
+        lines.append(f"| W/L standings (baseline) | {stand['rank_mae']:.3f} | {stand['rank_rmse']:.3f} | — | — |")
+        for name, mod in mvs["models"].items():
+            d_mae = mod["improvement_mae_vs_standings"]
+            d_rmse = mod["improvement_rmse_vs_standings"]
+            lines.append(
+                f"| {name} | {mod['rank_mae_pred_vs_outcome']:.3f} | {mod['rank_rmse_pred_vs_outcome']:.3f} | "
+                f"{d_mae:+.3f} | {d_rmse:+.3f} |"
+            )
+        lines.append("")
+        sig = mvs.get("significance", {})
+        if sig.get("ensemble"):
+            s = sig["ensemble"]
+            p = s.get("p_value_model_better_than_standings")
+            ci_lo, ci_hi = s.get("bootstrap_95_ci_low"), s.get("bootstrap_95_ci_high")
+            sig_ok = p < 0.05 if p is not None else False
+            lines.extend([
+                "### Statistical significance (ensemble vs standings)",
+                "",
+                f"- **Method:** Paired bootstrap over teams (resample teams with replacement; mean improvement in MAE per team).",
+                f"- **Mean MAE improvement:** {s.get('mean_mae_improvement', 0):.4f} (positive = ensemble better).",
+                f"- **95% CI for improvement:** [{ci_lo:.4f}, {ci_hi:.4f}].",
+                f"- **p-value (H0: no improvement):** {p:.4f} → ensemble is **{'statistically significantly better' if sig_ok else 'not significantly better'}** than standings at α=0.05.",
+                "",
+            ])
+    lines.extend(["", "See `eval_report.json` and `eval_report_<season>.json` for full report (incl. per-model MAE/RMSE and significance).", ""])
     analysis_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {analysis_path}")
 

@@ -1,0 +1,24 @@
+# outputs5/playoff_spearman — ListMLE on Playoff Outcome Rank; best playoff Spearman (20260212 combo 16).
+# Run: --config config/outputs5_playoff_spearman.yaml --outputs outputs5/playoff_spearman
+
+paths:
+  outputs: "outputs5/playoff_spearman"
+
+training:
+  listmle_target: "playoff_outcome"  # Playoff Outcome Rank
+  rolling_windows: [10, 30]
+
+model_a:
+  epochs: 16
+
+model_b:
+  xgb:
+    n_estimators: 280
+    max_depth: 3
+    learning_rate: 0.08
+  lr:
+    C: 1.0
+    max_iter: 1000
+
+inference:
+  run_id_base: 26

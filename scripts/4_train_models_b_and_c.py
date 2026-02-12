@@ -1,11 +1,11 @@
-"""Script 4: Train Model B (XGBoost) and Model C (Random Forest).
+"""Script 4: Train Model B (XGBoost) and Model C (Logistic Regression).
 
 What this does:
 - Loads team-context features (ELO, rolling stats, SOS/SRS, etc.) from DB.
 - Uses the same train/test split as script 3 (from split_info.json).
-- Trains XGBoost and Random Forest to predict team strength.
-- Produces K-fold OOF predictions for stacking (script 4b).
-- Saves oof_model_b.parquet, xgb_model.joblib, rf_model.joblib.
+- Trains XGBoost and Logistic Regression (LR). Ensemble uses A + B only; LR is for diagnostics.
+- Produces K-fold OOF predictions for stacking (script 4b): oof_xgb only.
+- Saves oof_model_b.parquet (oof_xgb), xgb_model.joblib, lr_model.joblib.
 
 Run after script 3. Required before stacking (4b) and inference (6)."""
 import argparse
@@ -25,8 +25,8 @@ from src.training.build_lists import build_lists
 from src.training.train_model_b import train_model_b
 from src.utils.split import load_split_info
 
-from src.models.xgb_model import build_xgb, fit_xgb
-from src.models.rf_model import build_rf, fit_rf
+from src.models.xgb_model import build_xgb, fit_xgb, predict_with_uncertainty
+from src.models.lr_model import build_lr, fit_lr
 
 
 def main():
@@ -102,7 +102,7 @@ def main():
 
     mb = config.get("model_b", {})
     xgb_cfg = mb.get("xgb", {})
-    rf_cfg = mb.get("rf", {})
+    lr_cfg = mb.get("lr", {})
     es = xgb_cfg.get("early_stopping_rounds", 20)
 
     oof_rows = []
@@ -117,13 +117,18 @@ def main():
             continue
         xgb_m = build_xgb(xgb_cfg)
         fit_xgb(xgb_m, X_train, y_train, X_val, y_val, early_stopping_rounds=es)
-        rf_m = build_rf(rf_cfg)
-        fit_rf(rf_m, X_train, y_train)
-        oof_xgb = xgb_m.predict(X_val).astype(np.float32)
-        oof_rf = rf_m.predict(X_val).astype(np.float32)
+        lr_m = build_lr(lr_cfg)
+        fit_lr(lr_m, X_train, y_train)
+        try:
+            oof_xgb, tree_std = predict_with_uncertainty(xgb_m, X_val)
+            oof_xgb = oof_xgb.astype(np.float32)
+            conf_xgb = (1.0 / (1.0 + np.clip(tree_std, 0, None))).astype(np.float32)
+        except Exception:
+            oof_xgb = xgb_m.predict(X_val).astype(np.float32)
+            conf_xgb = np.full(oof_xgb.shape, 0.5, dtype=np.float32)
         val_df = df.loc[val_mask, ["team_id", "as_of_date", "y"]].copy()
         val_df["oof_xgb"] = oof_xgb
-        val_df["oof_rf"] = oof_rf
+        val_df["conf_xgb"] = conf_xgb
         oof_rows.append(val_df)
         print(f"Fold {fold+1}/{n_folds} OOF collected {len(val_df)} rows")
 
@@ -138,7 +143,7 @@ def main():
             file=sys.stderr,
         )
 
-    # Train final XGB and RF on all train data (with a small validation holdout for early stopping if configured).
+    # Train final XGB and LR on all train data (with a small validation holdout for early stopping if configured).
     X = df[feat_cols].values.astype(np.float32)
     y = df["y"].values.astype(np.float32)
     dates_sorted_full = sorted(df["as_of_date"].unique())
