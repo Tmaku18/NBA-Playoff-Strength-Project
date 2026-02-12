@@ -145,8 +145,16 @@ NDCG@16 best also achieves strong Spearman and playoff_spearman among Phase 3 co
 
 ---
 
-## 6. Related Docs
+## 6. ListMLE outcome vs standings (outputs5)
+
+We compared **listmle_target: playoff_outcome** vs **final_rank** (standings) with evaluation on playoff outcome (eos_final_rank). **Result:** Training on standings matched or beat outcome-trained models. Best: **ndcg_standing** — Spearman 0.529, playoff Spearman 0.531, rank MAE 6.47. See **outputs/ANALYSIS.md** §3b and `outputs5/*/eval_report.json`.
+
+---
+
+## 7. Related Docs
 
 - [HYPERPARAMETER_TESTING_EVOLUTION.md](HYPERPARAMETER_TESTING_EVOLUTION.md) — Sweep methodology, Optuna, phased grids
 - [METRICS_USED.md](METRICS_USED.md) — NDCG, Spearman, rank_mae/rmse definitions
+- [METRIC_MATRIX_EXPLORATION_PLAN.md](METRIC_MATRIX_EXPLORATION_PLAN.md) — Matrix (standings vs outcome × Spearman/NDCG) and outputs5 results
+- `outputs/ANALYSIS.md` — Current results (run_026), ListMLE outcome vs standings
 - `outputs4/sweeps/OUTPUTS4_ANALYSIS.md` — Full raw sweep analysis with all combo details

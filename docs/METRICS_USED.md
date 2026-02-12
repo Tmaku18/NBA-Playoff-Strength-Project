@@ -1,6 +1,6 @@
 # Metrics used in the project
 
-Documentation of metrics added for model inputs and evaluation (see NBA_ANALYST_METRICS and ANALYSIS.md).
+Documentation of metrics added for model inputs and evaluation (see NBA_ANALYST_METRICS and **outputs/ANALYSIS.md** for current run_026 results and playoff/rank metrics).
 
 ## Player rolling features (Model A)
 

@@ -24,6 +24,10 @@
 
 **Eval extension:** Add explicit `spearman_standings` and `ndcg_at_16_standings` in `scripts/5_evaluate.py` and `src/evaluation/` using `EOS_playoff_standings` as y_true, so playoff standings vs playoff outcome metrics are clearly separated.
 
+### Results (outputs5): outcome vs standings
+
+We compared **listmle_target: playoff_outcome** vs **final_rank** (standings), evaluated on playoff outcome. **Finding:** Training ListMLE on **standings** matched or beat **outcome** for predicting playoff result. Best: ndcg_standing (Spearman 0.529, playoff Spearman 0.531, rank MAE 6.47). See `outputs5/ndcg_outcome`, `outputs5/ndcg_standing`, `outputs5/spearman_outcome`, `outputs5/spearman_standing` and **outputs/ANALYSIS.md** §3b.
+
 ---
 
 ## 2. Sweep Objectives to Add
