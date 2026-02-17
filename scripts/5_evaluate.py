@@ -20,8 +20,73 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.evaluation.evaluate import evaluate_ranking, evaluate_upset
-from src.evaluation.metrics import brier_champion, ndcg_at_4, ndcg_at_30, ndcg_score, rank_mae, rank_rmse, spearman
+from src.evaluation.metrics import (
+    brier_champion,
+    confusion_matrix_ranking_top_k,
+    confusion_matrix_top_k,
+    ece,
+    ndcg_at_4,
+    ndcg_at_30,
+    ndcg_score,
+    rank_mae,
+    rank_rmse,
+    spearman,
+    kendall_tau,
+    pearson,
+)
 from src.utils.split import load_split_info
+
+
+def _write_ranking_confusion_plots(report: dict, run_dir: Path) -> None:
+    """Write confusion_matrix_ranking_top16.png: 2x2 heatmaps (Ensemble, Model A, Model B, Model C)."""
+    data = report.get("confusion_matrices_ranking_top16") or {}
+    if not data:
+        return
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+    display_order = [("ensemble", "Ensemble"), ("model_a", "Model A"), ("xgb", "Model B"), ("rf", "Model C")]
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+    axes = axes.ravel()
+    for idx, (key, title) in enumerate(display_order):
+        if key not in data or idx >= len(axes):
+            continue
+        cm_data = data[key]
+        matrix = cm_data.get("matrix") or []
+        row_labels = cm_data.get("row_labels") or []
+        col_labels = cm_data.get("col_labels") or []
+        if not matrix:
+            continue
+        ax = axes[idx]
+        nrows, ncols = len(matrix), len(matrix[0]) if matrix else 0
+        # Extent so Actual 1 = y=1, Actual 16 = y=16, Pred 1 = x=1, Pred 16 = x=16 (cell centers at 1..16/17)
+        extent = (0.5, ncols + 0.5, 0.5, nrows + 0.5)
+        im = ax.imshow(matrix, aspect="auto", cmap="Blues", vmin=0, extent=extent, origin="lower")
+        ax.set_xticks(range(1, ncols + 1))
+        ax.set_xticklabels(col_labels, rotation=45, ha="right", fontsize=7)
+        ax.set_yticks(range(1, nrows + 1))
+        ax.set_yticklabels(row_labels, fontsize=7)
+        ax.set_xlim(0.5, ncols + 0.5)
+        ax.set_ylim(0.5, nrows + 0.5)
+        ax.set_xlabel("Predicted rank")
+        ax.set_ylabel("Actual rank")
+        ax.set_title(title)
+        # Diagonal line: actual = predicted (y = x from 1 to 16)
+        k_diag = min(16, nrows, ncols)
+        if k_diag >= 2:
+            ax.plot([1, k_diag], [1, k_diag], color="red", linewidth=1.2, linestyle="-", zorder=5)
+        for i in range(nrows):
+            for j in range(ncols):
+                v = matrix[i][j]
+                if v != 0:
+                    ax.text(j + 1, i + 1, int(v), ha="center", va="center", fontsize=6)
+    plt.suptitle("Ranking confusion matrix: top 16 teams (rows = actual, cols = predicted); red line = actual = pred", fontsize=10)
+    plt.tight_layout()
+    out_path = run_dir / "confusion_matrix_ranking_top16.png"
+    fig.savefig(out_path, dpi=120, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Wrote {out_path}")
 
 
 def _next_analysis_number(run_dir: Path) -> int:
@@ -38,19 +103,9 @@ def _next_analysis_number(run_dir: Path) -> int:
 
 
 def _latest_run_id(outputs_dir: Path) -> str | None:
-    """Return the latest run_NNN (highest number) present in outputs_dir, or None."""
-    outputs_dir = Path(outputs_dir)
-    if not outputs_dir.exists():
-        return None
-    pattern = re.compile(r"^run_(\d+)$", re.I)
-    numbers = []
-    for p in outputs_dir.iterdir():
-        if p.is_dir() and pattern.match(p.name):
-            if (p / "predictions.json").exists() or list(p.glob("predictions_*.json")):
-                numbers.append(int(pattern.match(p.name).group(1)))
-    if not numbers:
-        return None
-    return f"run_{max(numbers):03d}"
+    """Return the latest run dir name (run_NNN or run_NNN_MM-DD) with predictions."""
+    from src.utils.run_id import latest_run_id
+    return latest_run_id(outputs_dir)
 
 
 def _teams_to_arrays(teams: list) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[int], dict[int, str]]:
@@ -105,8 +160,8 @@ def _teams_to_arrays_by_model(
         pr = pred.get("predicted_strength")
         scores_by_model["ensemble"].append(float(tss) if tss is not None else 0.0)
         pred_ranks_by_model["ensemble"].append(float(pr) if pr is not None else 0.0)
-        r_a = diag.get("deep_set_rank")
-        r_x = diag.get("xgboost_rank")
+        r_a = diag.get("model_a_rank") or diag.get("deep_set_rank")
+        r_x = diag.get("model_b_rank") or diag.get("xgboost_rank")
         r_r = diag.get("model_c_rank") or diag.get("random_forest_rank")
         scores_by_model["model_a"].append(31.0 - float(r_a) if r_a is not None else 0.0)
         scores_by_model["xgb"].append(31.0 - float(r_x) if r_x is not None else 0.0)
@@ -126,6 +181,74 @@ def _teams_to_arrays_by_model(
     return out, team_ids, team_id_to_conf
 
 
+def _teams_to_outcome_and_standings(teams: list) -> tuple[np.ndarray, np.ndarray]:
+    """Return (y_outcome, y_standings) in same order as _teams_to_arrays_by_model (teams with EOS_global_rank)."""
+    y_outcome_list = []
+    y_standings_list = []
+    for t in teams:
+        act = t.get("analysis", {}).get("EOS_global_rank")
+        if act is None:
+            continue
+        stand = t.get("analysis", {}).get("EOS_playoff_standings")
+        y_outcome_list.append(float(act))
+        y_standings_list.append(float(stand) if stand is not None else np.nan)
+    return np.array(y_outcome_list, dtype=np.float64), np.array(y_standings_list, dtype=np.float64)
+
+
+def _outcome_and_standings_metrics(
+    y_outcome: np.ndarray,
+    y_standings: np.ndarray,
+    y_score: np.ndarray,
+    pred_ranks: np.ndarray,
+    k: int = 30,
+) -> dict:
+    """Return {outcome: {spearman, ndcg_at_4, ...}, standings: {spearman_standings, ...}} for one model."""
+    n = len(y_outcome)
+    if n < 2:
+        return {"outcome": {}, "standings": {}}
+    outcome = _compute_metrics_from_arrays(
+        y_outcome.astype(np.float32), y_score.astype(np.float32), pred_ranks.astype(np.float32), k=k
+    )
+    outcome_subset = {
+        "spearman", "kendall_tau", "pearson", "precision_at_4", "precision_at_8",
+        "ndcg_at_4", "ndcg_at_12", "ndcg_at_16", "ndcg_at_30",
+        "rank_mae_pred_vs_playoff_outcome_rank", "rank_rmse_pred_vs_playoff_outcome_rank",
+    }
+    result_outcome = {key: outcome[key] for key in outcome_subset if key in outcome}
+    valid = np.isfinite(y_standings)
+    if np.sum(valid) < 2:
+        return {"outcome": result_outcome, "standings": {}}
+    y_s = y_standings[valid].astype(np.float32)
+    y_sc = np.asarray(y_score, dtype=np.float32)[valid]
+    pr_s = np.asarray(pred_ranks, dtype=np.float32)[valid]
+    max_s = int(np.max(y_s))
+    relevance_s = (max_s - y_s + 1).clip(1, max_s if max_s > 0 else 1)
+    standings = {
+        "spearman_standings": float(spearman(y_s, y_sc)),
+        "kendall_tau_standings": float(kendall_tau(y_s, y_sc)),
+        "ndcg_at_4_standings": float(ndcg_score(relevance_s, y_sc, k=min(4, len(y_s)))),
+        "ndcg_at_16_standings": float(ndcg_score(relevance_s, y_sc, k=min(16, len(y_s)))),
+        "ndcg_at_30_standings": float(ndcg_score(relevance_s, y_sc, k=min(30, len(y_s)))),
+        "rank_rmse_standings": float(rank_rmse(pr_s, y_s)),
+    }
+    return {"outcome": result_outcome, "standings": standings}
+
+
+def _build_standings_vs_outcome_metrics(teams: list, by_model: dict) -> dict:
+    """Build report['standings_vs_outcome_metrics']: per-model outcome + standings metrics. Keys: ensemble, model_a, model_b, model_c."""
+    display_map = {"ensemble": "ensemble", "model_a": "model_a", "xgb": "model_b", "rf": "model_c"}
+    y_outcome, y_standings = _teams_to_outcome_and_standings(teams)
+    if len(y_outcome) < 2:
+        return {}
+    out = {}
+    for key, display_name in display_map.items():
+        if key not in by_model:
+            continue
+        y_actual, y_score, pred_ranks = by_model[key][0], by_model[key][1], by_model[key][2]
+        out[display_name] = _outcome_and_standings_metrics(y_outcome, y_standings, y_score, pred_ranks)
+    return out
+
+
 def _compute_metrics_from_arrays(
     y_actual: np.ndarray,
     y_score: np.ndarray,
@@ -138,7 +261,8 @@ def _compute_metrics_from_arrays(
     if n < 2:
         return {
             "ndcg": 0.0, "ndcg_at_4": 0.0, "ndcg_at_12": 0.0, "ndcg_at_16": 0.0, "ndcg_at_20": 0.0, "ndcg_at_30": 0.0,
-            "spearman": 0.0, "mrr_top2": 0.0, "mrr_top4": 0.0, "roc_auc_upset": 0.5,
+            "spearman": 0.0, "kendall_tau": 0.0, "pearson": 0.0, "precision_at_4": 0.0, "precision_at_8": 0.0,
+            "mrr_top2": 0.0, "mrr_top4": 0.0, "roc_auc_upset": 0.5,
             "rank_mae_pred_vs_playoff_outcome_rank": float("nan"), "rank_rmse_pred_vs_playoff_outcome_rank": float("nan"),
         }
     max_rank = int(np.max(y_actual)) if n else 0
@@ -201,6 +325,7 @@ def _compute_metrics(teams: list, *, k: int = 30) -> dict:
         max_rank_s = int(np.max(standings_arr))
         relevance_standings = (max_rank_s - standings_arr + 1).clip(1, max_rank_s if max_rank_s > 0 else 1)
         m["spearman_standings"] = float(spearman(standings_arr, pred_scores_for_standings))
+        m["kendall_tau_standings"] = float(kendall_tau(standings_arr, pred_scores_for_standings))
         m["ndcg_at_4_standings"] = float(ndcg_score(relevance_standings, pred_scores_for_standings, k=min(4, len(standings_arr))))
         m["ndcg_at_16_standings"] = float(ndcg_score(relevance_standings, pred_scores_for_standings, k=min(16, len(standings_arr))))
         m["ndcg_at_30_standings"] = float(ndcg_score(relevance_standings, pred_scores_for_standings, k=min(30, len(standings_arr))))
@@ -218,11 +343,18 @@ def _compute_metrics(teams: list, *, k: int = 30) -> dict:
         g_rank = np.array([r[1] for r in playoff_rows], dtype=np.float32)
         odds_pct = np.array([float(r[2].rstrip("%")) / 100.0 for r in playoff_rows], dtype=np.float32)
         champion_onehot = (p_rank == 1).astype(np.float32)
+        champ_idx = np.where(p_rank == 1)[0]
+        champion_rank = (1 + int((g_rank < g_rank[champ_idx[0]]).sum())) if len(champ_idx) == 1 else None
+        champion_in_top_4 = 1.0 if (champion_rank is not None and champion_rank <= 4) else 0.0
         m["playoff_metrics"] = {
             "spearman_pred_vs_playoff_outcome_rank": float(spearman(p_rank, g_rank)),
+            "kendall_tau_pred_vs_playoff_outcome_rank": float(kendall_tau(p_rank, g_rank)),
             "ndcg_at_4_final_four": float(ndcg_at_4(p_rank, -g_rank)),
             "ndcg_at_30_pred_vs_playoff_outcome_rank": float(ndcg_at_30(p_rank, -g_rank)),
             "brier_championship_odds": float(brier_champion(champion_onehot, odds_pct)),
+            "ece_championship_odds": float(ece(champion_onehot, odds_pct)),
+            "champion_rank": champion_rank,
+            "champion_in_top_4": champion_in_top_4,
             "rank_mae_pred_vs_playoff_outcome_rank": m["rank_mae_pred_vs_playoff_outcome_rank"],
             "rank_rmse_pred_vs_playoff_outcome_rank": m["rank_rmse_pred_vs_playoff_outcome_rank"],
             "rank_mae_wl_record_standings_vs_playoff_outcome_rank": m.get("rank_mae_wl_record_standings_vs_playoff_outcome_rank", float("nan")),
@@ -253,8 +385,8 @@ def _model_vs_standings_comparison(
         diag = t.get("ensemble_diagnostics", {})
         pr = pred.get("predicted_strength")
         pred_by_model["ensemble"].append(float(pr) if pr is not None else 0.0)
-        r_a = diag.get("deep_set_rank")
-        r_x = diag.get("xgboost_rank")
+        r_a = diag.get("model_a_rank") or diag.get("deep_set_rank")
+        r_x = diag.get("model_b_rank") or diag.get("xgboost_rank")
         r_r = diag.get("model_c_rank") or diag.get("random_forest_rank")
         pred_by_model["model_a"].append(float(r_a) if r_a is not None else 0.0)
         pred_by_model["xgb"].append(float(r_x) if r_x is not None else 0.0)
@@ -310,6 +442,32 @@ def _model_vs_standings_comparison(
     return out
 
 
+def _confusion_matrices_by_model(teams: list, cutoffs: tuple[int, ...] = (4, 8, 16)) -> dict:
+    """Per-model confusion matrices for top-k (actual vs predicted). Returns {cutoff_k: {model_name: {tp, fp, tn, fn, matrix}}}."""
+    by_model, _, _ = _teams_to_arrays_by_model(teams)
+    if not by_model:
+        return {}
+    out: dict = {}
+    for k in cutoffs:
+        out[f"cutoff_{k}"] = {}
+        for name, (y_actual, _y_score, pred_ranks) in by_model.items():
+            cm = confusion_matrix_top_k(y_actual, pred_ranks, k)
+            out[f"cutoff_{k}"][name] = {**cm}
+    return out
+
+
+def _ranking_confusion_matrices_by_model(teams: list, k: int = 16) -> dict:
+    """Per-model ranking confusion matrix: top k teams in order. Rows = actual rank 1..k, cols = predicted rank 1..k (+ col for pred > k)."""
+    by_model, _, _ = _teams_to_arrays_by_model(teams)
+    if not by_model:
+        return {}
+    out: dict = {}
+    for name, (y_actual, _y_score, pred_ranks) in by_model.items():
+        cm = confusion_matrix_ranking_top_k(y_actual, pred_ranks, k=k)
+        out[name] = {**cm}
+    return out
+
+
 def _metrics_by_conference(
     teams: list,
     *,
@@ -347,12 +505,14 @@ def _metrics_by_conference(
             y_score = np.array([r[2] for r in rows], dtype=np.float32)
             # NDCG: relevance (EOS strength within conf) vs ensemble_score (higher = better)
             ndcg = ndcg_score(relevance, y_score, k=min(10, n))
-            # Spearman: derived actual conference rank vs predicted conference rank (both lower = better)
+            # Spearman / Kendall: derived actual conference rank vs predicted conference rank (both lower = better)
             valid = np.isfinite(pred_ranks)
             if np.sum(valid) >= 2:
                 sp = spearman(derived_actual_rank[valid], pred_ranks[valid])
+                kt = kendall_tau(derived_actual_rank[valid], pred_ranks[valid])
             else:
                 sp = 0.0
+                kt = 0.0
         else:
             y_actual, y_score, _, team_ids, team_id_to_conf = _teams_to_arrays(teams)
             idx = [i for i, tid in enumerate(team_ids) if team_id_to_conf.get(tid) == conf]
@@ -364,6 +524,7 @@ def _metrics_by_conference(
             rel = (max_rank - ya + 1).clip(1, max_rank if max_rank > 0 else 1)
             ndcg = ndcg_score(rel, ys, k=min(10, len(rel)))
             sp = spearman(ya, ys)
+            kt = kendall_tau(ya, ys)
         # W/L record standings vs Playoff Outcome Rank (baseline) per conference
         standings_list = []
         actual_list = []
@@ -380,10 +541,10 @@ def _metrics_by_conference(
                 actual_list.append(float(act))
                 standings_list.append(float(stand))
                 pred_ensemble.append(float(pred.get("predicted_strength") or 0))
-                pred_model_a.append(float(diag.get("deep_set_rank") or 0))
-                pred_xgb.append(float(diag.get("xgboost_rank") or diag.get("model_b_rank") or 0))
-                pred_rf.append(float(diag.get("random_forest_rank") or diag.get("model_c_rank") or 0))
-        conf_entry = {"ndcg": float(ndcg), "spearman": float(sp)}
+                pred_model_a.append(float(diag.get("model_a_rank") or diag.get("deep_set_rank") or 0))
+                pred_xgb.append(float(diag.get("model_b_rank") or diag.get("xgboost_rank") or 0))
+                pred_rf.append(float(diag.get("model_c_rank") or diag.get("random_forest_rank") or 0))
+        conf_entry = {"ndcg": float(ndcg), "spearman": float(sp), "kendall_tau": float(kt)}
         if len(standings_list) >= 2:
             actual_arr = np.array(actual_list, dtype=np.float32)
             conf_entry["rank_mae_wl_record_standings_vs_playoff_outcome_rank"] = float(
@@ -424,21 +585,25 @@ def _metrics_by_conference(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML")
+    parser.add_argument("--outputs", type=str, default=None, help="Override outputs dir (e.g. outputs6/phase_2/outcome/best_ndcg4)")
+    parser.add_argument("--run-id", type=str, default=None, help="Override run_id (e.g. run_028)")
     args = parser.parse_args()
     config_path = Path(args.config) if args.config else ROOT / "config" / "defaults.yaml"
     if not config_path.is_absolute():
         config_path = ROOT / config_path
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
-    out_dir = Path(config["paths"]["outputs"])
+    out_dir = Path(args.outputs) if args.outputs else Path(config["paths"]["outputs"])
     if not out_dir.is_absolute():
         out_dir = ROOT / out_dir
-    run_id = config.get("inference", {}).get("run_id")
+    run_id = args.run_id or config.get("inference", {}).get("run_id")
     if run_id is None or (isinstance(run_id, str) and run_id.strip().lower() in ("null", "")):
-        run_id = _latest_run_id(out_dir) or "run_001"
+        run_id = _latest_run_id(out_dir) or "run_001_01-01"
     else:
         run_id = str(run_id).strip()
-    run_dir = out_dir / run_id
+    from src.utils.run_id import resolve_run_dir
+    run_dir = resolve_run_dir(out_dir, run_id)
+    run_id = run_dir.name  # use actual folder name (e.g. run_025_02-15) for paths and reports
     pred_path = run_dir / "predictions.json"
     per_season_preds = list(run_dir.glob("predictions_*.json"))
     if not pred_path.exists() and not per_season_preds:
@@ -482,6 +647,9 @@ def main():
         metrics_rf = _compute_metrics_from_arrays(by_model["rf"][0], by_model["rf"][1], by_model["rf"][2]) if "rf" in by_model else {}
         conf_metrics = _metrics_by_conference(teams)
         model_vs_standings = _model_vs_standings_comparison(teams)
+        standings_vs_outcome = _build_standings_vs_outcome_metrics(teams, by_model)
+        confusion_matrices = _confusion_matrices_by_model(teams)
+        confusion_matrices_ranking_top16 = _ranking_confusion_matrices_by_model(teams, k=16)
         season_report: dict = {
             "test_metrics_ensemble": metrics_ensemble,
             "test_metrics_model_a": metrics_model_a,
@@ -489,6 +657,9 @@ def main():
             "test_metrics_model_c": metrics_rf,
             "test_metrics_by_conference": conf_metrics,
             "model_vs_standings_comparison": model_vs_standings,
+            "standings_vs_outcome_metrics": standings_vs_outcome,
+            "confusion_matrices": confusion_matrices,
+            "confusion_matrices_ranking_top16": confusion_matrices_ranking_top16,
             "notes": {"eos_rank_source": eos_source},
         }
         by_season[season] = season_report
@@ -511,6 +682,9 @@ def main():
             report["test_metrics_model_c"] = _compute_metrics_from_arrays(by_model["rf"][0], by_model["rf"][1], by_model["rf"][2]) if "rf" in by_model else {}
             report["test_metrics_by_conference"] = _metrics_by_conference(primary_teams)
             report["model_vs_standings_comparison"] = _model_vs_standings_comparison(primary_teams)
+            report["standings_vs_outcome_metrics"] = _build_standings_vs_outcome_metrics(primary_teams, by_model)
+            report["confusion_matrices"] = _confusion_matrices_by_model(primary_teams)
+            report["confusion_matrices_ranking_top16"] = _ranking_confusion_matrices_by_model(primary_teams, k=16)
     elif by_season:
         last_season = sorted(by_season.keys())[-1]
         last_report = by_season[last_season]
@@ -519,6 +693,7 @@ def main():
         report["test_metrics_model_b"] = last_report.get("test_metrics_model_b") or last_report.get("test_metrics_xgb", {})
         report["test_metrics_model_c"] = last_report.get("test_metrics_model_c") or last_report.get("test_metrics_rf", {})
         report["test_metrics_by_conference"] = last_report["test_metrics_by_conference"]
+        report["confusion_matrices_ranking_top16"] = last_report.get("confusion_matrices_ranking_top16", {})
         report["notes"]["eos_rank_source"] = last_report["notes"].get("eos_rank_source", "standings")
         report["by_season"] = by_season
         # Ensure playoff_metrics appear in main report if any season has them (sweep reads test_metrics_ensemble.playoff_metrics)
@@ -537,8 +712,13 @@ def main():
             if last_teams:
                 report["model_vs_standings_comparison"] = _model_vs_standings_comparison(last_teams)
                 report["model_vs_standings_comparison"]["season"] = last_season
+                by_model_last, _, _ = _teams_to_arrays_by_model(last_teams)
+                report["standings_vs_outcome_metrics"] = _build_standings_vs_outcome_metrics(last_teams, by_model_last)
+                report["confusion_matrices"] = _confusion_matrices_by_model(last_teams)
+                report["confusion_matrices_ranking_top16"] = _ranking_confusion_matrices_by_model(last_teams, k=16)
 
     report["notes"]["eos_rank_source_meaning"] = "standings = W/L record standings; eos_final_rank = Playoff Outcome Rank"
+    report["notes"]["ensemble_definition"] = "Model A + Model B (XGB) only; Model C (RF) is diagnostic only and not used in ensemble_score."
     report["notes"]["upset_definition"] = "sleeper = EOS_global_rank > predicted_strength"
     report["notes"]["mrr_top2"] = "1/rank of first team in top 2 (champion+runner-up) in predicted order."
     report["notes"]["mrr_top4"] = "1/rank of first team in top 4 (Conference Finals) in predicted order."
@@ -571,6 +751,15 @@ def main():
             "improvement_mae/improvement_rmse = standings_error - model_error (positive = model better). "
             "Significance: paired bootstrap over teams (resample teams, mean(standings_ae - model_ae)); p_value = proportion of bootstrap <= 0."
         )
+    if report.get("confusion_matrices"):
+        report["notes"]["confusion_matrices"] = (
+            "Binary top-k: actual vs predicted in top k (1=yes, 0=no). Rows=actual, cols=pred. cutoffs 4, 8, 16 = Conference Finals, Semis, Playoff."
+        )
+    if report.get("confusion_matrices_ranking_top16"):
+        report["notes"]["confusion_matrices_ranking_top16"] = (
+            "Ranking matrix: top 16 teams in order. Rows = actual rank 1..16, cols = predicted rank 1..16 (+ Pred 17+). "
+            "Cell (i,j) = count of teams that finished actual rank i and were predicted rank j."
+        )
 
     # Write report into the run folder so each run keeps its own evaluation.
     run_report_path = run_dir / "eval_report.json"
@@ -578,6 +767,7 @@ def main():
     with open(run_report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
     print(f"Wrote {run_report_path}")
+    _write_ranking_confusion_plots(report, run_dir)
     # Also write a copy at outputs root as the "latest" report for backward compatibility.
     out = out_dir / "eval_report.json"
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -617,8 +807,9 @@ def main():
             lines.append(f"- {k}{disp}: {v:.4f}" if isinstance(v, float) else f"- {k}{disp}: {v}")
         elif isinstance(v, dict):
             lines.append(f"- {k}{disp}: " + ", ".join(f"{kk}={vv:.4f}" if isinstance(vv, float) else f"{kk}={vv}" for kk, vv in list(v.items())[:8]))
-    # Model vs standings comparison and statistical significance
+    # Model vs standings comparison and statistical significance (all four: Ensemble, Model A, Model B, Model C)
     mvs = report.get("model_vs_standings_comparison") or {}
+    display_map = {"ensemble": "Ensemble", "model_a": "Model A", "xgb": "Model B", "rf": "Model C"}
     if mvs.get("standings_vs_outcome") and mvs.get("models"):
         lines.extend([
             "",
@@ -631,30 +822,71 @@ def main():
         ])
         stand = mvs["standings_vs_outcome"]
         lines.append(f"| W/L standings (baseline) | {stand['rank_mae']:.3f} | {stand['rank_rmse']:.3f} | — | — |")
-        for name, mod in mvs["models"].items():
+        for key in ("ensemble", "model_a", "xgb", "rf"):
+            if key not in mvs["models"]:
+                continue
+            mod = mvs["models"][key]
+            display_name = display_map[key]
             d_mae = mod["improvement_mae_vs_standings"]
             d_rmse = mod["improvement_rmse_vs_standings"]
             lines.append(
-                f"| {name} | {mod['rank_mae_pred_vs_outcome']:.3f} | {mod['rank_rmse_pred_vs_outcome']:.3f} | "
+                f"| {display_name} | {mod['rank_mae_pred_vs_outcome']:.3f} | {mod['rank_rmse_pred_vs_outcome']:.3f} | "
                 f"{d_mae:+.3f} | {d_rmse:+.3f} |"
             )
         lines.append("")
-        sig = mvs.get("significance", {})
-        if sig.get("ensemble"):
-            s = sig["ensemble"]
-            p = s.get("p_value_model_better_than_standings")
-            ci_lo, ci_hi = s.get("bootstrap_95_ci_low"), s.get("bootstrap_95_ci_high")
-            sig_ok = p < 0.05 if p is not None else False
+        # East vs West (test_metrics_by_conference)
+        by_conf = report.get("test_metrics_by_conference") or {}
+        if by_conf:
             lines.extend([
-                "### Statistical significance (ensemble vs standings)",
+                "## East vs West (conference)",
                 "",
-                f"- **Method:** Paired bootstrap over teams (resample teams with replacement; mean improvement in MAE per team).",
-                f"- **Mean MAE improvement:** {s.get('mean_mae_improvement', 0):.4f} (positive = ensemble better).",
-                f"- **95% CI for improvement:** [{ci_lo:.4f}, {ci_hi:.4f}].",
-                f"- **p-value (H0: no improvement):** {p:.4f} → ensemble is **{'statistically significantly better' if sig_ok else 'not significantly better'}** than standings at α=0.05.",
+                "Within-conference NDCG, Spearman, and Kendall τ (relevance = EOS-derived rank 1=best in conf). Full per-model MAE/RMSE in `eval_report.json` → `test_metrics_by_conference`.",
                 "",
+                "| Conference | NDCG | Spearman | Kendall τ | Ensemble MAE vs outcome |",
+                "|------------|------|----------|------------|--------------------------|",
             ])
-    lines.extend(["", "See `eval_report.json` and `eval_report_<season>.json` for full report (incl. per-model MAE/RMSE and significance).", ""])
+            for conf_key, label in [("E", "East"), ("W", "West")]:
+                c = by_conf.get(conf_key, {})
+                if not c:
+                    continue
+                ndcg = c.get("ndcg")
+                sp = c.get("spearman")
+                kt = c.get("kendall_tau")
+                mae = c.get("rank_mae_ensemble_pred_vs_playoff_outcome_rank")
+                ndcg_s = f"{ndcg:.3f}" if ndcg is not None else "—"
+                sp_s = f"{sp:.3f}" if sp is not None else "—"
+                kt_s = f"{kt:.3f}" if kt is not None else "—"
+                mae_s = f"{mae:.3f}" if mae is not None else "—"
+                lines.append(f"| {label} ({conf_key}) | {ndcg_s} | {sp_s} | {kt_s} | {mae_s} |")
+            lines.append("")
+        sig = mvs.get("significance", {})
+        lines.extend([
+            "### Statistical significance (vs standings)",
+            "",
+            "Paired bootstrap over teams (resample with replacement; mean MAE improvement per team). H0: no improvement; positive = model better.",
+            "",
+            "| Model | Mean MAE improvement | 95% CI | p-value |",
+            "|-------|----------------------|--------|--------|",
+        ])
+        for key in ("ensemble", "model_a", "xgb", "rf"):
+            s = sig.get(key)
+            if not s:
+                continue
+            display_name = display_map[key]
+            p = s.get("p_value_model_better_than_standings")
+            ci_lo = s.get("bootstrap_95_ci_low")
+            ci_hi = s.get("bootstrap_95_ci_high")
+            mean_imp = s.get("mean_mae_improvement", 0)
+            ci_str = f"[{ci_lo:.4f}, {ci_hi:.4f}]" if ci_lo is not None and ci_hi is not None else "—"
+            p_str = f"{p:.4f}" if p is not None else "—"
+            lines.append(f"| {display_name} | {mean_imp:+.4f} | {ci_str} | {p_str} |")
+        lines.append("")
+    lines.extend([
+        "",
+        "See `eval_report.json` and `eval_report_<season>.json` for full report (incl. per-model MAE/RMSE, significance, "
+        "`confusion_matrices`, and `confusion_matrices_ranking_top16`). Plot: `confusion_matrix_ranking_top16.png` (top 16 in order).",
+        "",
+    ])
     analysis_path.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {analysis_path}")
 

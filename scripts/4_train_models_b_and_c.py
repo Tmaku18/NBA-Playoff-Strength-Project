@@ -1,11 +1,12 @@
-"""Script 4: Train Model B (XGBoost) and Model C (Logistic Regression).
+"""Script 4: Train Model B (XGBoost) and optionally Model C (Random Forest).
 
 What this does:
 - Loads team-context features (ELO, rolling stats, SOS/SRS, etc.) from DB.
 - Uses the same train/test split as script 3 (from split_info.json).
-- Trains XGBoost and Logistic Regression (LR). Ensemble uses A + B only; LR is for diagnostics.
+- Trains XGBoost (Model B). Optionally trains RF (Model C) when training.train_model_c is true.
+- Ensemble uses A + B only; Model C is not in ensemble (analytics comparison only when present).
 - Produces K-fold OOF predictions for stacking (script 4b): oof_xgb only.
-- Saves oof_model_b.parquet (oof_xgb), xgb_model.joblib, lr_model.joblib.
+- Saves oof_model_b.parquet (oof_xgb), xgb_model.joblib, and rf_model.joblib only if train_model_c.
 
 Run after script 3. Required before stacking (4b) and inference (6)."""
 import argparse
@@ -26,7 +27,7 @@ from src.training.train_model_b import train_model_b
 from src.utils.split import load_split_info
 
 from src.models.xgb_model import build_xgb, fit_xgb, predict_with_uncertainty
-from src.models.lr_model import build_lr, fit_lr
+from src.models.rf_model import build_rf, fit_rf
 
 
 def main():
@@ -50,8 +51,9 @@ def main():
         sys.exit(1)
     rows = []
     for lst in lists:
+        conf = lst.get("conference", "E")
         for tid, wr in zip(lst["team_ids"], lst["win_rates"]):
-            rows.append({"team_id": int(tid), "as_of_date": lst["as_of_date"], "y": float(wr)})
+            rows.append({"team_id": int(tid), "as_of_date": lst["as_of_date"], "y": float(wr), "conference": conf})
     flat = pd.DataFrame(rows)
     # Build team-context features (rolling stats, ELO, etc.) for each (team_id, as_of_date).
     team_dates = [(int(a), str(b)) for a, b in flat[["team_id", "as_of_date"]].drop_duplicates().values.tolist()]
@@ -87,7 +89,7 @@ def main():
         X = df[feat_cols].values.astype(np.float32)
         y = df["y"].values.astype(np.float32)
         p1, p2 = train_model_b(X, y, None, None, config, feat_cols, out)
-        print(f"Saved {p1}, {p2} (too few dates for OOF)")
+        print(f"Saved {p1}" + (f", {p2}" if p2 else " (Model C skipped)") + " (too few dates for OOF)")
         return
 
     # Assign each date to a fold so validation is time-based (same idea as script 3).
@@ -102,8 +104,9 @@ def main():
 
     mb = config.get("model_b", {})
     xgb_cfg = mb.get("xgb", {})
-    lr_cfg = mb.get("lr", {})
+    rf_cfg = mb.get("rf", {})
     es = xgb_cfg.get("early_stopping_rounds", 20)
+    train_model_c = config.get("training", {}).get("train_model_c", False)
 
     oof_rows = []
     for fold in range(n_folds):
@@ -117,8 +120,9 @@ def main():
             continue
         xgb_m = build_xgb(xgb_cfg)
         fit_xgb(xgb_m, X_train, y_train, X_val, y_val, early_stopping_rounds=es)
-        lr_m = build_lr(lr_cfg)
-        fit_lr(lr_m, X_train, y_train)
+        if train_model_c:
+            rf_m = build_rf(rf_cfg)
+            fit_rf(rf_m, X_train, y_train)
         try:
             oof_xgb, tree_std = predict_with_uncertainty(xgb_m, X_val)
             oof_xgb = oof_xgb.astype(np.float32)
@@ -126,7 +130,10 @@ def main():
         except Exception:
             oof_xgb = xgb_m.predict(X_val).astype(np.float32)
             conf_xgb = np.full(oof_xgb.shape, 0.5, dtype=np.float32)
-        val_df = df.loc[val_mask, ["team_id", "as_of_date", "y"]].copy()
+        val_cols = ["team_id", "as_of_date", "y"]
+        if "conference" in df.columns:
+            val_cols.append("conference")
+        val_df = df.loc[val_mask, val_cols].copy()
         val_df["oof_xgb"] = oof_xgb
         val_df["conf_xgb"] = conf_xgb
         oof_rows.append(val_df)
@@ -155,7 +162,7 @@ def main():
     X_val = X[val_mask] if val_mask.any() else None
     y_val = y[val_mask] if val_mask.any() else None
     p1, p2 = train_model_b(X_train, y_train, X_val, y_val, config, feat_cols, out)
-    print(f"Saved {p1}, {p2}")
+    print(f"Saved {p1}" + (f", {p2}" if p2 else " (Model C skipped)"))
 
 
 if __name__ == "__main__":

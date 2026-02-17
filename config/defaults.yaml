@@ -40,11 +40,11 @@ model_a:
   num_embeddings: 500
   embedding_dim: 32
   encoder_hidden: [128, 64]
-  attention_heads: 4
+  attention_heads: 4   # WSL best (combo_0014/0018): 4 heads for non-negative Spearman
   dropout: 0.2
   learning_rate: 0.0001
   grad_clip_max_norm: 5.0  # looser than 1.0 to avoid zero effective gradients when norm is large
-  epochs: 22  # Phase 3 fine NDCG@16 combo 18 (Spearman 0.557, playoff_spearman 0.568, NDCG@16 0.550)
+  epochs: 27  # WSL best combo_0014
   early_stopping_patience: 0
   early_stopping_min_delta: 0.0
   early_stopping_val_frac: 0.25
@@ -53,9 +53,14 @@ model_a:
   attention_debug: false  # set true when debugging attention collapse; false for faster training
   # When raw attention collapses (nearly zero on valid positions): "minutes" or "uniform"
   attention_fallback_strategy: "minutes"
-  # Softmax temperature for attention (higher = softer, more spread across top 3 players per team)
+  # Softmax temperature for attention (WSL best: 3; multi-temp [1,5,10] for star/mid/depth)
   attention:
     temperature: 3
+    multi_temp_enabled: true
+    temperatures: [1, 5, 10]
+    multi_temp_base_weights: {1: 0.85, 5: 1.0, 10: 0.7}
+    use_availability_in_aggregation: true
+    use_availability_in_attention: false
   # Automatic Mixed Precision (AMP) for faster training on CUDA; loss stays float32. Set false if numerical issues.
   use_amp: true
   # Per-instance confidence for ensemble weighting (script 3 OOF, inference): entropy + max weight.
@@ -75,16 +80,19 @@ model_b:
     early_stopping_rounds: 20
     subsample: 0.8
     colsample_bytree: 0.7
-  lr:  # Model C (diagnostics only; ensemble = A + XGB)
-    C: 1.0
-    max_iter: 1000
-    solver: "lbfgs"
+  rf:  # Model C (diagnostics only; ensemble = A + XGB)
+    n_estimators: 200
+    max_depth: 12
+    min_samples_leaf: 5
 
-# Meta-learner: when OOF has conf_a and conf_xgb (from script 3 and 4), 4b trains on 4 cols (s_A, s_X, c_A, c_X).
+# Meta-learner: when use_confidence false, Ridge uses 2 cols (s_A, s_X) only to avoid inverted ensemble weights.
 stacking:
-  use_confidence: true  # script 4b uses conf_a/conf_xgb when present in merged OOF
+  use_confidence: false  # reverted: 4-col (with conf) was producing negative ensemble; 2-col Ridge restores positive Spearman
+  # Fixed blend toward XGB (Option 2): set in (0, 1) to use ens = (1-w)*s_A + w*s_X and skip Ridge; null = use Ridge when available.
+  xgb_weight: null
 
 training:
+  train_model_c: false  # Model C (RF) not trained; results kept for analytic comparison only; ensemble = A + B only
   n_folds: 5
   rolling_windows: [15, 30]  # Phase 3 fine NDCG@16 combo 18
   roster_size: 15
@@ -163,9 +171,11 @@ logging:
 
 # Hyperparameter sweep (scripts/sweep_hparams.py)
 # Smaller default grid for feasible full runs; use --phase phase1_xgb for phased grids. Model C is LR (fixed config).
+# model_a_attention_extra_temperatures: add 3, 6, 8 to default [1, 5, 10]. [] = default only; [3], [6], [8] = test adding one; [[3,6,8]] = test all extra.
 sweep:
   model_a_epochs: [16, 28]
   rolling_windows: [[10, 30]]
+  model_a_attention_extra_temperatures: [[]]  # [[]] = no sweep; [[], [3], [6], [8]] to test adding temp 3, 6, or 8
   model_b:
     max_depth: [3, 4]
     learning_rate: [0.08]

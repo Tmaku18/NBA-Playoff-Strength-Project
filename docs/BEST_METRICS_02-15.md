@@ -34,6 +34,8 @@ Best configs per metric and side-by-side comparison of all "best runs," includin
 
 *Standings eval = same training (playoff_outcome), but reported metric is correlation/RMSE vs W/L standings rank.*
 
+**Model C (RF):** The pipeline does not train Model C by default (`training.train_model_c: false`). Ensemble = A + B only. When present (e.g. older runs), Model C metrics are kept in reports for analytic comparison only.
+
 ---
 
 ## Run pipeline with a best config
