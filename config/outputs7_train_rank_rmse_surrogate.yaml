@@ -1,0 +1,13 @@
+# Use with outputs7 / rank-RMSE-surrogate training (branch: feature/train-rank-rmse-surrogate).
+# Merge with defaults_playoff_outcome + sweep config. Model A trains with differentiable rank RMSE surrogate loss.
+#
+# Example: python -m scripts.run_pipeline_from_model_a --config config/outputs7_train_rank_rmse_surrogate.yaml --outputs outputs7/phase_1/outcome/best_rmse
+# (Merge with defaults: use config that already sets listmle_target and paths; this file only sets loss_type.)
+
+paths:
+  outputs: "outputs7"
+
+training:
+  listmle_target: "playoff_outcome"
+  loss_type: "rank_rmse_surrogate"
+  loss_tau: 1.0

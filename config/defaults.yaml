@@ -93,6 +93,9 @@ stacking:
 
 training:
   train_model_c: false  # Model C (RF) not trained; results kept for analytic comparison only; ensemble = A + B only
+  # Model A loss: listmle (default), spearman_surrogate, or rank_rmse_surrogate (see feature branches / docs)
+  loss_type: "listmle"
+  loss_tau: 1.0  # temperature for surrogate soft ranks (used when loss_type is spearman_surrogate or rank_rmse_surrogate)
   n_folds: 5
   rolling_windows: [15, 30]  # Phase 3 fine NDCG@16 combo 18
   roster_size: 15

@@ -1,0 +1,13 @@
+# Use with outputs8 / Spearman-surrogate training (branch: feature/train-spearman-surrogate).
+# Merge with defaults_playoff_outcome + sweep config. Model A trains with differentiable Spearman surrogate loss.
+#
+# Example: python -m scripts.run_pipeline_from_model_a --config config/outputs8_train_spearman_surrogate.yaml --outputs outputs8/phase_1/outcome/best_spearman
+# (Merge with defaults: use config that already sets listmle_target and paths; this file only sets loss_type.)
+
+paths:
+  outputs: "outputs8"
+
+training:
+  listmle_target: "playoff_outcome"
+  loss_type: "spearman_surrogate"
+  loss_tau: 1.0

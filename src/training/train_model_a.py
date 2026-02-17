@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ def _configure_torch_performance() -> None:
     if hasattr(torch, "set_float32_matmul_precision"):
         torch.set_float32_matmul_precision("medium")
 from src.models.listmle_loss import listmle_loss
+from src.models.ranking_surrogate_losses import rank_rmse_surrogate_loss, spearman_surrogate_loss
 from src.utils.repro import set_seeds
 
 
@@ -150,6 +152,20 @@ def get_dummy_batch(
     }
 
 
+def _ranking_loss(
+    score: torch.Tensor,
+    rel: torch.Tensor,
+    loss_type: str,
+    loss_tau: float,
+) -> torch.Tensor:
+    """Dispatch to listmle, spearman_surrogate, or rank_rmse_surrogate."""
+    if loss_type == "spearman_surrogate":
+        return spearman_surrogate_loss(score, rel, tau=loss_tau)
+    if loss_type == "rank_rmse_surrogate":
+        return rank_rmse_surrogate_loss(score, rel, tau=loss_tau)
+    return listmle_loss(score, rel)
+
+
 def train_epoch(
     model: nn.Module,
     batches: list[dict],
@@ -160,6 +176,8 @@ def train_epoch(
     attention_debug: bool = False,
     use_amp: bool = False,
     scaler: "torch.cuda.amp.GradScaler | None" = None,
+    loss_type: str = "listmle",
+    loss_tau: float = 1.0,
 ) -> float:
     model.train()
     total = 0.0
@@ -212,7 +230,7 @@ def train_epoch(
             score, _, _ = model(embs, stats, minutes, mask)
             score = score.reshape(B, K)
         score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
-        loss = listmle_loss(score, rel)
+        loss = _ranking_loss(score, rel, loss_type, loss_tau)
         if not torch.isfinite(loss).all():
             continue
         if use_scaler:
@@ -252,6 +270,8 @@ def eval_epoch(
     device: torch.device,
     *,
     use_amp: bool = False,
+    loss_type: str = "listmle",
+    loss_tau: float = 1.0,
 ) -> float:
     model.eval()
     total = 0.0
@@ -274,7 +294,7 @@ def eval_epoch(
                 score, _, _ = model(embs, stats, minutes, mask)
                 score = score.reshape(B, K)
             score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
-            loss = listmle_loss(score, rel)
+            loss = _ranking_loss(score, rel, loss_type, loss_tau)
             if torch.isfinite(loss).all():
                 total += loss.item()
                 n += 1
@@ -319,11 +339,16 @@ def predict_batches_with_attention(
     model: nn.Module,
     batches: list[dict],
     device: torch.device,
+    attention_temperature_override: float | None = None,
 ) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
-    """Run model in eval mode; return (scores_list, attn_weights_list). attn_weights_list[i] is (K, P)."""
+    """Run model in eval mode; return (scores_list, attn_weights_list). attn_weights_list[i] is (K, P).
+    attention_temperature_override: when set, use this temp for attention softmax (multi-temp inference)."""
     model.eval()
     scores_list: list[torch.Tensor] = []
     attn_list: list[torch.Tensor] = []
+    kw: dict = {}
+    if attention_temperature_override is not None:
+        kw["temperature_override"] = attention_temperature_override
     with torch.no_grad():
         for batch in batches:
             B, K, P, S = batch["embedding_indices"].shape[0], batch["embedding_indices"].shape[1], batch["embedding_indices"].shape[2], batch["player_stats"].shape[-1]
@@ -331,7 +356,7 @@ def predict_batches_with_attention(
             stats = batch["player_stats"].to(device).reshape(B * K, P, S)
             minutes = batch["minutes"].to(device).reshape(B * K, P)
             mask = batch["key_padding_mask"].to(device).reshape(B * K, P)
-            score, _, attn_w = model(embs, stats, minutes, mask)
+            score, _, attn_w = model(embs, stats, minutes, mask, **kw)
             score = score.reshape(B, K)
             attn_w = attn_w.reshape(B, K, P)
             scores_list.append(score.cpu())
@@ -342,7 +367,7 @@ def predict_batches_with_attention(
 NOT_LEARNING_PATIENCE = 3  # stop when train loss does not improve for this many consecutive epochs
 
 NOT_LEARNING_ANALYSIS = (
-    "Model A is not learning: train loss did not improve. Typical cause (see docs/CHECKPOINT_PROJECT_REPORT.md, "
+    "Model A is not learning: train loss did not improve. Typical cause (see docs/CHECKPOINT_PROJECT_REPORT_02-01.md, "
     "fix_attention plan): attention has collapsed (all-zero or uniform), so the pooled representation Z is "
     "constant across teams -> constant scores -> ListMLE loss is fixed for that list length. Fix: harden "
     "set_attention (minutes reweighting, uniform fallback when raw attention is zero) so gradients flow."
@@ -386,6 +411,9 @@ def train_model_a_on_batches(
 ) -> nn.Module:
     """Train Model A on given batches; return the model (do not save). For OOF fold training."""
     ma = config.get("model_a", {})
+    training = config.get("training", {})
+    loss_type = str(training.get("loss_type", "listmle"))
+    loss_tau = float(training.get("loss_tau", 1.0))
     num_emb = ma.get("num_embeddings", 500)
     stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
     if not batches:
@@ -393,7 +421,8 @@ def train_model_a_on_batches(
         return model
     _configure_torch_performance()
     model = _build_model(config, device, stat_dim_override=stat_dim_override)
-    if hasattr(torch, "compile"):
+    # Skip torch.compile on Windows: inductor requires Triton, which is Linux-only.
+    if hasattr(torch, "compile") and sys.platform != "win32":
         model = torch.compile(model, mode="reduce-overhead")
     lr = float(ma.get("learning_rate", 1e-3))
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -420,6 +449,8 @@ def train_model_a_on_batches(
             attention_debug=attention_debug,
             use_amp=use_amp,
             scaler=scaler,
+            loss_type=loss_type,
+            loss_tau=loss_tau,
         )
         print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
         if loss < best_train_loss:
@@ -437,7 +468,7 @@ def train_model_a_on_batches(
                     pass
             break
         if use_early:
-            val_loss = eval_epoch(model, val_batches or [], device, use_amp=use_amp)
+            val_loss = eval_epoch(model, val_batches or [], device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau)
             if val_loss + min_delta < best_val:
                 best_val = val_loss
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
@@ -467,12 +498,16 @@ def train_model_a(
         device = torch.device(device) if isinstance(device, str) else device
 
     ma = config.get("model_a", {})
+    training = config.get("training", {})
+    loss_type = str(training.get("loss_type", "listmle"))
+    loss_tau = float(training.get("loss_tau", 1.0))
     stat_dim = int(ma.get("stat_dim", 14))
     num_emb = ma.get("num_embeddings", 500)
     stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
     _configure_torch_performance()
     model = _build_model(config, device, stat_dim_override=stat_dim_override)
-    if hasattr(torch, "compile"):
+    # Skip torch.compile on Windows: inductor requires Triton, which is Linux-only.
+    if hasattr(torch, "compile") and sys.platform != "win32":
         model = torch.compile(model, mode="reduce-overhead")
     lr = float(ma.get("learning_rate", 1e-3))
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -504,6 +539,8 @@ def train_model_a(
             device,
             grad_clip_max_norm=grad_clip_max_norm,
             attention_debug=attention_debug,
+            loss_type=loss_type,
+            loss_tau=loss_tau,
         )
         print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
         if loss < best_train_loss:
@@ -521,7 +558,7 @@ def train_model_a(
                     pass
             break
         if use_early:
-            val_loss = eval_epoch(model, val_batches, device, use_amp=use_amp)
+            val_loss = eval_epoch(model, val_batches, device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau)
             print(f"val_loss {epoch+1}: {val_loss:.4f}", flush=True)
             if val_loss + min_delta < best_val:
                 best_val = val_loss
