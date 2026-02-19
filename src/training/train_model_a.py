@@ -425,7 +425,8 @@ def train_model_a_on_batches(
     if hasattr(torch, "compile") and sys.platform != "win32":
         model = torch.compile(model, mode="reduce-overhead")
     lr = float(ma.get("learning_rate", 1e-3))
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    weight_decay = float(ma.get("weight_decay", 0.0))
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     grad_clip_max_norm = float(ma.get("grad_clip_max_norm", 1.0))
     attention_debug = bool(ma.get("attention_debug", False))
     use_amp = bool(ma.get("use_amp", False)) and device.type == "cuda" and torch.cuda.is_available()
@@ -510,7 +511,8 @@ def train_model_a(
     if hasattr(torch, "compile") and sys.platform != "win32":
         model = torch.compile(model, mode="reduce-overhead")
     lr = float(ma.get("learning_rate", 1e-3))
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    weight_decay = float(ma.get("weight_decay", 0.0))
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     grad_clip_max_norm = float(ma.get("grad_clip_max_norm", 1.0))
     attention_debug = bool(ma.get("attention_debug", False))
     use_amp = bool(ma.get("use_amp", False)) and device.type == "cuda" and torch.cuda.is_available()

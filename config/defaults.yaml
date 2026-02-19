@@ -43,6 +43,7 @@ model_a:
   attention_heads: 4   # WSL best (combo_0014/0018): 4 heads for non-negative Spearman
   dropout: 0.2
   learning_rate: 0.0001
+  weight_decay: 0.0  # MAP (Gaussian prior) when > 0; 0.0 = MLE default
   grad_clip_max_norm: 5.0  # looser than 1.0 to avoid zero effective gradients when norm is large
   epochs: 27  # WSL best combo_0014
   early_stopping_patience: 0
