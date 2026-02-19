@@ -1,0 +1,20 @@
+# outputs10 sweeps — Position-aware ListMLE (feature branch feature/listmle-position-aware).
+# Writes to outputs10/sweeps/<batch_id>/.
+#
+# Usage (from project root, on branch feature/listmle-position-aware):
+#   set PYTHONPATH=%CD%
+#   python -m scripts.sweep_hparams --config config/outputs10_sweep_listmle_position_aware.yaml --method optuna --objective spearman --n-trials 40 --n-jobs 4 --listmle-target playoff_outcome
+#
+# Or with batch-id for a named run:
+#   python -m scripts.sweep_hparams --config config/outputs10_sweep_listmle_position_aware.yaml --method optuna --objective ndcg16 --n-trials 30 --n-jobs 4 --listmle-target playoff_outcome --batch-id position_aware_ndcg16
+#
+# Note: scripts/sweep_hparams.py deep-merges this file on top of config/defaults.yaml.
+
+paths:
+  outputs: "outputs10"
+
+training:
+  listmle_target: "playoff_outcome"
+  loss_type: "listmle"
+  listmle_position_aware: true
+  listmle_position_discount: "log2"

@@ -214,6 +214,33 @@ def _build_by_conference_summary(results: list[dict]) -> dict:
     return out
 
 
+def _metrics_mean_std_across_trials(results: list[dict]) -> dict:
+    """For each numeric metric key (test_metrics_*) across trials, compute mean, std, n. Used for bias/variance (std = variance across trials)."""
+    from collections import defaultdict
+    import statistics
+    key_to_values: dict[str, list[float]] = defaultdict(list)
+    for r in results:
+        for k, v in r.items():
+            if not (k.startswith("test_metrics") and isinstance(v, (int, float))):
+                continue
+            try:
+                fv = float(v)
+                if math.isfinite(fv):
+                    key_to_values[k].append(fv)
+            except (TypeError, ValueError):
+                continue
+    out = {}
+    for k, vals in sorted(key_to_values.items()):
+        if not vals:
+            continue
+        out[k] = {
+            "mean": statistics.mean(vals),
+            "std": statistics.stdev(vals) if len(vals) >= 2 else 0.0,
+            "n": len(vals),
+        }
+    return out
+
+
 def _run_one_combo(
     batch_dir: Path,
     combo_idx: int,
@@ -596,6 +623,7 @@ def main() -> int:
             by_conf = _build_by_conference_summary(results)
             if by_conf:
                 summary["by_conference_summary"] = by_conf
+            summary["metrics_mean_std_across_trials"] = _metrics_mean_std_across_trials(results)
             with open(batch_dir / "sweep_results_summary.json", "w", encoding="utf-8") as f:
                 json.dump(summary, f, indent=2)
         print(f"Feature-subset sweep done. Best value: {study.best_value}", flush=True)
@@ -1069,6 +1097,7 @@ def main() -> int:
     by_conf = _build_by_conference_summary(results)
     if by_conf:
         summary["by_conference_summary"] = by_conf
+    summary["metrics_mean_std_across_trials"] = _metrics_mean_std_across_trials(results)
     with open(batch_dir / "sweep_results_summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 

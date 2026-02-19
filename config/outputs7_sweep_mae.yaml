@@ -1,0 +1,12 @@
+# outputs7 sweeps — optimize for rank MAE (minimize) under playoff outcome ranking.
+#
+# Usage (example):
+#   python -m scripts.sweep_hparams --config config/outputs7_sweep_mae.yaml --method optuna --objective rank_mae --n-trials 20 --listmle-target playoff_outcome
+#
+# Note: scripts/sweep_hparams.py deep-merges this file on top of config/defaults.yaml.
+
+paths:
+  outputs: "outputs7"
+
+training:
+  listmle_target: "playoff_outcome"

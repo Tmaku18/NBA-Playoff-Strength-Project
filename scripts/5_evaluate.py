@@ -363,6 +363,69 @@ def _compute_metrics(teams: list, *, k: int = 30) -> dict:
     return m
 
 
+def _scalar_metrics_from_dict(m: dict, prefix: str = "") -> dict[str, float]:
+    """Flatten a metrics dict to key -> float (scalars only). Recurses into playoff_metrics."""
+    out = {}
+    for k, v in m.items():
+        if k == "playoff_metrics" and isinstance(v, dict):
+            for subk, subv in v.items():
+                if isinstance(subv, (int, float)) and np.isfinite(subv):
+                    out[f"{prefix}{k}_{subk}" if prefix else f"{k}_{subk}"] = float(subv)
+        elif isinstance(v, (int, float)) and np.isfinite(v):
+            out[f"{prefix}{k}" if prefix else k] = float(v)
+    return out
+
+
+def _metrics_mean_std_across_seasons(by_season: dict[str, dict]) -> dict:
+    """Compute mean and std of scalar metrics across seasons. Returns {mean: {...}, std: {...}, n_seasons: N}."""
+    if len(by_season) < 2:
+        return {}
+    all_keys = set()
+    per_season: dict[str, dict[str, float]] = {}
+    for season, report in by_season.items():
+        ens = report.get("test_metrics_ensemble") or {}
+        flat = _scalar_metrics_from_dict(ens)
+        if flat:
+            per_season[season] = flat
+            all_keys.update(flat.keys())
+    if not per_season or not all_keys:
+        return {}
+    n = len(per_season)
+    mean_d = {}
+    std_d = {}
+    for key in all_keys:
+        values = [per_season[s][key] for s in per_season if key in per_season[s]]
+        if len(values) < 2:
+            mean_d[key] = float(values[0]) if values else np.nan
+            std_d[key] = 0.0
+        else:
+            arr = np.array(values, dtype=np.float64)
+            mean_d[key] = float(np.nanmean(arr))
+            std_d[key] = float(np.nanstd(arr, ddof=1))
+    return {"mean": mean_d, "std": std_d, "n_seasons": n}
+
+
+def _rank_residual_bias_variance(teams: list) -> dict | None:
+    """Bias and variance of rank prediction: residual = pred_rank - actual_rank.
+    mean_residual = bias (positive = over-predicting rank / under-ranking teams);
+    std_residual = spread (variance of error)."""
+    residuals = []
+    for t in teams:
+        act = t.get("analysis", {}).get("EOS_global_rank")
+        pr = t.get("prediction", {}).get("predicted_strength")
+        if act is not None and pr is not None:
+            residuals.append(float(pr) - float(act))
+    if len(residuals) < 2:
+        return None
+    arr = np.array(residuals, dtype=np.float64)
+    return {
+        "mean_residual": float(np.mean(arr)),
+        "std_residual": float(np.std(arr, ddof=1)),
+        "mean_abs_residual": float(np.mean(np.abs(arr))),
+        "n_teams": len(arr),
+    }
+
+
 def _model_vs_standings_comparison(
     teams: list,
     *,
@@ -685,6 +748,9 @@ def main():
             report["standings_vs_outcome_metrics"] = _build_standings_vs_outcome_metrics(primary_teams, by_model)
             report["confusion_matrices"] = _confusion_matrices_by_model(primary_teams)
             report["confusion_matrices_ranking_top16"] = _ranking_confusion_matrices_by_model(primary_teams, k=16)
+            rank_bv = _rank_residual_bias_variance(primary_teams)
+            if rank_bv is not None:
+                report["rank_residual_bias_variance"] = rank_bv
     elif by_season:
         last_season = sorted(by_season.keys())[-1]
         last_report = by_season[last_season]
@@ -696,6 +762,10 @@ def main():
         report["confusion_matrices_ranking_top16"] = last_report.get("confusion_matrices_ranking_top16", {})
         report["notes"]["eos_rank_source"] = last_report["notes"].get("eos_rank_source", "standings")
         report["by_season"] = by_season
+        # Mean and std of metrics across seasons (bias/variance: std = variance of metric across seasons)
+        metrics_across = _metrics_mean_std_across_seasons(by_season)
+        if metrics_across:
+            report["metrics_across_seasons"] = metrics_across
         # Ensure playoff_metrics appear in main report if any season has them (sweep reads test_metrics_ensemble.playoff_metrics)
         if not report["test_metrics_ensemble"].get("playoff_metrics"):
             for _s, sreport in by_season.items():
@@ -716,6 +786,10 @@ def main():
                 report["standings_vs_outcome_metrics"] = _build_standings_vs_outcome_metrics(last_teams, by_model_last)
                 report["confusion_matrices"] = _confusion_matrices_by_model(last_teams)
                 report["confusion_matrices_ranking_top16"] = _ranking_confusion_matrices_by_model(last_teams, k=16)
+        # Rank residual bias and variance (mean/std of pred_rank - actual_rank across teams)
+        rank_bv = _rank_residual_bias_variance(last_teams)
+        if rank_bv is not None:
+            report["rank_residual_bias_variance"] = rank_bv
 
     report["notes"]["eos_rank_source_meaning"] = "standings = W/L record standings; eos_final_rank = Playoff Outcome Rank"
     report["notes"]["ensemble_definition"] = "Model A + Model B (XGB) only; Model C (RF) is diagnostic only and not used in ensemble_score."
@@ -754,6 +828,15 @@ def main():
     if report.get("confusion_matrices"):
         report["notes"]["confusion_matrices"] = (
             "Binary top-k: actual vs predicted in top k (1=yes, 0=no). Rows=actual, cols=pred. cutoffs 4, 8, 16 = Conference Finals, Semis, Playoff."
+        )
+    if report.get("metrics_across_seasons"):
+        report["notes"]["metrics_across_seasons"] = (
+            "Mean and std of each metric across test seasons. Std = variance of the metric across seasons (higher = less stable)."
+        )
+    if report.get("rank_residual_bias_variance"):
+        report["notes"]["rank_residual_bias_variance"] = (
+            "Residual = pred_rank - actual_rank. mean_residual = bias (positive = systematic over-prediction of rank / under-ranking). "
+            "std_residual = spread of errors (variance). mean_abs_residual = MAE in rank units."
         )
     if report.get("confusion_matrices_ranking_top16"):
         report["notes"]["confusion_matrices_ranking_top16"] = (

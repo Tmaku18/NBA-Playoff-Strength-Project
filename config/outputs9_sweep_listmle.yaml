@@ -1,0 +1,15 @@
+# outputs9 sweeps — ListMLE loss, same mechanics as outputs7/8 (Optuna, baseline phase).
+# Compare ListMLE-based sweep vs Spearman-surrogate (outputs8) on the same evaluation.
+#
+# Usage (example):
+#   python -m scripts.sweep_hparams --config config/outputs9_sweep_listmle.yaml --method optuna --objective spearman --n-trials 40 --n-jobs 4 --listmle-target playoff_outcome
+# Run separate sweeps per objective: --objective spearman, playoff_spearman, rank_mae, rank_rmse, ndcg16, ndcg30, etc.
+#
+# Note: scripts/sweep_hparams.py deep-merges this file on top of config/defaults.yaml.
+
+paths:
+  outputs: "outputs9"
+
+training:
+  listmle_target: "playoff_outcome"
+  loss_type: "listmle"

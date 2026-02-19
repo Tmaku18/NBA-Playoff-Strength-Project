@@ -1,0 +1,25 @@
+# outputs10 sweeps — Same methodology as outputs8 (Spearman-surrogate, playoff_outcome)
+# but with the new implementation: standing rank as input (Model A/B/C).
+# Writes to outputs10/sweeps/<batch_id>/.
+#
+# Usage (WSL recommended; from project root, branch feature/listmle-position-aware):
+#   export PYTHONPATH="$PWD"
+#   python -m scripts.sweep_hparams --config config/outputs10_sweep_standing_rank.yaml --method optuna --objective spearman --n-trials 40 --n-jobs 4 --listmle-target playoff_outcome
+#
+# Other objectives (same as outputs8):
+#   --objective playoff_spearman
+#   --objective ndcg16
+#   --objective rank_rmse
+#
+# Optuna results: outputs10/sweeps/<batch_id>/optuna_study.json, optuna_importances.json,
+#                 sweep_results.csv, sweep_results_summary.json (best_optuna_trial).
+#
+# Note: scripts/sweep_hparams.py deep-merges this file on top of config/defaults.yaml.
+
+paths:
+  outputs: "outputs10"
+
+training:
+  listmle_target: "playoff_outcome"
+  loss_type: "spearman_surrogate"
+  loss_tau: 1.0

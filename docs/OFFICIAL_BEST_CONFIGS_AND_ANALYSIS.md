@@ -71,9 +71,13 @@ So: same loss (listmle); different **config source** (outputs4 vs sweep), **roll
 
 A sweep **outputs9** is planned with the **same mechanics** as outputs7 and outputs8 (Optuna, `paths.outputs: outputs9`, same phase/baseline style), but with **ListMLE** loss and config aligned with outputs6 (i.e. **no** spearman_surrogate; `training.loss_type: listmle`). Purpose: compare a ListMLE-based sweep vs the Spearman-surrogate sweep (outputs8) on the same evaluation. When run, use a config overlay similar to outputs7 (e.g. `paths.outputs: "outputs9"`, `training.loss_type: "listmle"`, `listmle_target: playoff_outcome`).
 
+## 5. outputs10 sweep (standing rank as input)
+
+**outputs10** uses the **same methodology as outputs8** (Spearman-surrogate, playoff_outcome, Optuna) but with the **new implementation**: **standing rank as an input feature** for Model A, B, and C (see [STANDING_RANK_FEATURE.md](STANDING_RANK_FEATURE.md)). Hypothesis: since standings-trained models matched or beat outcome-trained in prior comparisons, giving the model current standings as input should increase accuracy. Config: `config/outputs10_sweep_standing_rank.yaml`. Writes to `outputs10/sweeps/<batch_id>/`. Optuna results: `optuna_study.json`, `optuna_importances.json`, `sweep_results.csv`, `sweep_results_summary.json`. See [OUTPUTS10_SWEEP_STANDING_RANK.md](OUTPUTS10_SWEEP_STANDING_RANK.md).
+
 ---
 
-## 5. Related docs
+## 6. Related docs
 
 - [OUTPUTS8_SWEEP_ANALYSIS_02-17.md](OUTPUTS8_SWEEP_ANALYSIS_02-17.md) — outputs8 sweep details and combo metrics  
 - [OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md](OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md) — outputs4 / outputs7 / outputs8 three-way comparison  

@@ -1,0 +1,22 @@
+# One run: attention temps 1 and 10 only, best WSL sweep params (combo_0014).
+# Use with: run_pipeline_from_model_a --config this file --outputs outputs4/wsl_single_temp1_10
+# Pipeline merges: defaults + defaults_playoff_outcome + this overlay.
+
+paths:
+  outputs: "outputs4/wsl_single_temp1_10"
+
+training:
+  listmle_target: "playoff_outcome"
+  rolling_windows: [15, 30]
+
+model_a:
+  epochs: 27
+  attention:
+    temperatures: [1, 10]
+    multi_temp_base_weights: {1: 0.85, 10: 0.7}
+
+model_b:
+  xgb:
+    n_estimators: 220
+    max_depth: 5
+    learning_rate: 0.086
