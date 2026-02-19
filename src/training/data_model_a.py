@@ -9,6 +9,7 @@ import torch
 from src.features.build_roster_set import build_roster_set, get_roster_as_of_date, latest_team_map_as_of
 from src.features.lineup_continuity import pct_min_returning_per_team
 from src.features.on_off import get_on_court_pm_as_of_date
+from src.features.team_context import standing_rank_as_of_date, standing_rank_norm
 from src.features.rolling import (
     ON_OFF_STAT_COLS,
     PLAYER_STAT_COLS_L10_L30,
@@ -99,6 +100,7 @@ def build_batches_from_lists(
             debug=roster_debug,
             warn_missing_season=True,
         )
+        standing_map = standing_rank_as_of_date(tgl, games, as_of_date)
         embs_list = []
         stats_list = []
         min_list = []
@@ -121,6 +123,7 @@ def build_batches_from_lists(
                 order = order[:roster_size]
                 pad = 0
             player_ids_per_team.append([int(pid) for pid in order] + [None] * pad)
+            standing_norm = standing_rank_norm(standing_map.get(int(tid), 30))
             emb, rows, minutes, mask = build_roster_set(
                 roster,
                 player_stats_df,
@@ -128,6 +131,7 @@ def build_batches_from_lists(
                 stat_cols=PLAYER_STAT_COLS_WITH_ON_OFF,
                 num_embeddings=num_emb,
                 team_continuity_scalar=continuity.get(int(tid), 0.0),
+                team_standing_rank_norm=standing_norm,
             )
             embs_list.append(emb)
             stats_list.append(rows)
@@ -254,6 +258,7 @@ def build_batches_from_db(
             debug=roster_debug,
             warn_missing_season=True,
         )
+        standing_map = standing_rank_as_of_date(tgl, games, as_of_date)
         embs_list: list[list[int]] = []
         stats_list: list[list[list[float]]] = []
         min_list: list[list[float]] = []
@@ -269,6 +274,7 @@ def build_batches_from_db(
                 debug=roster_debug,
                 warn_missing_season=True,
             )
+            standing_norm = standing_rank_norm(standing_map.get(int(tid), 30))
             emb, rows, minutes, mask = build_roster_set(
                 roster,
                 player_stats_df,
@@ -276,6 +282,7 @@ def build_batches_from_db(
                 stat_cols=PLAYER_STAT_COLS_WITH_ON_OFF,
                 num_embeddings=num_emb,
                 team_continuity_scalar=continuity.get(int(tid), 0.0),
+                team_standing_rank_norm=standing_norm,
             )
             embs_list.append(emb)
             stats_list.append(rows)
