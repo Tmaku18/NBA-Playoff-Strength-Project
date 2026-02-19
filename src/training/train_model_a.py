@@ -157,12 +157,17 @@ def _ranking_loss(
     rel: torch.Tensor,
     loss_type: str,
     loss_tau: float,
+    *,
+    listmle_position_aware: bool = False,
+    listmle_position_discount: str = "log2",
 ) -> torch.Tensor:
     """Dispatch to listmle, spearman_surrogate, or rank_rmse_surrogate."""
     if loss_type == "spearman_surrogate":
         return spearman_surrogate_loss(score, rel, tau=loss_tau)
     if loss_type == "rank_rmse_surrogate":
         return rank_rmse_surrogate_loss(score, rel, tau=loss_tau)
+    if loss_type == "listmle" and listmle_position_aware:
+        return listmle_loss(score, rel, position_discount=listmle_position_discount)
     return listmle_loss(score, rel)
 
 
@@ -178,6 +183,8 @@ def train_epoch(
     scaler: "torch.cuda.amp.GradScaler | None" = None,
     loss_type: str = "listmle",
     loss_tau: float = 1.0,
+    listmle_position_aware: bool = False,
+    listmle_position_discount: str = "log2",
 ) -> float:
     model.train()
     total = 0.0
@@ -230,7 +237,14 @@ def train_epoch(
             score, _, _ = model(embs, stats, minutes, mask)
             score = score.reshape(B, K)
         score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
-        loss = _ranking_loss(score, rel, loss_type, loss_tau)
+        loss = _ranking_loss(
+            score,
+            rel,
+            loss_type,
+            loss_tau,
+            listmle_position_aware=listmle_position_aware,
+            listmle_position_discount=listmle_position_discount,
+        )
         if not torch.isfinite(loss).all():
             continue
         if use_scaler:
@@ -272,6 +286,8 @@ def eval_epoch(
     use_amp: bool = False,
     loss_type: str = "listmle",
     loss_tau: float = 1.0,
+    listmle_position_aware: bool = False,
+    listmle_position_discount: str = "log2",
 ) -> float:
     model.eval()
     total = 0.0
@@ -294,7 +310,14 @@ def eval_epoch(
                 score, _, _ = model(embs, stats, minutes, mask)
                 score = score.reshape(B, K)
             score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
-            loss = _ranking_loss(score, rel, loss_type, loss_tau)
+            loss = _ranking_loss(
+                score,
+                rel,
+                loss_type,
+                loss_tau,
+                listmle_position_aware=listmle_position_aware,
+                listmle_position_discount=listmle_position_discount,
+            )
             if torch.isfinite(loss).all():
                 total += loss.item()
                 n += 1
@@ -414,6 +437,8 @@ def train_model_a_on_batches(
     training = config.get("training", {})
     loss_type = str(training.get("loss_type", "listmle"))
     loss_tau = float(training.get("loss_tau", 1.0))
+    listmle_position_aware = bool(training.get("listmle_position_aware", False))
+    listmle_position_discount = str(training.get("listmle_position_discount", "log2"))
     num_emb = ma.get("num_embeddings", 500)
     stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
     if not batches:
@@ -451,6 +476,8 @@ def train_model_a_on_batches(
             scaler=scaler,
             loss_type=loss_type,
             loss_tau=loss_tau,
+            listmle_position_aware=listmle_position_aware,
+            listmle_position_discount=listmle_position_discount,
         )
         print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
         if loss < best_train_loss:
@@ -468,7 +495,16 @@ def train_model_a_on_batches(
                     pass
             break
         if use_early:
-            val_loss = eval_epoch(model, val_batches or [], device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau)
+            val_loss = eval_epoch(
+                model,
+                val_batches or [],
+                device,
+                use_amp=use_amp,
+                loss_type=loss_type,
+                loss_tau=loss_tau,
+                listmle_position_aware=listmle_position_aware,
+                listmle_position_discount=listmle_position_discount,
+            )
             if val_loss + min_delta < best_val:
                 best_val = val_loss
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
@@ -501,6 +537,8 @@ def train_model_a(
     training = config.get("training", {})
     loss_type = str(training.get("loss_type", "listmle"))
     loss_tau = float(training.get("loss_tau", 1.0))
+    listmle_position_aware = bool(training.get("listmle_position_aware", False))
+    listmle_position_discount = str(training.get("listmle_position_discount", "log2"))
     stat_dim = int(ma.get("stat_dim", 14))
     num_emb = ma.get("num_embeddings", 500)
     stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
@@ -541,6 +579,8 @@ def train_model_a(
             attention_debug=attention_debug,
             loss_type=loss_type,
             loss_tau=loss_tau,
+            listmle_position_aware=listmle_position_aware,
+            listmle_position_discount=listmle_position_discount,
         )
         print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
         if loss < best_train_loss:
@@ -558,7 +598,16 @@ def train_model_a(
                     pass
             break
         if use_early:
-            val_loss = eval_epoch(model, val_batches, device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau)
+            val_loss = eval_epoch(
+                model,
+                val_batches,
+                device,
+                use_amp=use_amp,
+                loss_type=loss_type,
+                loss_tau=loss_tau,
+                listmle_position_aware=listmle_position_aware,
+                listmle_position_discount=listmle_position_discount,
+            )
             print(f"val_loss {epoch+1}: {val_loss:.4f}", flush=True)
             if val_loss + min_delta < best_val:
                 best_val = val_loss

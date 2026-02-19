@@ -96,6 +96,8 @@ training:
   # Model A loss: listmle (default), spearman_surrogate, or rank_rmse_surrogate (see feature branches / docs)
   loss_type: "listmle"
   loss_tau: 1.0  # temperature for surrogate soft ranks (used when loss_type is spearman_surrogate or rank_rmse_surrogate)
+  listmle_position_aware: false   # when true, weight ListMLE by position (top-heavy; NDCG-aligned)
+  listmle_position_discount: "log2"  # log2 (NDCG-style), linear, or none
   n_folds: 5
   rolling_windows: [15, 30]  # Phase 3 fine NDCG@16 combo 18
   roster_size: 15
