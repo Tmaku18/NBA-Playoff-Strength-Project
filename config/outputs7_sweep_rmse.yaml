@@ -1,0 +1,16 @@
+# outputs7 sweeps — optimize for rank RMSE (minimize) under playoff outcome ranking.
+# For training toward rank RMSE (surrogate loss), this config sets loss_type: rank_rmse_surrogate.
+#
+# Usage (example):
+#   python -m scripts.sweep_hparams --config config/outputs7_sweep_rmse.yaml --method optuna --objective rank_rmse --n-trials 20 --listmle-target playoff_outcome
+# Wide sweep: add --phase baseline and higher n-trials (e.g. 40–60).
+#
+# Note: scripts/sweep_hparams.py deep-merges this file on top of config/defaults.yaml.
+
+paths:
+  outputs: "outputs7"
+
+training:
+  listmle_target: "playoff_outcome"
+  loss_type: "rank_rmse_surrogate"
+  loss_tau: 1.0
