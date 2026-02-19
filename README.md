@@ -19,10 +19,20 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 
 ---
 
+## Branches (summary)
+
+| Branch | Description |
+|--------|-------------|
+| **main** | Production baseline. No standing rank as a model input; ListMLE is standard (no position-aware discount). |
+| **feature/listmle-position-aware** | Position-aware ListMLE (position discount in loss) **and** standing rank as input: current regular-season rank (1–30) is an input feature for Model A, B, and C. When predicting playoff rank, the feature is regular-season final rank. Model A `stat_dim` is 22. Planned (not yet implemented): conference-specific rank 1–15, train East/West separately, then use existing finals logic. See [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md). |
+
+---
+
 ## Key Design Choices
 - **Target:** Future W/L (next 5) or Final Playoff Seed — **never** efficiency.
 - **True Strength:** Model A produces a latent **Z** (penultimate layer); the **output** `ensemble_score` is the **ensemble** score (RidgeCV blend of A + XGB only) mapped to percentile (0–1 and 0–100). Model C (RF) is not trained in the pipeline by default; when present, it is for analytics/comparison only.
 - **No Net Rating leakage:** `net_rating` is excluded as a model input and never used as a target or evaluation metric (allowed only in baselines).
+- **Standing rank as input (feature branch):** On `feature/listmle-position-aware`, current regular-season standing (rank 1–30) is an **input feature** to all models (`standing_rank_norm`). For playoff prediction, the feature is regular-season final rank. See [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md) and § Branches.
 - **Stacking:** K-fold **OOF** across **all training seasons**; level-2 **RidgeCV** on pooled OOF (2 columns: A + XGB, or **4 columns** when confidence is enabled: \( s_A, s_X, c_A, c_X \)).
 - **Per-instance confidence:** When enabled, Model A confidence comes from **attention entropy** (high entropy = diffuse = high confidence) and **max attention weight** (high max = star-dependent = high risk = low confidence). XGB confidence comes from **tree-level prediction variance** (high variance = low confidence). The meta-learner is trained on these 4 inputs so the more confident model has higher effective weight per team. See [docs/CONFIDENCE_WEIGHTED_ENSEMBLE_OPTIONS.md](docs/CONFIDENCE_WEIGHTED_ENSEMBLE_OPTIONS.md).
 - **Game-level ListMLE:** lists per conference-date/week; **torch.logsumexp** and input clamping for numerical stability; gradient clipping in Model A training; hash-trick embeddings for new players.
@@ -175,7 +185,11 @@ Running in **WSL (Ubuntu)** with GPU vs **Windows** can yield different results 
 
 ---
 
-## Recent implementation (Update2)
+## Recent implementation (Update2 + standing rank)
+
+**Standing rank as input (on feature branch):** Current regular-season standing (1–30) is used as an input to Model A, B, and C. Implemented in `src/features/team_context.py` (`standing_rank_as_of_date`, `standing_rank_norm`), `build_roster_set` (optional `team_standing_rank_norm`), and `build_team_context_as_of_dates`; Model A `stat_dim` is 22. Config: `config/defaults.yaml`; doc: [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md). Present on `feature/listmle-position-aware`; not yet on `main`.
+
+**Earlier (Update2):**
 
 Implemented per [.cursor/plans/Update2.md](.cursor/plans/Update2.md): **IG batching fix** (Captum auxiliary tensors expanded to match batched inputs); **latest-team roster** (players only on current team as of `as_of_date`); **EOS_global_rank** (1–30) for evaluation/classification; **manifest db_path** stored relative to project root; **conference plot** uses only valid conference ranks (no global fallback); **attention/IG** sanitized so `predictions.json` is valid JSON (`allow_nan=False`); **ensemble agreement** High/Medium/Low with scaled thresholds and handling of missing models; **ensemble_score** percentile reaches 0.0/1.0. Optional: `output.ig_inference_top_k` and `output.ig_inference_steps` control IG in inference outputs.
 
