@@ -1,0 +1,2673 @@
+{
+  "per_player": {
+    "Scottie Barnes": {
+      "mean_attention": 0.6176237236061085,
+      "ci_low": 0.4752183258533478,
+      "ci_high": 0.7480965852737427,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Gary Trent Jr.": {
+      "mean_attention": 0.0370006850489334,
+      "ci_low": 0.030946364626288414,
+      "ci_high": 0.04321974888443947,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jakob Poeltl": {
+      "mean_attention": 0.030598720802493626,
+      "ci_low": 0.030459195375442505,
+      "ci_high": 0.030751006677746773,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Immanuel Quickley": {
+      "mean_attention": 0.021909605321593334,
+      "ci_low": 0.016424337401986122,
+      "ci_high": 0.02693524770438671,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Gradey Dick": {
+      "mean_attention": 0.027738955241635492,
+      "ci_low": 0.026582570746541023,
+      "ci_high": 0.02900109812617302,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "RJ Barrett": {
+      "mean_attention": 0.15303694239578566,
+      "ci_low": 0.022622210904955864,
+      "ci_high": 0.2953788936138153,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Bruce Brown": {
+      "mean_attention": 0.0184139683842659,
+      "ci_low": 0.0184139683842659,
+      "ci_high": 0.0184139683842659,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Chris Boucher": {
+      "mean_attention": 0.01626797951757908,
+      "ci_low": 0.01626797951757908,
+      "ci_high": 0.01626797951757908,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Kelly Olynyk": {
+      "mean_attention": 0.014375817961990833,
+      "ci_low": 0.014375817961990833,
+      "ci_high": 0.014375817961990833,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ochai Agbaji": {
+      "mean_attention": 0.02019747802762634,
+      "ci_low": 0.011329898610711098,
+      "ci_high": 0.02987605147063732,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jimmy Butler III": {
+      "mean_attention": 0.3521133669334299,
+      "ci_low": 0.01595015823841095,
+      "ci_high": 0.6835640072822571,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Bam Adebayo": {
+      "mean_attention": 0.05476866495913603,
+      "ci_low": 0.044204067438840866,
+      "ci_high": 0.0648961067199707,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Tyler Herro": {
+      "mean_attention": 0.38812846134246237,
+      "ci_low": 0.04626685380935669,
+      "ci_high": 0.7447466850280762,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jaime Jaquez Jr.": {
+      "mean_attention": 0.028874174731088355,
+      "ci_low": 0.02222917228937149,
+      "ci_high": 0.03524421155452728,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Duncan Robinson": {
+      "mean_attention": 0.031043119971233775,
+      "ci_low": 0.02854136936366558,
+      "ci_high": 0.03344134986400604,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Caleb Martin": {
+      "mean_attention": 0.028333237394690514,
+      "ci_low": 0.028333237394690514,
+      "ci_high": 0.028333237394690514,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Haywood Highsmith": {
+      "mean_attention": 0.025340288975866328,
+      "ci_low": 0.021846463903784752,
+      "ci_high": 0.028984926640987396,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Josh Richardson": {
+      "mean_attention": 0.019513346254825592,
+      "ci_low": 0.019513346254825592,
+      "ci_high": 0.019513346254825592,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Terry Rozier": {
+      "mean_attention": 0.022025581560766613,
+      "ci_low": 0.016891490668058395,
+      "ci_high": 0.02738128788769245,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Kevin Love": {
+      "mean_attention": 0.015448066405951977,
+      "ci_low": 0.015448066405951977,
+      "ci_high": 0.015448066405951977,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Donovan Mitchell": {
+      "mean_attention": 0.7344314076434607,
+      "ci_low": 0.729676365852356,
+      "ci_high": 0.7395378351211548,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jarrett Allen": {
+      "mean_attention": 0.03827649943273643,
+      "ci_low": 0.03684466704726219,
+      "ci_high": 0.039814140647649765,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Max Strus": {
+      "mean_attention": 0.02785605537737238,
+      "ci_low": 0.021574344485998154,
+      "ci_high": 0.03370550647377968,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Caris LeVert": {
+      "mean_attention": 0.02034979108774236,
+      "ci_low": 0.010400445200502872,
+      "ci_high": 0.02972492389380932,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Isaac Okoro": {
+      "mean_attention": 0.02339104319034123,
+      "ci_low": 0.017492711544036865,
+      "ci_high": 0.028883496299386024,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Darius Garland": {
+      "mean_attention": 0.03440744969672684,
+      "ci_low": 0.02855987660586834,
+      "ci_high": 0.04068714380264282,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Georges Niang": {
+      "mean_attention": 0.019281140785132135,
+      "ci_low": 0.010103819891810417,
+      "ci_high": 0.027928804978728294,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Evan Mobley": {
+      "mean_attention": 0.029829071757608447,
+      "ci_low": 0.022427186369895935,
+      "ci_high": 0.037777937948703766,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Dean Wade": {
+      "mean_attention": 0.019649444314940222,
+      "ci_low": 0.018009711056947708,
+      "ci_high": 0.021410349756479263,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Sam Merrill": {
+      "mean_attention": 0.02057926018840109,
+      "ci_low": 0.01702265627682209,
+      "ci_high": 0.024398688226938248,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Pascal Siakam": {
+      "mean_attention": 0.6567337980104048,
+      "ci_low": 0.5970210433006287,
+      "ci_high": 0.7135998606681824,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Tyrese Haliburton": {
+      "mean_attention": 0.1128691621146403,
+      "ci_low": 0.04737086966633797,
+      "ci_high": 0.18164627254009247,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Myles Turner": {
+      "mean_attention": 0.035078052249412205,
+      "ci_low": 0.03356834873557091,
+      "ci_high": 0.03651578351855278,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Aaron Nesmith": {
+      "mean_attention": 0.02587518599858984,
+      "ci_low": 0.016588961705565453,
+      "ci_high": 0.03471870720386505,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Obi Toppin": {
+      "mean_attention": 0.027277842291825734,
+      "ci_low": 0.023549819365143776,
+      "ci_high": 0.030828138813376427,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Andrew Nembhard": {
+      "mean_attention": 0.029128733660679224,
+      "ci_low": 0.028900573030114174,
+      "ci_high": 0.02934601716697216,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Bennedict Mathurin": {
+      "mean_attention": 0.030745391182731403,
+      "ci_low": 0.02847527526319027,
+      "ci_high": 0.03312914818525314,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "T.J. McConnell": {
+      "mean_attention": 0.02201281308066533,
+      "ci_low": 0.021549386903643608,
+      "ci_high": 0.022454146295785904,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jalen Smith": {
+      "mean_attention": 0.017297209262746187,
+      "ci_low": 0.01627727784216404,
+      "ci_high": 0.01835978589951992,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Isaiah Jackson": {
+      "mean_attention": 0.013913420028984547,
+      "ci_low": 0.013913420028984547,
+      "ci_high": 0.013913420028984547,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Trae Young": {
+      "mean_attention": 0.7386459382659568,
+      "ci_low": 0.729820966720581,
+      "ci_high": 0.7475528120994568,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Dejounte Murray": {
+      "mean_attention": 0.03691340401614357,
+      "ci_low": 0.030284136533737183,
+      "ci_high": 0.04387100785970688,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Bogdan Bogdanovi\u0107": {
+      "mean_attention": 0.024023975310493495,
+      "ci_low": 0.011811756528913975,
+      "ci_high": 0.03687059506773949,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Saddiq Bey": {
+      "mean_attention": 0.033787112683057785,
+      "ci_low": 0.033787112683057785,
+      "ci_high": 0.033787112683057785,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jalen Johnson": {
+      "mean_attention": 0.026941329513958227,
+      "ci_low": 0.02382281795144081,
+      "ci_high": 0.03003116510808468,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Clint Capela": {
+      "mean_attention": 0.02547191668035114,
+      "ci_low": 0.02191323973238468,
+      "ci_high": 0.028997870162129402,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "De'Andre Hunter": {
+      "mean_attention": 0.018267784042603263,
+      "ci_low": 0.010896502062678337,
+      "ci_high": 0.02548794634640217,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Onyeka Okongwu": {
+      "mean_attention": 0.029050733601592705,
+      "ci_low": 0.023044120520353317,
+      "ci_high": 0.03511309251189232,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Garrison Mathews": {
+      "mean_attention": 0.014544067101006765,
+      "ci_low": 0.014351322315633297,
+      "ci_high": 0.014738600701093674,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Bruno Fernando": {
+      "mean_attention": 0.009447270072996616,
+      "ci_low": 0.009447270072996616,
+      "ci_high": 0.009447270072996616,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Kyle Kuzma": {
+      "mean_attention": 0.375547885753256,
+      "ci_low": 0.015949008986353874,
+      "ci_high": 0.7424523830413818,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jordan Poole": {
+      "mean_attention": 0.3706831297044243,
+      "ci_low": 0.042330313473939896,
+      "ci_high": 0.7255852818489075,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Deni Avdija": {
+      "mean_attention": 0.35591014910189384,
+      "ci_low": 0.03937005251646042,
+      "ci_high": 0.715865969657898,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Tyus Jones": {
+      "mean_attention": 0.035782289736542024,
+      "ci_low": 0.03556277975440025,
+      "ci_high": 0.03599628061056137,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Corey Kispert": {
+      "mean_attention": 0.03348054299397128,
+      "ci_low": 0.03104317933320999,
+      "ci_high": 0.03573557361960411,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Bilal Coulibaly": {
+      "mean_attention": 0.0403307584715741,
+      "ci_low": 0.031973935663700104,
+      "ci_high": 0.049363281577825546,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Landry Shamet": {
+      "mean_attention": 0.01207295639307522,
+      "ci_low": 0.010620951652526855,
+      "ci_high": 0.013538176193833351,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Marvin Bagley III": {
+      "mean_attention": 0.01070763636380434,
+      "ci_low": 0.01070763636380434,
+      "ci_high": 0.01070763636380434,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Johnny Davis": {
+      "mean_attention": 0.010000001639127731,
+      "ci_low": 0.010000001639127731,
+      "ci_high": 0.010000001639127731,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jared Butler": {
+      "mean_attention": 0.00865921936929226,
+      "ci_low": 0.00865921936929226,
+      "ci_high": 0.00865921936929226,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Cam Thomas": {
+      "mean_attention": 0.7221491646163071,
+      "ci_low": 0.7150143384933472,
+      "ci_high": 0.7291377186775208,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Mikal Bridges": {
+      "mean_attention": 0.05334466881625745,
+      "ci_low": 0.047928307205438614,
+      "ci_high": 0.058885831385850906,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Nic Claxton": {
+      "mean_attention": 0.03656219667460345,
+      "ci_low": 0.035089630633592606,
+      "ci_high": 0.03800457343459129,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Dorian Finney-Smith": {
+      "mean_attention": 0.02954631550855527,
+      "ci_low": 0.0225191880017519,
+      "ci_high": 0.03634805977344513,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Cameron Johnson": {
+      "mean_attention": 0.032239253292989815,
+      "ci_low": 0.029950497671961784,
+      "ci_high": 0.03457591310143471,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Dennis Smith Jr.": {
+      "mean_attention": 0.020163748413324356,
+      "ci_low": 0.020163748413324356,
+      "ci_high": 0.020163748413324356,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Lonnie Walker IV": {
+      "mean_attention": 0.017460016533732414,
+      "ci_low": 0.017460016533732414,
+      "ci_high": 0.017460016533732414,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Day'Ron Sharpe": {
+      "mean_attention": 0.017045948350045432,
+      "ci_low": 0.016698401421308517,
+      "ci_high": 0.017400769516825676,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Dennis Schr\u00f6der": {
+      "mean_attention": 0.01572738029062748,
+      "ci_low": 0.01572738029062748,
+      "ci_high": 0.01572738029062748,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Trendon Watford": {
+      "mean_attention": 0.014299753357809556,
+      "ci_low": 0.013613861985504627,
+      "ci_high": 0.015000000596046448,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "LaMelo Ball": {
+      "mean_attention": 0.6947969436098677,
+      "ci_low": 0.6717053055763245,
+      "ci_high": 0.7168530821800232,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Miles Bridges": {
+      "mean_attention": 0.07297130559630897,
+      "ci_low": 0.05215635150671005,
+      "ci_high": 0.09476348757743835,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Brandon Miller": {
+      "mean_attention": 0.03264368524552759,
+      "ci_low": 0.018560092896223068,
+      "ci_high": 0.047388479113578796,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Nick Richards": {
+      "mean_attention": 0.024082857152313442,
+      "ci_low": 0.013154293410480022,
+      "ci_high": 0.035609178245067596,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Bryce McGowens": {
+      "mean_attention": 0.017156008630990982,
+      "ci_low": 0.017156008630990982,
+      "ci_high": 0.017156008630990982,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Grant Williams": {
+      "mean_attention": 0.016507428139448166,
+      "ci_low": 0.016507428139448166,
+      "ci_high": 0.016507428139448166,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Cody Martin": {
+      "mean_attention": 0.015775160863995552,
+      "ci_low": 0.015775160863995552,
+      "ci_high": 0.015775160863995552,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ish Smith": {
+      "mean_attention": 0.015482251532375813,
+      "ci_low": 0.015482251532375813,
+      "ci_high": 0.015482251532375813,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Tre Mann": {
+      "mean_attention": 0.014896436594426632,
+      "ci_low": 0.014896436594426632,
+      "ci_high": 0.014896436594426632,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Vasilije Micic": {
+      "mean_attention": 0.014854592271149158,
+      "ci_low": 0.014854592271149158,
+      "ci_high": 0.014854592271149158,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jalen Brunson": {
+      "mean_attention": 0.6862830093394131,
+      "ci_low": 0.6345909237861633,
+      "ci_high": 0.7360069751739502,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Julius Randle": {
+      "mean_attention": 0.0908976132515277,
+      "ci_low": 0.03328130766749382,
+      "ci_high": 0.1447591483592987,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Josh Hart": {
+      "mean_attention": 0.046868476268227245,
+      "ci_low": 0.04596829041838646,
+      "ci_high": 0.04780429229140282,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Donte DiVincenzo": {
+      "mean_attention": 0.032725714873976824,
+      "ci_low": 0.023947684094309807,
+      "ci_high": 0.04093169420957565,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Isaiah Hartenstein": {
+      "mean_attention": 0.029490638307162694,
+      "ci_low": 0.025228731334209442,
+      "ci_high": 0.03381139785051346,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Miles McBride": {
+      "mean_attention": 0.02426397434082818,
+      "ci_low": 0.02383551374077797,
+      "ci_high": 0.024676121771335602,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Precious Achiuwa": {
+      "mean_attention": 0.019640029452690114,
+      "ci_low": 0.017673663794994354,
+      "ci_high": 0.021684225648641586,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Mitchell Robinson": {
+      "mean_attention": 0.012945805676281452,
+      "ci_low": 0.012945805676281452,
+      "ci_high": 0.012945805676281452,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "OG Anunoby": {
+      "mean_attention": 0.027703627740398695,
+      "ci_low": 0.0119367940351367,
+      "ci_high": 0.04287015646696091,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jericho Sims": {
+      "mean_attention": 0.010756440460681915,
+      "ci_low": 0.010756440460681915,
+      "ci_high": 0.010756440460681915,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Paolo Banchero": {
+      "mean_attention": 0.7339368790455995,
+      "ci_low": 0.7245770692825317,
+      "ci_high": 0.7425593733787537,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Franz Wagner": {
+      "mean_attention": 0.03448627701618948,
+      "ci_low": 0.03216823935508728,
+      "ci_high": 0.036621712148189545,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jalen Suggs": {
+      "mean_attention": 0.023785741938222922,
+      "ci_low": 0.01640433631837368,
+      "ci_high": 0.030585680156946182,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Cole Anthony": {
+      "mean_attention": 0.023799767066429715,
+      "ci_low": 0.019100267440080643,
+      "ci_high": 0.02812906540930271,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Moritz Wagner": {
+      "mean_attention": 0.02154012955725193,
+      "ci_low": 0.02154012955725193,
+      "ci_high": 0.02154012955725193,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Wendell Carter Jr.": {
+      "mean_attention": 0.024277976796811696,
+      "ci_low": 0.021296093240380287,
+      "ci_high": 0.02751484327018261,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Gary Harris": {
+      "mean_attention": 0.019099781289696693,
+      "ci_low": 0.019099781289696693,
+      "ci_high": 0.019099781289696693,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Anthony Black": {
+      "mean_attention": 0.023374559996322916,
+      "ci_low": 0.01841648481786251,
+      "ci_high": 0.028756603598594666,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Joe Ingles": {
+      "mean_attention": 0.017603034153580666,
+      "ci_low": 0.017603034153580666,
+      "ci_high": 0.017603034153580666,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Goga Bitadze": {
+      "mean_attention": 0.018594787338353982,
+      "ci_low": 0.015178957022726536,
+      "ci_high": 0.02230270765721798,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Kawhi Leonard": {
+      "mean_attention": 0.35997889271427275,
+      "ci_low": 0.019084831699728966,
+      "ci_high": 0.7168961763381958,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Paul George": {
+      "mean_attention": 0.042157991692575184,
+      "ci_low": 0.02580375038087368,
+      "ci_high": 0.05926762521266937,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "James Harden": {
+      "mean_attention": 0.40305287185650057,
+      "ci_low": 0.04164816439151764,
+      "ci_high": 0.748232901096344,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Norman Powell": {
+      "mean_attention": 0.03256242123489128,
+      "ci_low": 0.03142419084906578,
+      "ci_high": 0.03364955261349678,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Terance Mann": {
+      "mean_attention": 0.029042327776551247,
+      "ci_low": 0.029042327776551247,
+      "ci_high": 0.029042327776551247,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ivica Zubac": {
+      "mean_attention": 0.03711784578941069,
+      "ci_low": 0.028401685878634453,
+      "ci_high": 0.04544270783662796,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Russell Westbrook": {
+      "mean_attention": 0.027988630805016953,
+      "ci_low": 0.023851502686738968,
+      "ci_high": 0.03208736330270767,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Amir Coffey": {
+      "mean_attention": 0.026968666502027575,
+      "ci_low": 0.021239662542939186,
+      "ci_high": 0.03244047611951828,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Daniel Theis": {
+      "mean_attention": 0.01545748207718134,
+      "ci_low": 0.01545748207718134,
+      "ci_high": 0.01545748207718134,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Mason Plumlee": {
+      "mean_attention": 0.0153174537877939,
+      "ci_low": 0.009445326402783394,
+      "ci_high": 0.02098871022462845,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Alperen Sengun": {
+      "mean_attention": 0.3018683356213126,
+      "ci_low": 0.04835924133658409,
+      "ci_high": 0.539696455001831,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jalen Green": {
+      "mean_attention": 0.47370317950844765,
+      "ci_low": 0.2331399768590927,
+      "ci_high": 0.7301276922225952,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Fred VanVleet": {
+      "mean_attention": 0.03728985293035177,
+      "ci_low": 0.032747622579336166,
+      "ci_high": 0.041551120579242706,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jabari Smith Jr.": {
+      "mean_attention": 0.03186134634380962,
+      "ci_low": 0.026964856311678886,
+      "ci_high": 0.03645496070384979,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Dillon Brooks": {
+      "mean_attention": 0.03557550962618057,
+      "ci_low": 0.03392741456627846,
+      "ci_high": 0.03733227029442787,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Amen Thompson": {
+      "mean_attention": 0.027393035828433138,
+      "ci_low": 0.01996111497282982,
+      "ci_high": 0.03531497344374657,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jeff Green": {
+      "mean_attention": 0.019782889634370804,
+      "ci_low": 0.019782889634370804,
+      "ci_high": 0.019782889634370804,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Aaron Holiday": {
+      "mean_attention": 0.01567678947120588,
+      "ci_low": 0.011645367369055748,
+      "ci_high": 0.019458845257759094,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jae'Sean Tate": {
+      "mean_attention": 0.016736876219511032,
+      "ci_low": 0.016736876219511032,
+      "ci_high": 0.016736876219511032,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Cam Whitmore": {
+      "mean_attention": 0.01215758273239307,
+      "ci_low": 0.011853035539388657,
+      "ci_high": 0.012443291954696178,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Luka Don\u010di\u0107": {
+      "mean_attention": 0.39029958522905506,
+      "ci_low": 0.04368935897946358,
+      "ci_high": 0.7458388805389404,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Tim Hardaway Jr.": {
+      "mean_attention": 0.035045283835651725,
+      "ci_low": 0.033033523708581924,
+      "ci_high": 0.03704764321446419,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Kyrie Irving": {
+      "mean_attention": 0.3730037999605494,
+      "ci_low": 0.03490922600030899,
+      "ci_high": 0.7335548400878906,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Derrick Jones Jr.": {
+      "mean_attention": 0.03177289820682713,
+      "ci_low": 0.03088826686143875,
+      "ci_high": 0.03260788694024086,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Josh Green": {
+      "mean_attention": 0.032006416146244325,
+      "ci_low": 0.026264164596796036,
+      "ci_high": 0.03752979263663292,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Dereck Lively II": {
+      "mean_attention": 0.019256025080436043,
+      "ci_low": 0.014569621533155441,
+      "ci_high": 0.02365054190158844,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Dant\u00e9 Exum": {
+      "mean_attention": 0.018368465825915337,
+      "ci_low": 0.018368465825915337,
+      "ci_high": 0.018368465825915337,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jaden Hardy": {
+      "mean_attention": 0.016392221631083104,
+      "ci_low": 0.016097381711006165,
+      "ci_high": 0.01666869781911373,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "P.J. Washington": {
+      "mean_attention": 0.023374219272019606,
+      "ci_low": 0.0148409903049469,
+      "ci_high": 0.03247423097491264,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Maxi Kleber": {
+      "mean_attention": 0.01319480987066137,
+      "ci_low": 0.011868092231452465,
+      "ci_high": 0.01443889457732439,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Anfernee Simons": {
+      "mean_attention": 0.4132812384877886,
+      "ci_low": 0.05462193489074707,
+      "ci_high": 0.7266281247138977,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jerami Grant": {
+      "mean_attention": 0.02800032923902784,
+      "ci_low": 0.024466555565595627,
+      "ci_high": 0.03108765184879303,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Toumani Camara": {
+      "mean_attention": 0.033903718961136683,
+      "ci_low": 0.029490146785974503,
+      "ci_high": 0.038955528289079666,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Deandre Ayton": {
+      "mean_attention": 0.024082645401358606,
+      "ci_low": 0.019412914291024208,
+      "ci_high": 0.028162410482764244,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Scoot Henderson": {
+      "mean_attention": 0.027757605476038796,
+      "ci_low": 0.027338944375514984,
+      "ci_high": 0.028236808255314827,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jabari Walker": {
+      "mean_attention": 0.026864660903811455,
+      "ci_low": 0.026864660903811455,
+      "ci_high": 0.026864660903811455,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Matisse Thybulle": {
+      "mean_attention": 0.025204675272107124,
+      "ci_low": 0.025204675272107124,
+      "ci_high": 0.025204675272107124,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Kris Murray": {
+      "mean_attention": 0.017296972296067647,
+      "ci_low": 0.014760148711502552,
+      "ci_high": 0.019513297826051712,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Duop Reath": {
+      "mean_attention": 0.019174525514245033,
+      "ci_low": 0.019174525514245033,
+      "ci_high": 0.019174525514245033,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Malcolm Brogdon": {
+      "mean_attention": 0.015161716833955525,
+      "ci_low": 0.010959452018141747,
+      "ci_high": 0.01900513656437397,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Zion Williamson": {
+      "mean_attention": 0.37395752177593916,
+      "ci_low": 0.025356683880090714,
+      "ci_high": 0.7297874093055725,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Brandon Ingram": {
+      "mean_attention": 0.030138110026224445,
+      "ci_low": 0.022904764860868454,
+      "ci_high": 0.03752145543694496,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Herbert Jones": {
+      "mean_attention": 0.03518053889274597,
+      "ci_low": 0.03518053889274597,
+      "ci_high": 0.03518053889274597,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "CJ McCollum": {
+      "mean_attention": 0.033652382695722474,
+      "ci_low": 0.03230933099985123,
+      "ci_high": 0.03496814891695976,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jonas Valan\u010di\u016bnas": {
+      "mean_attention": 0.01950637167666145,
+      "ci_low": 0.009400546550750732,
+      "ci_high": 0.030222536996006966,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Trey Murphy III": {
+      "mean_attention": 0.3675055994971856,
+      "ci_low": 0.024479109793901443,
+      "ci_high": 0.7035631537437439,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Naji Marshall": {
+      "mean_attention": 0.026639720965220038,
+      "ci_low": 0.020519254729151726,
+      "ci_high": 0.033387161791324615,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Dyson Daniels": {
+      "mean_attention": 0.03223492804419443,
+      "ci_low": 0.020224720239639282,
+      "ci_high": 0.04469781741499901,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jordan Hawkins": {
+      "mean_attention": 0.022086875596027417,
+      "ci_low": 0.0189320370554924,
+      "ci_high": 0.025177620351314545,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Larry Nance Jr.": {
+      "mean_attention": 0.018539326265454292,
+      "ci_low": 0.018539326265454292,
+      "ci_high": 0.018539326265454292,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Kevin Durant": {
+      "mean_attention": 0.47905405230753356,
+      "ci_low": 0.21602751314640045,
+      "ci_high": 0.7403172850608826,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Devin Booker": {
+      "mean_attention": 0.3069818574525917,
+      "ci_low": 0.04749690741300583,
+      "ci_high": 0.5682181119918823,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Grayson Allen": {
+      "mean_attention": 0.033515546766356166,
+      "ci_low": 0.024358535185456276,
+      "ci_high": 0.042611170560121536,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jusuf Nurki\u0107": {
+      "mean_attention": 0.03561503812670708,
+      "ci_low": 0.03561503812670708,
+      "ci_high": 0.03561503812670708,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Eric Gordon": {
+      "mean_attention": 0.023750348377268516,
+      "ci_low": 0.01484440453350544,
+      "ci_high": 0.032696958631277084,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Bradley Beal": {
+      "mean_attention": 0.02780348216099957,
+      "ci_low": 0.02687307819724083,
+      "ci_high": 0.02872764877974987,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Drew Eubanks": {
+      "mean_attention": 0.020100291818380356,
+      "ci_low": 0.020100291818380356,
+      "ci_high": 0.020100291818380356,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Josh Okogie": {
+      "mean_attention": 0.017345339059829712,
+      "ci_low": 0.017345339059829712,
+      "ci_high": 0.017345339059829712,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Royce O'Neale": {
+      "mean_attention": 0.020567787912436197,
+      "ci_low": 0.011382311582565308,
+      "ci_high": 0.02981525845825672,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Nassir Little": {
+      "mean_attention": 0.008210490457713604,
+      "ci_low": 0.008210490457713604,
+      "ci_high": 0.008210490457713604,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "LeBron James": {
+      "mean_attention": 0.7291558128657513,
+      "ci_low": 0.7202731966972351,
+      "ci_high": 0.7383313775062561,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Anthony Davis": {
+      "mean_attention": 0.041992031037807465,
+      "ci_low": 0.041992031037807465,
+      "ci_high": 0.041992031037807465,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Austin Reaves": {
+      "mean_attention": 0.04446626357034902,
+      "ci_low": 0.04016171395778656,
+      "ci_high": 0.048633381724357605,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "D'Angelo Russell": {
+      "mean_attention": 0.03752443939447403,
+      "ci_low": 0.03752443939447403,
+      "ci_high": 0.03752443939447403,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Taurean Prince": {
+      "mean_attention": 0.034239338308228236,
+      "ci_low": 0.0325428731739521,
+      "ci_high": 0.03577512502670288,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Rui Hachimura": {
+      "mean_attention": 0.03145927251537837,
+      "ci_low": 0.027154332026839256,
+      "ci_high": 0.035626769065856934,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Cam Reddish": {
+      "mean_attention": 0.013731813813135598,
+      "ci_low": 0.011895786039531231,
+      "ci_high": 0.0156283937394619,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Max Christie": {
+      "mean_attention": 0.015522290526473142,
+      "ci_low": 0.015172564424574375,
+      "ci_high": 0.01589243859052658,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Christian Wood": {
+      "mean_attention": 0.014163230545818806,
+      "ci_low": 0.014163230545818806,
+      "ci_high": 0.014163230545818806,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jaxson Hayes": {
+      "mean_attention": 0.01687330988031809,
+      "ci_low": 0.0128771448507905,
+      "ci_high": 0.020741889253258705,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Anthony Edwards": {
+      "mean_attention": 0.7438061293662619,
+      "ci_low": 0.7433093190193176,
+      "ci_high": 0.7442573308944702,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Rudy Gobert": {
+      "mean_attention": 0.038436372562782053,
+      "ci_low": 0.03576812148094177,
+      "ci_high": 0.04085966944694519,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Mike Conley": {
+      "mean_attention": 0.030892416319563423,
+      "ci_low": 0.026595978066325188,
+      "ci_high": 0.03479442745447159,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Karl-Anthony Towns": {
+      "mean_attention": 0.03676503570911113,
+      "ci_low": 0.03343551605939865,
+      "ci_high": 0.040064044296741486,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jaden McDaniels": {
+      "mean_attention": 0.03647542670625182,
+      "ci_low": 0.03323139622807503,
+      "ci_high": 0.04004737362265587,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Naz Reid": {
+      "mean_attention": 0.032372036155095624,
+      "ci_low": 0.03131159022450447,
+      "ci_high": 0.033539675176143646,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Nickeil Alexander-Walker": {
+      "mean_attention": 0.03110093367686079,
+      "ci_low": 0.030733948573470116,
+      "ci_high": 0.03150501474738121,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Kyle Anderson": {
+      "mean_attention": 0.028644243255257607,
+      "ci_low": 0.028644243255257607,
+      "ci_high": 0.028644243255257607,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jordan McLaughlin": {
+      "mean_attention": 0.009429153986275196,
+      "ci_low": 0.009429153986275196,
+      "ci_high": 0.009429153986275196,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Monte Morris": {
+      "mean_attention": 0.0060142711736261845,
+      "ci_low": 0.0060142711736261845,
+      "ci_high": 0.0060142711736261845,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "De'Aaron Fox": {
+      "mean_attention": 0.5021551847457886,
+      "ci_low": 0.5021551847457886,
+      "ci_high": 0.5021551847457886,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Domantas Sabonis": {
+      "mean_attention": 0.16167737561202533,
+      "ci_low": 0.049674488604068756,
+      "ci_high": 0.2825985252857208,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Keegan Murray": {
+      "mean_attention": 0.044543673955575305,
+      "ci_low": 0.03903111070394516,
+      "ci_high": 0.0496496707201004,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Harrison Barnes": {
+      "mean_attention": 0.035919615564099845,
+      "ci_low": 0.0355767086148262,
+      "ci_high": 0.03624432906508446,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Malik Monk": {
+      "mean_attention": 0.035133817830953644,
+      "ci_low": 0.0303629282861948,
+      "ci_high": 0.03955284133553505,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Kevin Huerter": {
+      "mean_attention": 0.02535644732415676,
+      "ci_low": 0.02535644732415676,
+      "ci_high": 0.02535644732415676,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Trey Lyles": {
+      "mean_attention": 0.020145324461564824,
+      "ci_low": 0.017141930758953094,
+      "ci_high": 0.022927209734916687,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Davion Mitchell": {
+      "mean_attention": 0.014755559224997543,
+      "ci_low": 0.01357975509017706,
+      "ci_high": 0.015878159552812576,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Keon Ellis": {
+      "mean_attention": 0.02450931173862537,
+      "ci_low": 0.013609851710498333,
+      "ci_high": 0.03460490703582764,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Chris Duarte": {
+      "mean_attention": 0.011422553099691868,
+      "ci_low": 0.011422553099691868,
+      "ci_high": 0.011422553099691868,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jayson Tatum": {
+      "mean_attention": 0.7418303482007645,
+      "ci_low": 0.7414438724517822,
+      "ci_high": 0.7422204613685608,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Derrick White": {
+      "mean_attention": 0.038853957114928776,
+      "ci_low": 0.0374733991920948,
+      "ci_high": 0.04022164270281792,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Payton Pritchard": {
+      "mean_attention": 0.031010679422988963,
+      "ci_low": 0.027454299852252007,
+      "ci_high": 0.034533899277448654,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jaylen Brown": {
+      "mean_attention": 0.03563030912983613,
+      "ci_low": 0.03448504954576492,
+      "ci_high": 0.03678634762763977,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jrue Holiday": {
+      "mean_attention": 0.03258706981085014,
+      "ci_low": 0.029465453699231148,
+      "ci_high": 0.03573806583881378,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Al Horford": {
+      "mean_attention": 0.027022600549096526,
+      "ci_low": 0.026140810921788216,
+      "ci_high": 0.027912689372897148,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Sam Hauser": {
+      "mean_attention": 0.024627984767513617,
+      "ci_low": 0.023060625419020653,
+      "ci_high": 0.02621009573340416,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Luke Kornet": {
+      "mean_attention": 0.01743546315737121,
+      "ci_low": 0.014537516050040722,
+      "ci_high": 0.020306389778852463,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Kristaps Porzi\u0146\u0123is": {
+      "mean_attention": 0.022759970454215586,
+      "ci_low": 0.018758149817585945,
+      "ci_high": 0.026799455285072327,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Neemias Queta": {
+      "mean_attention": 0.012923730537295341,
+      "ci_low": 0.012923730537295341,
+      "ci_high": 0.012923730537295341,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Giannis Antetokounmpo": {
+      "mean_attention": 0.7399180983674938,
+      "ci_low": 0.7378072738647461,
+      "ci_high": 0.7421953678131104,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Brook Lopez": {
+      "mean_attention": 0.04042248913440211,
+      "ci_low": 0.03828747943043709,
+      "ci_high": 0.042401451617479324,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Damian Lillard": {
+      "mean_attention": 0.038928449346587575,
+      "ci_low": 0.0369151271879673,
+      "ci_high": 0.041100528091192245,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "AJ Green": {
+      "mean_attention": 0.018451261933057985,
+      "ci_low": 0.00953397061675787,
+      "ci_high": 0.026716791093349457,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Bobby Portis": {
+      "mean_attention": 0.025825135474061144,
+      "ci_low": 0.020425304770469666,
+      "ci_high": 0.031650759279727936,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Andre Jackson Jr.": {
+      "mean_attention": 0.01630147360265255,
+      "ci_low": 0.01630147360265255,
+      "ci_high": 0.01630147360265255,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ryan Rollins": {
+      "mean_attention": 0.012618220411241055,
+      "ci_low": 0.012618220411241055,
+      "ci_high": 0.012618220411241055,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jamal Shead": {
+      "mean_attention": 0.024899747222661972,
+      "ci_low": 0.024899747222661972,
+      "ci_high": 0.024899747222661972,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jonathan Mogbo": {
+      "mean_attention": 0.020889541134238243,
+      "ci_low": 0.020889541134238243,
+      "ci_high": 0.020889541134238243,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ja'Kobe Walter": {
+      "mean_attention": 0.019795848056674004,
+      "ci_low": 0.019795848056674004,
+      "ci_high": 0.019795848056674004,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jamison Battle": {
+      "mean_attention": 0.0166788212954998,
+      "ci_low": 0.0166788212954998,
+      "ci_high": 0.0166788212954998,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ty Jerome": {
+      "mean_attention": 0.02405248023569584,
+      "ci_low": 0.02405248023569584,
+      "ci_high": 0.02405248023569584,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Zaccharie Risacher": {
+      "mean_attention": 0.031683359295129776,
+      "ci_low": 0.031683359295129776,
+      "ci_high": 0.031683359295129776,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "V\u00edt Krej\u010d\u00ed": {
+      "mean_attention": 0.019262146204710007,
+      "ci_low": 0.019262146204710007,
+      "ci_high": 0.019262146204710007,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Coby White": {
+      "mean_attention": 0.3965155550748736,
+      "ci_low": 0.04323200136423111,
+      "ci_high": 0.7376309037208557,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Josh Giddey": {
+      "mean_attention": 0.03607093131542206,
+      "ci_low": 0.03193310275673866,
+      "ci_high": 0.040143080055713654,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Nikola Vu\u010devi\u0107": {
+      "mean_attention": 0.03894082188310328,
+      "ci_low": 0.03846174478530884,
+      "ci_high": 0.03943698853254318,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Patrick Williams": {
+      "mean_attention": 0.022429035835089945,
+      "ci_low": 0.018796030431985855,
+      "ci_high": 0.025936909019947052,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Ayo Dosunmu": {
+      "mean_attention": 0.02974492079735011,
+      "ci_low": 0.024780601263046265,
+      "ci_high": 0.034886326640844345,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Matas Buzelis": {
+      "mean_attention": 0.024602705612778664,
+      "ci_low": 0.024602705612778664,
+      "ci_high": 0.024602705612778664,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Julian Phillips": {
+      "mean_attention": 0.018394213169813156,
+      "ci_low": 0.018394213169813156,
+      "ci_high": 0.018394213169813156,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Dalen Terry": {
+      "mean_attention": 0.016295067965984344,
+      "ci_low": 0.016295067965984344,
+      "ci_high": 0.016295067965984344,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Lonzo Ball": {
+      "mean_attention": 0.01378676574677229,
+      "ci_low": 0.01378676574677229,
+      "ci_high": 0.01378676574677229,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jalen Wilson": {
+      "mean_attention": 0.036760564893484116,
+      "ci_low": 0.036760564893484116,
+      "ci_high": 0.036760564893484116,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Keon Johnson": {
+      "mean_attention": 0.035108838230371475,
+      "ci_low": 0.035108838230371475,
+      "ci_high": 0.035108838230371475,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ziaire Williams": {
+      "mean_attention": 0.02550841330346068,
+      "ci_low": 0.022081326693296432,
+      "ci_high": 0.028578748926520348,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Tyrese Martin": {
+      "mean_attention": 0.023815622553229332,
+      "ci_low": 0.023815622553229332,
+      "ci_high": 0.023815622553229332,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Noah Clowney": {
+      "mean_attention": 0.020070422440767288,
+      "ci_low": 0.020070422440767288,
+      "ci_high": 0.020070422440767288,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Cameron Payne": {
+      "mean_attention": 0.016400491818785667,
+      "ci_low": 0.016400491818785667,
+      "ci_high": 0.016400491818785667,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Tyler Kolek": {
+      "mean_attention": 0.0047073932364583015,
+      "ci_low": 0.0047073932364583015,
+      "ci_high": 0.0047073932364583015,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Bub Carrington": {
+      "mean_attention": 0.044015612453222275,
+      "ci_low": 0.044015612453222275,
+      "ci_high": 0.044015612453222275,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Alex Sarr": {
+      "mean_attention": 0.03347442299127579,
+      "ci_low": 0.03347442299127579,
+      "ci_high": 0.03347442299127579,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Kyshawn George": {
+      "mean_attention": 0.03325396403670311,
+      "ci_low": 0.03325396403670311,
+      "ci_high": 0.03325396403670311,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Justin Champagnie": {
+      "mean_attention": 0.02233712561428547,
+      "ci_low": 0.02233712561428547,
+      "ci_high": 0.02233712561428547,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Richaun Holmes": {
+      "mean_attention": 0.01035419013351202,
+      "ci_low": 0.01035419013351202,
+      "ci_high": 0.01035419013351202,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Tristan Vukcevic": {
+      "mean_attention": 0.008201914839446545,
+      "ci_low": 0.008201914839446545,
+      "ci_high": 0.008201914839446545,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Nick Smith Jr.": {
+      "mean_attention": 0.025377288460731506,
+      "ci_low": 0.025377288460731506,
+      "ci_high": 0.025377288460731506,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Moussa Diabat\u00e9": {
+      "mean_attention": 0.023371728137135506,
+      "ci_low": 0.023371728137135506,
+      "ci_high": 0.023371728137135506,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Tidjane Sala\u00fcn": {
+      "mean_attention": 0.02184273675084114,
+      "ci_low": 0.02184273675084114,
+      "ci_high": 0.02184273675084114,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Mark Williams": {
+      "mean_attention": 0.021505167707800865,
+      "ci_low": 0.021505167707800865,
+      "ci_high": 0.021505167707800865,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Seth Curry": {
+      "mean_attention": 0.019916603341698647,
+      "ci_low": 0.019916603341698647,
+      "ci_high": 0.019916603341698647,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "DaQuan Jeffries": {
+      "mean_attention": 0.018546469509601593,
+      "ci_low": 0.018546469509601593,
+      "ci_high": 0.018546469509601593,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Kentavious Caldwell-Pope": {
+      "mean_attention": 0.03669223995789783,
+      "ci_low": 0.036484941840171814,
+      "ci_high": 0.03688577935099602,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Tristan da Silva": {
+      "mean_attention": 0.025292741134762764,
+      "ci_low": 0.025292741134762764,
+      "ci_high": 0.025292741134762764,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jonathan Isaac": {
+      "mean_attention": 0.016992539167404175,
+      "ci_low": 0.016992539167404175,
+      "ci_high": 0.016992539167404175,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Cade Cunningham": {
+      "mean_attention": 0.7399703313330763,
+      "ci_low": 0.7379394769668579,
+      "ci_high": 0.741855800151825,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Tobias Harris": {
+      "mean_attention": 0.0395434142781704,
+      "ci_low": 0.036614883691072464,
+      "ci_high": 0.04242556542158127,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Malik Beasley": {
+      "mean_attention": 0.036237993843246136,
+      "ci_low": 0.03514309227466583,
+      "ci_high": 0.03731049969792366,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jalen Duren": {
+      "mean_attention": 0.03325668920756354,
+      "ci_low": 0.031790681183338165,
+      "ci_high": 0.034617748111486435,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Isaiah Stewart": {
+      "mean_attention": 0.025517522258005534,
+      "ci_low": 0.022060507908463478,
+      "ci_high": 0.028727054595947266,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Ausar Thompson": {
+      "mean_attention": 0.02619402128727696,
+      "ci_low": 0.019967295229434967,
+      "ci_high": 0.03197498619556427,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Ronald Holland II": {
+      "mean_attention": 0.019394930452108383,
+      "ci_low": 0.019394930452108383,
+      "ci_high": 0.019394930452108383,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Simone Fontecchio": {
+      "mean_attention": 0.014374478647740354,
+      "ci_low": 0.009743797592818737,
+      "ci_high": 0.019362224265933037,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jaden Ivey": {
+      "mean_attention": 0.028745165690045,
+      "ci_low": 0.014701553620398045,
+      "ci_high": 0.041783418506383896,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Stephen Curry": {
+      "mean_attention": 0.7391618383906738,
+      "ci_low": 0.7374915480613708,
+      "ci_high": 0.7408636808395386,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Draymond Green": {
+      "mean_attention": 0.029220987207185457,
+      "ci_low": 0.02267291769385338,
+      "ci_high": 0.035892751067876816,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Buddy Hield": {
+      "mean_attention": 0.023814265208987304,
+      "ci_low": 0.013408343307673931,
+      "ci_high": 0.03436623513698578,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Brandin Podziemski": {
+      "mean_attention": 0.030138643582661946,
+      "ci_low": 0.02973497286438942,
+      "ci_high": 0.03054993972182274,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Moses Moody": {
+      "mean_attention": 0.023655602248788578,
+      "ci_low": 0.017388494685292244,
+      "ci_high": 0.030041096732020378,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jonathan Kuminga": {
+      "mean_attention": 0.0254087162438279,
+      "ci_low": 0.02090155892074108,
+      "ci_high": 0.02983231097459793,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Kevon Looney": {
+      "mean_attention": 0.019597010199002354,
+      "ci_low": 0.01837427169084549,
+      "ci_high": 0.020842846482992172,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Trayce Jackson-Davis": {
+      "mean_attention": 0.01839650236070156,
+      "ci_low": 0.01839650236070156,
+      "ci_high": 0.01839650236070156,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Gary Payton II": {
+      "mean_attention": 0.016909126192331314,
+      "ci_low": 0.016909126192331314,
+      "ci_high": 0.016909126192331314,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Kris Dunn": {
+      "mean_attention": 0.027585132964222988,
+      "ci_low": 0.024483006447553635,
+      "ci_high": 0.03067336417734623,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Nicolas Batum": {
+      "mean_attention": 0.024618999317364686,
+      "ci_low": 0.02447916753590107,
+      "ci_high": 0.024765342473983765,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jordan Miller": {
+      "mean_attention": 0.00760788656771183,
+      "ci_low": 0.00760788656771183,
+      "ci_high": 0.00760788656771183,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Nikola Joki\u0107": {
+      "mean_attention": 0.7403382677030782,
+      "ci_low": 0.7388636469841003,
+      "ci_high": 0.7417181730270386,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Christian Braun": {
+      "mean_attention": 0.032474491040880876,
+      "ci_low": 0.02486169897019863,
+      "ci_high": 0.04060981795191765,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Michael Porter Jr.": {
+      "mean_attention": 0.039431928166825524,
+      "ci_low": 0.03942401707172394,
+      "ci_high": 0.03944038227200508,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jamal Murray": {
+      "mean_attention": 0.03288175311318899,
+      "ci_low": 0.02821347676217556,
+      "ci_high": 0.03787045553326607,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Peyton Watson": {
+      "mean_attention": 0.0236882668029031,
+      "ci_low": 0.022274650633335114,
+      "ci_high": 0.025198912248015404,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Julian Strawther": {
+      "mean_attention": 0.014949329370031777,
+      "ci_low": 0.008656036108732224,
+      "ci_high": 0.021674588322639465,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Aaron Gordon": {
+      "mean_attention": 0.028753405486956,
+      "ci_low": 0.02100176177918911,
+      "ci_high": 0.03600715845823288,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "DeAndre Jordan": {
+      "mean_attention": 0.010444811545312405,
+      "ci_low": 0.010444811545312405,
+      "ci_high": 0.010444811545312405,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Zeke Nnaji": {
+      "mean_attention": 0.009659850038588047,
+      "ci_low": 0.009659850038588047,
+      "ci_high": 0.009659850038588047,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Tari Eason": {
+      "mean_attention": 0.021629393100738525,
+      "ci_low": 0.021629393100738525,
+      "ci_high": 0.021629393100738525,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Steven Adams": {
+      "mean_attention": 0.012124600820243359,
+      "ci_low": 0.012124600820243359,
+      "ci_high": 0.012124600820243359,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "John Collins": {
+      "mean_attention": 0.3717793615464005,
+      "ci_low": 0.03716485574841499,
+      "ci_high": 0.7110574841499329,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Keyonte George": {
+      "mean_attention": 0.03558369500362749,
+      "ci_low": 0.03435740992426872,
+      "ci_high": 0.03679312393069267,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Lauri Markkanen": {
+      "mean_attention": 0.3854593341416038,
+      "ci_low": 0.033475179225206375,
+      "ci_high": 0.7326052188873291,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Isaiah Collier": {
+      "mean_attention": 0.030668767169117928,
+      "ci_low": 0.030668767169117928,
+      "ci_high": 0.030668767169117928,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Walker Kessler": {
+      "mean_attention": 0.029381396832221726,
+      "ci_low": 0.02912127412855625,
+      "ci_high": 0.029645144939422607,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Collin Sexton": {
+      "mean_attention": 0.0362490346352328,
+      "ci_low": 0.02927466109395027,
+      "ci_high": 0.04312754049897194,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Kyle Filipowski": {
+      "mean_attention": 0.02381087653338909,
+      "ci_low": 0.02381087653338909,
+      "ci_high": 0.02381087653338909,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Brice Sensabaugh": {
+      "mean_attention": 0.015522228281584062,
+      "ci_low": 0.009041686542332172,
+      "ci_high": 0.022093091160058975,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Johnny Juzang": {
+      "mean_attention": 0.019371848553419113,
+      "ci_low": 0.019371848553419113,
+      "ci_high": 0.019371848553419113,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Cody Williams": {
+      "mean_attention": 0.01796020194888115,
+      "ci_low": 0.01796020194888115,
+      "ci_high": 0.01796020194888115,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Victor Wembanyama": {
+      "mean_attention": 0.7293997815628162,
+      "ci_low": 0.7260871529579163,
+      "ci_high": 0.7324421405792236,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Chris Paul": {
+      "mean_attention": 0.029489206165659313,
+      "ci_low": 0.02244667336344719,
+      "ci_high": 0.03692729026079178,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Stephon Castle": {
+      "mean_attention": 0.03412355110049248,
+      "ci_low": 0.03412355110049248,
+      "ci_high": 0.03412355110049248,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Devin Vassell": {
+      "mean_attention": 0.03573191421127867,
+      "ci_low": 0.03246524557471275,
+      "ci_high": 0.03873206302523613,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Julian Champagnie": {
+      "mean_attention": 0.026238970731481397,
+      "ci_low": 0.022106502205133438,
+      "ci_high": 0.030738549306988716,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Keldon Johnson": {
+      "mean_attention": 0.03180310382753953,
+      "ci_low": 0.029576022177934647,
+      "ci_high": 0.03384848311543465,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jeremy Sochan": {
+      "mean_attention": 0.030357465632902137,
+      "ci_low": 0.023318899795413017,
+      "ci_high": 0.036821771413087845,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Blake Wesley": {
+      "mean_attention": 0.011428632380055457,
+      "ci_low": 0.009898564778268337,
+      "ci_high": 0.012833865359425545,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Sandro Mamukelashvili": {
+      "mean_attention": 0.009881469421088696,
+      "ci_low": 0.009881469421088696,
+      "ci_high": 0.009881469421088696,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Spencer Dinwiddie": {
+      "mean_attention": 0.03791455179452896,
+      "ci_low": 0.03791455179452896,
+      "ci_high": 0.03791455179452896,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Klay Thompson": {
+      "mean_attention": 0.035176584606276165,
+      "ci_low": 0.03497091308236122,
+      "ci_high": 0.03539933264255524,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Daniel Gafford": {
+      "mean_attention": 0.021928954869508743,
+      "ci_low": 0.021928954869508743,
+      "ci_high": 0.021928954869508743,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ryan Dunn": {
+      "mean_attention": 0.02151898853480816,
+      "ci_low": 0.02151898853480816,
+      "ci_high": 0.02151898853480816,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Oso Ighodaro": {
+      "mean_attention": 0.015651727095246315,
+      "ci_low": 0.015651727095246315,
+      "ci_high": 0.015651727095246315,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Rob Dillingham": {
+      "mean_attention": 0.008348586037755013,
+      "ci_low": 0.008348586037755013,
+      "ci_high": 0.008348586037755013,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jaylen Clark": {
+      "mean_attention": 0.00784799363464117,
+      "ci_low": 0.00784799363464117,
+      "ci_high": 0.00784799363464117,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Oshae Brissett": {
+      "mean_attention": 0.00954433809965849,
+      "ci_low": 0.00954433809965849,
+      "ci_high": 0.00954433809965849,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Joel Embiid": {
+      "mean_attention": 0.722732663154602,
+      "ci_low": 0.722732663154602,
+      "ci_high": 0.722732663154602,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Tyrese Maxey": {
+      "mean_attention": 0.39989199834051486,
+      "ci_low": 0.046173933893442154,
+      "ci_high": 0.7377126216888428,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Kelly Oubre Jr.": {
+      "mean_attention": 0.03791158053296051,
+      "ci_low": 0.03545099124312401,
+      "ci_high": 0.04026158154010773,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Paul Reed": {
+      "mean_attention": 0.02763722464442253,
+      "ci_low": 0.02763722464442253,
+      "ci_high": 0.02763722464442253,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "De'Anthony Melton": {
+      "mean_attention": 0.018667249009013176,
+      "ci_low": 0.018667249009013176,
+      "ci_high": 0.018667249009013176,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Mo Bamba": {
+      "mean_attention": 0.013091317377984524,
+      "ci_low": 0.013091317377984524,
+      "ci_high": 0.013091317377984524,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "KJ Martin": {
+      "mean_attention": 0.01247591432183981,
+      "ci_low": 0.01247591432183981,
+      "ci_high": 0.01247591432183981,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "DeMar DeRozan": {
+      "mean_attention": 0.7434048373777138,
+      "ci_low": 0.7417042851448059,
+      "ci_high": 0.7452368140220642,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Alex Caruso": {
+      "mean_attention": 0.023324926539735738,
+      "ci_low": 0.016057636588811874,
+      "ci_high": 0.03086775355041027,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Andre Drummond": {
+      "mean_attention": 0.017732832003917013,
+      "ci_low": 0.014477160759270191,
+      "ci_high": 0.021117515861988068,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Torrey Craig": {
+      "mean_attention": 0.015321805141866207,
+      "ci_low": 0.015321805141866207,
+      "ci_high": 0.015321805141866207,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jevon Carter": {
+      "mean_attention": 0.014761446975171566,
+      "ci_low": 0.014761446975171566,
+      "ci_high": 0.014761446975171566,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Zach LaVine": {
+      "mean_attention": 0.0179016799377246,
+      "ci_low": 0.013961037620902061,
+      "ci_high": 0.02155962400138378,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Marcus Sasser": {
+      "mean_attention": 0.024087151512503624,
+      "ci_low": 0.024087151512503624,
+      "ci_high": 0.024087151512503624,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Killian Hayes": {
+      "mean_attention": 0.02033488266170025,
+      "ci_low": 0.02033488266170025,
+      "ci_high": 0.02033488266170025,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "James Wiseman": {
+      "mean_attention": 0.01914464496076107,
+      "ci_low": 0.01914464496076107,
+      "ci_high": 0.01914464496076107,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Kevin Knox II": {
+      "mean_attention": 0.011317329481244087,
+      "ci_low": 0.011317329481244087,
+      "ci_high": 0.011317329481244087,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Reggie Jackson": {
+      "mean_attention": 0.027790432795882225,
+      "ci_low": 0.027790432795882225,
+      "ci_high": 0.027790432795882225,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Justin Holiday": {
+      "mean_attention": 0.012658639810979366,
+      "ci_low": 0.012658639810979366,
+      "ci_high": 0.012658639810979366,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jordan Clarkson": {
+      "mean_attention": 0.03294342756271362,
+      "ci_low": 0.03294342756271362,
+      "ci_high": 0.03294342756271362,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Talen Horton-Tucker": {
+      "mean_attention": 0.017926806584000587,
+      "ci_low": 0.017926806584000587,
+      "ci_high": 0.017926806584000587,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Taylor Hendricks": {
+      "mean_attention": 0.014188793487846851,
+      "ci_low": 0.014188793487846851,
+      "ci_high": 0.014188793487846851,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Shai Gilgeous-Alexander": {
+      "mean_attention": 0.7412993419734843,
+      "ci_low": 0.7410280704498291,
+      "ci_high": 0.7415657639503479,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Chet Holmgren": {
+      "mean_attention": 0.025698813979367997,
+      "ci_low": 0.0131156537681818,
+      "ci_high": 0.038511019200086594,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Luguentz Dort": {
+      "mean_attention": 0.03455947184559323,
+      "ci_low": 0.033183589577674866,
+      "ci_high": 0.035960398614406586,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jalen Williams": {
+      "mean_attention": 0.03541315687356229,
+      "ci_low": 0.03515586629509926,
+      "ci_high": 0.035675130784511566,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Cason Wallace": {
+      "mean_attention": 0.02835296881159404,
+      "ci_low": 0.026731178164482117,
+      "ci_high": 0.029945766553282738,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Isaiah Joe": {
+      "mean_attention": 0.023588288115524384,
+      "ci_low": 0.022938808426260948,
+      "ci_high": 0.024226156994700432,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Aaron Wiggins": {
+      "mean_attention": 0.022579181018540596,
+      "ci_low": 0.018643025308847427,
+      "ci_high": 0.026444969698786736,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Kenrich Williams": {
+      "mean_attention": 0.016273599763725295,
+      "ci_low": 0.01589103974401951,
+      "ci_high": 0.016649320721626282,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jaylin Williams": {
+      "mean_attention": 0.013843831606209278,
+      "ci_low": 0.013843831606209278,
+      "ci_high": 0.013843831606209278,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jaren Jackson Jr.": {
+      "mean_attention": 0.36270868433310705,
+      "ci_low": 0.03669646009802818,
+      "ci_high": 0.7175573706626892,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Desmond Bane": {
+      "mean_attention": 0.10151960433844258,
+      "ci_low": 0.058250222355127335,
+      "ci_high": 0.14127273857593536,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Santi Aldama": {
+      "mean_attention": 0.030834489990683164,
+      "ci_low": 0.02751254290342331,
+      "ci_high": 0.03445027023553848,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Vince Williams Jr.": {
+      "mean_attention": 0.030667325481772423,
+      "ci_low": 0.030667325481772423,
+      "ci_high": 0.030667325481772423,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "John Konchar": {
+      "mean_attention": 0.02497166208922863,
+      "ci_low": 0.02497166208922863,
+      "ci_high": 0.02497166208922863,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "GG Jackson": {
+      "mean_attention": 0.02242136560380459,
+      "ci_low": 0.02242136560380459,
+      "ci_high": 0.02242136560380459,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Luke Kennard": {
+      "mean_attention": 0.023177149863365817,
+      "ci_low": 0.021252479404211044,
+      "ci_high": 0.024945413693785667,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Jake LaRavia": {
+      "mean_attention": 0.010561007306761953,
+      "ci_low": 0.007162320893257856,
+      "ci_high": 0.014579201117157936,
+      "p_value": 0.0,
+      "n_teams_appeared": 2
+    },
+    "Marcus Smart": {
+      "mean_attention": 0.012815244495868683,
+      "ci_low": 0.012815244495868683,
+      "ci_high": 0.012815244495868683,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Kel'el Ware": {
+      "mean_attention": 0.022109752520918846,
+      "ci_low": 0.022109752520918846,
+      "ci_high": 0.022109752520918846,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Nikola Jovi\u0107": {
+      "mean_attention": 0.019789593294262886,
+      "ci_low": 0.019789593294262886,
+      "ci_high": 0.019789593294262886,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Alec Burks": {
+      "mean_attention": 0.013255615718662739,
+      "ci_low": 0.013255615718662739,
+      "ci_high": 0.013255615718662739,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Shaedon Sharpe": {
+      "mean_attention": 0.03587972745299339,
+      "ci_low": 0.03587972745299339,
+      "ci_high": 0.03587972745299339,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Donovan Clingan": {
+      "mean_attention": 0.019573239609599113,
+      "ci_low": 0.019573239609599113,
+      "ci_high": 0.019573239609599113,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Dalano Banton": {
+      "mean_attention": 0.015835072845220566,
+      "ci_low": 0.015835072845220566,
+      "ci_high": 0.015835072845220566,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Gabe Vincent": {
+      "mean_attention": 0.029022488743066788,
+      "ci_low": 0.029022488743066788,
+      "ci_high": 0.029022488743066788,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Dalton Knecht": {
+      "mean_attention": 0.02888111025094986,
+      "ci_low": 0.02888111025094986,
+      "ci_high": 0.02888111025094986,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jarred Vanderbilt": {
+      "mean_attention": 0.010360846295952797,
+      "ci_low": 0.010360846295952797,
+      "ci_high": 0.010360846295952797,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Pat Connaughton": {
+      "mean_attention": 0.026378443464636803,
+      "ci_low": 0.026378443464636803,
+      "ci_high": 0.026378443464636803,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Khris Middleton": {
+      "mean_attention": 0.023363281041383743,
+      "ci_low": 0.023363281041383743,
+      "ci_high": 0.023363281041383743,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jae Crowder": {
+      "mean_attention": 0.017905673012137413,
+      "ci_low": 0.017905673012137413,
+      "ci_high": 0.017905673012137413,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "MarJon Beauchamp": {
+      "mean_attention": 0.009971926920115948,
+      "ci_low": 0.009971926920115948,
+      "ci_high": 0.009971926920115948,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Tre Jones": {
+      "mean_attention": 0.032974973320961,
+      "ci_low": 0.032974973320961,
+      "ci_high": 0.032974973320961,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Malaki Branham": {
+      "mean_attention": 0.025180581957101822,
+      "ci_low": 0.025180581957101822,
+      "ci_high": 0.025180581957101822,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Zach Collins": {
+      "mean_attention": 0.024071896448731422,
+      "ci_low": 0.024071896448731422,
+      "ci_high": 0.024071896448731422,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Cedi Osman": {
+      "mean_attention": 0.021333782002329826,
+      "ci_low": 0.021333782002329826,
+      "ci_high": 0.021333782002329826,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Guerschon Yabusele": {
+      "mean_attention": 0.035873979330062866,
+      "ci_low": 0.035873979330062866,
+      "ci_high": 0.035873979330062866,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ricky Council IV": {
+      "mean_attention": 0.022305266931653023,
+      "ci_low": 0.022305266931653023,
+      "ci_high": 0.022305266931653023,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Justin Edwards": {
+      "mean_attention": 0.02201533503830433,
+      "ci_low": 0.02201533503830433,
+      "ci_high": 0.02201533503830433,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Quentin Grimes": {
+      "mean_attention": 0.015540236607193947,
+      "ci_low": 0.015540236607193947,
+      "ci_high": 0.015540236607193947,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Adem Bona": {
+      "mean_attention": 0.014612461440265179,
+      "ci_low": 0.014612461440265179,
+      "ci_high": 0.014612461440265179,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Devin Carter": {
+      "mean_attention": 0.006052939686924219,
+      "ci_low": 0.006052939686924219,
+      "ci_high": 0.006052939686924219,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Andrew Wiggins": {
+      "mean_attention": 0.02923400327563286,
+      "ci_low": 0.02923400327563286,
+      "ci_high": 0.02923400327563286,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Dario \u0160ari\u0107": {
+      "mean_attention": 0.01742081344127655,
+      "ci_low": 0.01742081344127655,
+      "ci_high": 0.01742081344127655,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Yves Missi": {
+      "mean_attention": 0.03636767342686653,
+      "ci_low": 0.03636767342686653,
+      "ci_high": 0.03636767342686653,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jose Alvarado": {
+      "mean_attention": 0.024473484605550766,
+      "ci_low": 0.024473484605550766,
+      "ci_high": 0.024473484605550766,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jeremiah Robinson-Earl": {
+      "mean_attention": 0.02106698974967003,
+      "ci_low": 0.02106698974967003,
+      "ci_high": 0.02106698974967003,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Brandon Boston": {
+      "mean_attention": 0.018916519358754158,
+      "ci_low": 0.018916519358754158,
+      "ci_high": 0.018916519358754158,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ben Sheppard": {
+      "mean_attention": 0.020020602270960808,
+      "ci_low": 0.020020602270960808,
+      "ci_high": 0.020020602270960808,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jarace Walker": {
+      "mean_attention": 0.0176298376172781,
+      "ci_low": 0.0176298376172781,
+      "ci_high": 0.0176298376172781,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Ja Morant": {
+      "mean_attention": 0.620343029499054,
+      "ci_low": 0.620343029499054,
+      "ci_high": 0.620343029499054,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jaylen Wells": {
+      "mean_attention": 0.03533785790205002,
+      "ci_low": 0.03533785790205002,
+      "ci_high": 0.03533785790205002,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Scotty Pippen Jr.": {
+      "mean_attention": 0.027724996209144592,
+      "ci_low": 0.027724996209144592,
+      "ci_high": 0.027724996209144592,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Zach Edey": {
+      "mean_attention": 0.022944822907447815,
+      "ci_low": 0.022944822907447815,
+      "ci_high": 0.022944822907447815,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Brandon Clarke": {
+      "mean_attention": 0.02140454575419426,
+      "ci_low": 0.02140454575419426,
+      "ci_high": 0.02140454575419426,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    },
+    "Jay Huff": {
+      "mean_attention": 0.01253467332571745,
+      "ci_low": 0.01253467332571745,
+      "ci_high": 0.01253467332571745,
+      "p_value": 0.0,
+      "n_teams_appeared": 1
+    }
+  },
+  "n_teams": 60,
+  "B": 1000
+}

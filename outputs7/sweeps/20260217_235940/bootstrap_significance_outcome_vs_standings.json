@@ -1,0 +1,75 @@
+{
+  "run_dir_a": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs7/sweeps/20260217_235940/combo_0030/outputs",
+  "run_dir_b": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs7/sweeps/20260217_235940/combo_0029/outputs",
+  "seasons": [
+    "2023-24",
+    "2024-25"
+  ],
+  "n_seasons": 2,
+  "B": 2000,
+  "metrics": {
+    "spearman_pred_vs_playoff_outcome_rank": {
+      "mean_diff": 0.04449388209121241,
+      "ci_low": 0.03515016685205774,
+      "ci_high": 0.05383759733036708,
+      "p_value": 0.0,
+      "n_seasons": 2
+    },
+    "ndcg_at_4_final_four": {
+      "mean_diff": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "p_value": 1.0,
+      "n_seasons": 2
+    },
+    "ndcg_at_30_pred_vs_playoff_outcome_rank": {
+      "mean_diff": -0.010775153122963566,
+      "ci_low": -0.020303929371849216,
+      "ci_high": -0.0012463768740779146,
+      "p_value": 1.0,
+      "n_seasons": 2
+    },
+    "rank_rmse_pred_vs_playoff_outcome_rank": {
+      "mean_diff": -0.33066296577453613,
+      "ci_low": -0.3757486343383789,
+      "ci_high": -0.28557729721069336,
+      "p_value": 0.0,
+      "n_seasons": 2
+    },
+    "spearman_standings": {
+      "mean_diff": -0.09032258064516124,
+      "ci_low": -0.12547274749721904,
+      "ci_high": -0.05517241379310345,
+      "p_value": 1.0,
+      "n_seasons": 2
+    },
+    "ndcg_at_4_standings": {
+      "mean_diff": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
+      "p_value": 1.0,
+      "n_seasons": 2
+    },
+    "ndcg_at_16_standings": {
+      "mean_diff": 0.01955522745466065,
+      "ci_low": 0.01638695855021477,
+      "ci_high": 0.022723496359106532,
+      "p_value": 0.0,
+      "n_seasons": 2
+    },
+    "ndcg_at_30_standings": {
+      "mean_diff": 0.002379718520165275,
+      "ci_low": 0.0005164690931493965,
+      "ci_high": 0.004242967947181153,
+      "p_value": 0.0,
+      "n_seasons": 2
+    },
+    "rank_rmse_standings": {
+      "mean_diff": -1.024472713470459,
+      "ci_low": -1.5396595001220703,
+      "ci_high": -0.5092859268188477,
+      "p_value": 0.0,
+      "n_seasons": 2
+    }
+  }
+}

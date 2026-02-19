@@ -1,0 +1,171 @@
+{
+  "test_metrics_ensemble": {
+    "ndcg": 0.5973603384099799,
+    "spearman": 0.48565072302558404,
+    "mrr_top2": 0.5,
+    "mrr_top4": 0.5,
+    "ndcg_at_4": 0.4643944167678145,
+    "ndcg_at_12": 0.483704504199798,
+    "ndcg_at_16": 0.5263193356620108,
+    "ndcg_at_20": 0.530500802669237,
+    "ndcg_at_30": 0.5973603384099799,
+    "rank_mae_pred_vs_playoff_outcome_rank": 6.866666793823242,
+    "rank_rmse_pred_vs_playoff_outcome_rank": 8.778761863708496,
+    "roc_auc_upset": 0.7589285714285714,
+    "rank_mae_wl_record_standings_vs_playoff_outcome_rank": 3.1333333333333333,
+    "rank_rmse_wl_record_standings_vs_playoff_outcome_rank": 4.449719092257398,
+    "spearman_standings": -0.4909899888765294,
+    "ndcg_at_4_standings": 0.4431868941235908,
+    "ndcg_at_16_standings": 0.4999400052657195,
+    "ndcg_at_30_standings": 0.5955887957638403,
+    "rank_rmse_standings": 8.733078956604004,
+    "playoff_metrics": {
+      "spearman_pred_vs_playoff_outcome_rank": 0.48565072302558404,
+      "ndcg_at_4_final_four": 0.4643812234227066,
+      "ndcg_at_30_pred_vs_playoff_outcome_rank": 0.5973542872862369,
+      "brier_championship_odds": 0.030076468363404274,
+      "rank_mae_pred_vs_playoff_outcome_rank": 6.866666793823242,
+      "rank_rmse_pred_vs_playoff_outcome_rank": 8.778761863708496,
+      "rank_mae_wl_record_standings_vs_playoff_outcome_rank": 3.1333333333333333,
+      "rank_rmse_wl_record_standings_vs_playoff_outcome_rank": 4.449719092257398
+    }
+  },
+  "test_metrics_model_a": {
+    "ndcg": 0.5973603384099799,
+    "spearman": 0.48565072302558404,
+    "mrr_top2": 0.5,
+    "mrr_top4": 0.5,
+    "ndcg_at_4": 0.4643944167678145,
+    "ndcg_at_12": 0.483704504199798,
+    "ndcg_at_16": 0.5263193356620108,
+    "ndcg_at_20": 0.530500802669237,
+    "ndcg_at_30": 0.5973603384099799,
+    "rank_mae_pred_vs_playoff_outcome_rank": 6.866666793823242,
+    "rank_rmse_pred_vs_playoff_outcome_rank": 8.778761863708496,
+    "roc_auc_upset": 0.7589285714285714
+  },
+  "test_metrics_model_b": {
+    "ndcg": 0.4034181279293462,
+    "spearman": 0.6048943270300334,
+    "mrr_top2": 0.25,
+    "mrr_top4": 0.25,
+    "ndcg_at_4": 0.16775742802418675,
+    "ndcg_at_12": 0.22395216583472308,
+    "ndcg_at_16": 0.40322806156712776,
+    "ndcg_at_20": 0.40326918555421143,
+    "ndcg_at_30": 0.4034181279293462,
+    "rank_mae_pred_vs_playoff_outcome_rank": 5.933333396911621,
+    "rank_rmse_pred_vs_playoff_outcome_rank": 7.694153785705566,
+    "roc_auc_upset": 0.7455357142857143
+  },
+  "test_metrics_model_c": {
+    "ndcg": 0.2709118486690924,
+    "spearman": -0.8718576195773081,
+    "mrr_top2": 0.04,
+    "mrr_top4": 0.05,
+    "ndcg_at_4": 6.148979291537652e-08,
+    "ndcg_at_12": 3.952565204408188e-05,
+    "ndcg_at_16": 4.290762651797437e-05,
+    "ndcg_at_20": 0.01871521832078221,
+    "ndcg_at_30": 0.2709118486690924,
+    "rank_mae_pred_vs_playoff_outcome_rank": 14.733333587646484,
+    "rank_rmse_pred_vs_playoff_outcome_rank": 16.74713897705078,
+    "roc_auc_upset": 1.0
+  },
+  "test_metrics_by_conference": {
+    "E": {
+      "ndcg": 0.2519081747481702,
+      "spearman": 0.2178571428571428,
+      "rank_mae_wl_record_standings_vs_playoff_outcome_rank": 2.933333333333333,
+      "rank_rmse_wl_record_standings_vs_playoff_outcome_rank": 3.8297084310253524,
+      "rank_mae_ensemble_pred_vs_playoff_outcome_rank": 8.8,
+      "rank_rmse_ensemble_pred_vs_playoff_outcome_rank": 11.021191708098842,
+      "rank_mae_model_a_pred_vs_playoff_outcome_rank": 8.8,
+      "rank_rmse_model_a_pred_vs_playoff_outcome_rank": 11.021191708098842,
+      "rank_mae_xgb_pred_vs_playoff_outcome_rank": 6.8,
+      "rank_rmse_xgb_pred_vs_playoff_outcome_rank": 8.563488385776752,
+      "rank_mae_rf_pred_vs_playoff_outcome_rank": 15.533333333333333,
+      "rank_rmse_rf_pred_vs_playoff_outcome_rank": 17.699340854016757
+    },
+    "W": {
+      "ndcg": 0.7729372505482254,
+      "spearman": 0.7285714285714285,
+      "rank_mae_wl_record_standings_vs_playoff_outcome_rank": 3.3333333333333335,
+      "rank_rmse_wl_record_standings_vs_playoff_outcome_rank": 4.993328882953068,
+      "rank_mae_ensemble_pred_vs_playoff_outcome_rank": 4.933333333333334,
+      "rank_rmse_ensemble_pred_vs_playoff_outcome_rank": 5.715476066494082,
+      "rank_mae_model_a_pred_vs_playoff_outcome_rank": 4.933333333333334,
+      "rank_rmse_model_a_pred_vs_playoff_outcome_rank": 5.715476066494082,
+      "rank_mae_xgb_pred_vs_playoff_outcome_rank": 5.066666666666666,
+      "rank_rmse_xgb_pred_vs_playoff_outcome_rank": 6.713171133426189,
+      "rank_mae_rf_pred_vs_playoff_outcome_rank": 13.933333333333334,
+      "rank_rmse_rf_pred_vs_playoff_outcome_rank": 15.737428845483835
+    }
+  },
+  "model_vs_standings_comparison": {
+    "n_teams": 30,
+    "standings_vs_outcome": {
+      "rank_mae": 3.1333333333333333,
+      "rank_rmse": 4.449719092257398
+    },
+    "models": {
+      "ensemble": {
+        "rank_mae_pred_vs_outcome": 6.866666666666666,
+        "rank_rmse_pred_vs_outcome": 8.778762251403478,
+        "improvement_mae_vs_standings": -3.733333333333333,
+        "improvement_rmse_vs_standings": -4.32904315914608
+      },
+      "model_a": {
+        "rank_mae_pred_vs_outcome": 6.866666666666666,
+        "rank_rmse_pred_vs_outcome": 8.778762251403478,
+        "improvement_mae_vs_standings": -3.733333333333333,
+        "improvement_rmse_vs_standings": -4.32904315914608
+      },
+      "xgb": {
+        "rank_mae_pred_vs_outcome": 5.933333333333334,
+        "rank_rmse_pred_vs_outcome": 7.694153624668538,
+        "improvement_mae_vs_standings": -2.8000000000000003,
+        "improvement_rmse_vs_standings": -3.24443453241114
+      },
+      "rf": {
+        "rank_mae_pred_vs_outcome": 14.733333333333333,
+        "rank_rmse_pred_vs_outcome": 16.74713905915475,
+        "improvement_mae_vs_standings": -11.6,
+        "improvement_rmse_vs_standings": -12.297419966897353
+      }
+    },
+    "significance": {
+      "ensemble": {
+        "mean_mae_improvement": -3.7333333333333334,
+        "bootstrap_95_ci_low": -5.7,
+        "bootstrap_95_ci_high": -1.9666666666666666,
+        "p_value_model_better_than_standings": 1.0,
+        "method": "paired bootstrap over teams (resample teams, mean(standings_ae - model_ae)); H0: no improvement"
+      },
+      "model_a": {
+        "mean_mae_improvement": -3.7333333333333334,
+        "bootstrap_95_ci_low": -5.666666666666667,
+        "bootstrap_95_ci_high": -1.7666666666666666,
+        "p_value_model_better_than_standings": 1.0,
+        "method": "paired bootstrap over teams (resample teams, mean(standings_ae - model_ae)); H0: no improvement"
+      },
+      "xgb": {
+        "mean_mae_improvement": -2.8,
+        "bootstrap_95_ci_low": -5.0,
+        "bootstrap_95_ci_high": -0.6658333333333378,
+        "p_value_model_better_than_standings": 0.9935,
+        "method": "paired bootstrap over teams (resample teams, mean(standings_ae - model_ae)); H0: no improvement"
+      },
+      "rf": {
+        "mean_mae_improvement": -11.6,
+        "bootstrap_95_ci_low": -14.366666666666667,
+        "bootstrap_95_ci_high": -8.8,
+        "p_value_model_better_than_standings": 1.0,
+        "method": "paired bootstrap over teams (resample teams, mean(standings_ae - model_ae)); H0: no improvement"
+      }
+    }
+  },
+  "notes": {
+    "eos_rank_source": "eos_final_rank"
+  }
+}

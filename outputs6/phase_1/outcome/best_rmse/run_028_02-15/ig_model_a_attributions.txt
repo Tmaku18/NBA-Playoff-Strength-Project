@@ -1,0 +1,6 @@
+Integrated Gradients (Model A) top-5 player indices by attribution L2 norm:
+  1. player_idx=4 norm=62.4237
+  2. player_idx=0 norm=13.5525
+  3. player_idx=8 norm=1.9860
+  4. player_idx=3 norm=1.9167
+  5. player_idx=2 norm=1.9142
