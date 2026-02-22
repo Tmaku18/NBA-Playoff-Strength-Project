@@ -77,8 +77,16 @@ A sweep **outputs9** is planned with the **same mechanics** as outputs7 and outp
 
 ---
 
-## 6. Related docs
+## 6. Model lineup and next steps
 
+- **Baseline:** **outputs6** (phase_1 outcome runs). **Best:** outputs8 (Spearman surrogate).
+- **Still to test:** **MAP run** → **outputs14** (`config/outputs14_map_run.yaml`); per-game eval; compare to outputs6, outputs8. **RMSE surrogate:** use **outputs13** sweep (`config/outputs13_sweep_rmse_surrogate.yaml`, `--objective rank_rmse`); compare to outputs8. See [OUTPUTS13_RMSE_SURROGATE_SWEEP.md](OUTPUTS13_RMSE_SURROGATE_SWEEP.md), [OUTPUTS14_MAP_RUN.md](OUTPUTS14_MAP_RUN.md).
+- **Baseline-style + standing rank:** Single run with same training as baseline config but standing rank as input. Config: `config/outputs4_baseline_standing_rank.yaml`; run to `outputs12/baseline_standing_rank`. Compare to **baseline (outputs6)**. See [MODEL_LINEUP_AND_NEXT_STEPS.md](MODEL_LINEUP_AND_NEXT_STEPS.md).
+- **Per-folder model docs:** Each output folder (outputs/ through outputs14/) has a **`MODEL.md`** at its root describing the model that produced those results and the difference from the previous output (e.g. `outputs6/MODEL.md` = baseline, `outputs8/MODEL.md` = best).
+
+## 7. Related docs
+
+- [MODEL_LINEUP_AND_NEXT_STEPS.md](MODEL_LINEUP_AND_NEXT_STEPS.md) — Baseline vs best, MAP/per-game, RMSE surrogate, outputs4+standing
 - [OUTPUTS8_SWEEP_ANALYSIS_02-17.md](OUTPUTS8_SWEEP_ANALYSIS_02-17.md) — outputs8 sweep details and combo metrics  
 - [OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md](OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md) — outputs4 / outputs7 / outputs8 three-way comparison  
 - [BEST_METRICS_02-15.md](BEST_METRICS_02-15.md) — Best configs and outputs6 layout  

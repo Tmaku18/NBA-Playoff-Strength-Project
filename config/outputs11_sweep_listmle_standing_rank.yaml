@@ -1,0 +1,25 @@
+# outputs11 — ListMLE with standing rank as input (Model A/B/C).
+# Same standing-rank feature as outputs10, but training loss = listmle (not spearman_surrogate).
+# Writes to outputs11/sweeps/<batch_id>/.
+#
+# Usage (WSL, from project root):
+#   export PYTHONPATH="$PWD"
+#   python -m scripts.sweep_hparams --config config/outputs11_sweep_listmle_standing_rank.yaml --method optuna --objective spearman --n-trials 40 --n-jobs 4 --listmle-target playoff_outcome --batch-id listmle_standing_rank_40
+#
+# Other objectives: --objective playoff_spearman | ndcg4 | ndcg16 | rank_rmse
+#
+# Compare: baseline (outputs6), outputs8 (Spearman surrogate, no standing), outputs10 (Spearman surrogate + standing), outputs11 (ListMLE + standing).
+
+paths:
+  outputs: "outputs11"
+
+training:
+  listmle_target: "playoff_outcome"
+  loss_type: "listmle"
+  loss_tau: 1.0
+  listmle_position_aware: false
+  listmle_position_discount: log2
+
+# Standing rank: from defaults (model_a.stat_dim: 22 includes standing_rank_norm; Model B uses TEAM_CONTEXT_FEATURE_COLS with standing_rank_norm). Optional explicit:
+# model_a:
+#   use_standing_rank: true

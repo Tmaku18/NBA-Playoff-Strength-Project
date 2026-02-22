@@ -100,7 +100,8 @@ def build_batches_from_lists(
             debug=roster_debug,
             warn_missing_season=True,
         )
-        standing_map = standing_rank_as_of_date(tgl, games, as_of_date)
+        use_standing = bool(ma.get("use_standing_rank", True))
+        standing_map = standing_rank_as_of_date(tgl, games, as_of_date) if use_standing else {}
         embs_list = []
         stats_list = []
         min_list = []
@@ -123,7 +124,7 @@ def build_batches_from_lists(
                 order = order[:roster_size]
                 pad = 0
             player_ids_per_team.append([int(pid) for pid in order] + [None] * pad)
-            standing_norm = standing_rank_norm(standing_map.get(int(tid), 30))
+            standing_norm = standing_rank_norm(standing_map.get(int(tid), 30)) if use_standing else 0.0
             emb, rows, minutes, mask = build_roster_set(
                 roster,
                 player_stats_df,
@@ -258,7 +259,8 @@ def build_batches_from_db(
             debug=roster_debug,
             warn_missing_season=True,
         )
-        standing_map = standing_rank_as_of_date(tgl, games, as_of_date)
+        use_standing = bool(ma.get("use_standing_rank", True))
+        standing_map = standing_rank_as_of_date(tgl, games, as_of_date) if use_standing else {}
         embs_list: list[list[int]] = []
         stats_list: list[list[list[float]]] = []
         min_list: list[list[float]] = []
@@ -274,7 +276,7 @@ def build_batches_from_db(
                 debug=roster_debug,
                 warn_missing_season=True,
             )
-            standing_norm = standing_rank_norm(standing_map.get(int(tid), 30))
+            standing_norm = standing_rank_norm(standing_map.get(int(tid), 30)) if use_standing else 0.0
             emb, rows, minutes, mask = build_roster_set(
                 roster,
                 player_stats_df,
