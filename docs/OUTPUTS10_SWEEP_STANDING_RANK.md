@@ -12,7 +12,7 @@ In prior work (e.g. outputs5 ListMLE outcome vs standings), **standings-trained*
 
 ## Setup
 
-- **Branch:** `feature/listmle-position-aware` (standing rank + position-aware ListMLE in code).
+- **Branch:** `main` (standing-rank input feature is implemented here).
 - **Config:** `config/outputs10_sweep_standing_rank.yaml` — same as outputs8: `paths.outputs: "outputs10"`, `training.listmle_target: playoff_outcome`, `training.loss_type: spearman_surrogate`.
 - **Output root:** `outputs10/`. Sweep writes to `outputs10/sweeps/<batch_id>/`.
 

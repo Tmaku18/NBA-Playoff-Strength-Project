@@ -1,6 +1,6 @@
 # Standing Rank as Input Feature
 
-**Implementation note:** This feature was added on `feature/listmle-position-aware` (and can be merged to `main`). Model A `stat_dim` becomes 22; retrain models after merging. See README § Branches for branch differences.
+**Implementation note:** This feature is now implemented on `main`. Model A `stat_dim` becomes 22; retrain models after pulling the update.
 
 Current regular-season standing (rank 1–30, global) is used as an **input feature** to all models.
 
