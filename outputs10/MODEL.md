@@ -1,4 +1,6 @@
-# outputs10 — Model and role
+# outputs10_spearman_surrogate_standing_rank — Model and role
+
+**Folder name:** `outputs10_spearman_surrogate_standing_rank` (rename from `outputs10` to match; see [OUTPUT_FOLDER_NAMING.md](../docs/OUTPUT_FOLDER_NAMING.md).)
 
 **Role:** Same methodology as **outputs8** (Spearman-surrogate, playoff_outcome, 40 Optuna trials) but with **standing rank as an input feature** for Model A, B, and C (`standing_rank_norm`; stat_dim 22). Tests whether adding current regular-season rank as input improves over outputs8.
 

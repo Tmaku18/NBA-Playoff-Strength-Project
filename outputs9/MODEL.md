@@ -1,4 +1,6 @@
-# outputs9 — Model and role
+# outputs9_listmle_spearman — Model and role
+
+**Folder name:** `outputs9_listmle_spearman` (rename from `outputs9` to match; see [OUTPUT_FOLDER_NAMING.md](../docs/OUTPUT_FOLDER_NAMING.md).)
 
 **Role:** ListMLE sweep with **Spearman as Optuna objective** (same evaluation target as outputs8, but Model A trained with ListMLE loss, not Spearman surrogate). 40 trials, `listmle_target: playoff_outcome`, rolling [10,30]. Standing rank as input (stat_dim 22) when using defaults.
 

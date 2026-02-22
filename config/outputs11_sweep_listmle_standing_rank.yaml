@@ -1,6 +1,6 @@
 # outputs11 — ListMLE with standing rank as input (Model A/B/C).
 # Same standing-rank feature as outputs10, but training loss = listmle (not spearman_surrogate).
-# Writes to outputs11/sweeps/<batch_id>/.
+# Writes to outputs11_listmle_standing_rank/sweeps/<batch_id>/.
 #
 # Usage (WSL, from project root):
 #   export PYTHONPATH="$PWD"
@@ -11,7 +11,7 @@
 # Compare: baseline (outputs6), outputs8 (Spearman surrogate, no standing), outputs10 (Spearman surrogate + standing), outputs11 (ListMLE + standing).
 
 paths:
-  outputs: "outputs11"
+  outputs: "outputs11_listmle_standing_rank"
 
 training:
   listmle_target: "playoff_outcome"

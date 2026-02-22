@@ -1,4 +1,6 @@
-# outputs6 — Model and role (baseline)
+# outputs6_baseline — Model and role (baseline)
+
+**Folder name:** `outputs6_baseline` (rename from `outputs6` to match; see [OUTPUT_FOLDER_NAMING.md](../docs/OUTPUT_FOLDER_NAMING.md).)
 
 **Role:** **Project baseline.** Phase 1 outcome runs: pipeline runs that use **existing configs from outputs4** (e.g. WSL combo_0018, Phase 6 combo_0016) with `listmle_target: playoff_outcome`, writing to `outputs6/phase_1/outcome/best_*`. ListMLE, rolling [15,30]; stacking with confidence when used in WSL configs. **Reference for all later comparisons** (superseded by outputs8 for official best metrics, but baseline role = outputs6).
 

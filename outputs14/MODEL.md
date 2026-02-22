@@ -1,4 +1,6 @@
-# outputs14 — Model and role (MAP run)
+# outputs14_map_run — Model and role (MAP run)
+
+**Folder name:** `outputs14_map_run` (rename from `outputs14` to match; see [OUTPUT_FOLDER_NAMING.md](../docs/OUTPUT_FOLDER_NAMING.md).)
 
 **Role:** **Future MAP (Maximum A Posteriori) branch** runs. Reserved for the MAP branch model; per-game evaluation to be run and compared to **baseline (outputs6)** and **best (outputs8)**.
 

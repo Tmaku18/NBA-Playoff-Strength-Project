@@ -1,4 +1,6 @@
-# outputs7 — Model and role
+# outputs7_listmle_sweep — Model and role
+
+**Folder name:** `outputs7_listmle_sweep` (rename from `outputs7` to match; see [OUTPUT_FOLDER_NAMING.md](../docs/OUTPUT_FOLDER_NAMING.md).)
 
 **Role:** First **Optuna-generated** sweep with ListMLE and `listmle_target: playoff_outcome`. 40 trials, rolling [10,30]. No Spearman surrogate; loss = ListMLE. Best combo improved on outputs4/outputs6 on Spearman and rank error.
 

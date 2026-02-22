@@ -8,7 +8,7 @@
 
 - **Config:** `config/outputs13_sweep_rmse_surrogate.yaml`
 - **Training:** `loss_type: rank_rmse_surrogate`, `listmle_target: playoff_outcome`, rolling [10,30] (defaults)
-- **Output root:** `outputs13/`. Sweep writes to `outputs13/sweeps/<batch_id>/`
+- **Output root:** `outputs13_rmse_surrogate/`. Sweep writes to `outputs13_rmse_surrogate/sweeps/<batch_id>/`
 
 ---
 
@@ -29,9 +29,9 @@ python -m scripts.sweep_hparams --config config/outputs13_sweep_rmse_surrogate.y
 
 ## After the sweep
 
-- **Results:** `outputs13/sweeps/rmse_surrogate_40/sweep_results_summary.json`, `sweep_results.csv`, `optuna_study.json`
+- **Results:** `outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/sweep_results_summary.json`, `sweep_results.csv`, `optuna_study.json`
 - **Best by rank_rmse:** `summary["best_by_rank_rmse"]`; also `best_by_spearman`, `best_by_playoff_spearman` for comparison
-- Compare to **outputs8** (Spearman surrogate): rank_rmse, Spearman, playoff_spearman, rank_mae
+- Compare to **outputs8_spearman_surrogate** (Spearman surrogate): rank_rmse, Spearman, playoff_spearman, rank_mae
 
 ---
 
@@ -39,5 +39,5 @@ python -m scripts.sweep_hparams --config config/outputs13_sweep_rmse_surrogate.y
 
 | Output   | Loss                  | Optuna objective (typical) | Use case |
 |----------|------------------------|----------------------------|----------|
-| outputs8 | spearman_surrogate    | spearman                   | Best Spearman / playoff_spearman (current best) |
-| outputs13| rank_rmse_surrogate   | rank_rmse                  | Best rank_rmse; compare to outputs8 on full metric set |
+| outputs8_spearman_surrogate | spearman_surrogate    | spearman                   | Best Spearman / playoff_spearman (current best) |
+| outputs13_rmse_surrogate | rank_rmse_surrogate   | rank_rmse                  | Best rank_rmse; compare to outputs8_spearman_surrogate on full metric set |

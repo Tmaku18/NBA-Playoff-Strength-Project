@@ -6,13 +6,13 @@
 
 ## Summary
 
-The **outputs8** sweep (Spearman-surrogate loss, 40 Optuna trials, batch 20260217_042955) is the current **official best** for playoff-outcome evaluation. This doc lists the official best config path per metric, compares outputs4, outputs6 phase_1 outcome (run_028), outputs7, and outputs8, notes the difference between outputs6 and outputs7, and states the planned **outputs9** sweep.
+The **outputs8_spearman_surrogate** sweep (Spearman-surrogate loss, 40 Optuna trials, batch 20260217_042955) is the current **official best** for playoff-outcome evaluation. This doc lists the official best config path per metric, compares outputs4, outputs6 phase_1 outcome (run_028), outputs7, and outputs8, notes the difference between outputs6 and outputs7, and states the planned **outputs9** sweep.
 
 ---
 
-## 1. Official best config per metric (outputs8)
+## 1. Official best config per metric (outputs8_spearman_surrogate)
 
-All paths under `outputs8/sweeps/20260217_042955/`. Eval: test seasons 2023-24, 2024-25; `eos_final_rank` (playoff outcome rank).
+All paths under `outputs8_spearman_surrogate/sweeps/20260217_042955/`. Eval: test seasons 2023-24, 2024-25; `eos_final_rank` (playoff outcome rank).
 
 | Metric | Official best config | Key value |
 |--------|----------------------|-----------|
@@ -29,25 +29,25 @@ All paths under `outputs8/sweeps/20260217_042955/`. Eval: test seasons 2023-24, 
 
 **Example:** Run pipeline with best Spearman config:
 ```powershell
-python -m scripts.run_pipeline_from_model_a --config "outputs8/sweeps/20260217_042955/combo_0033/config.yaml" --outputs "outputs8/official_best_spearman"
+python -m scripts.run_pipeline_from_model_a --config "outputs8_spearman_surrogate/sweeps/20260217_042955/combo_0033/config.yaml" --outputs "outputs8_spearman_surrogate/official_best_spearman"
 ```
 
 ---
 
 ## 2. Cross-run comparison
 
-| Metric | outputs4 (prev) | outputs6 phase_1 (run_028) | outputs7 best | outputs8 best | Winner |
-|--------|-----------------|----------------------------|---------------|---------------|--------|
-| **Spearman** | 0.557 | 0.749 (best_rmse) | 0.765 (combo 17) | **0.777** (combo 33) | outputs8 |
-| **playoff_spearman** | 0.568 | 0.725 (best_rmse) | 0.742 (combo 30) | **0.854** (combo 38) | outputs8 |
-| **rank_mae** | 6.33 | 5.27 (best_rmse) | 5.13 (combo 1) | **4.80** (combo 33) | outputs8 |
-| **rank_rmse** | 8.15 | 6.13 (best_rmse) | 5.94 (combo 17) | **5.78** (combo 33) | outputs8 |
-| **NDCG@30** | — | 0.450 (best_ndcg16) | 0.487 (combo 16) | **0.522** (combo 32) | outputs8 |
+| Metric | outputs4 (prev) | outputs6_baseline phase_1 (run_028) | outputs7_listmle_sweep best | outputs8_spearman_surrogate best | Winner |
+|--------|-----------------|-------------------------------------|-----------------------------|----------------------------------|--------|
+| **Spearman** | 0.557 | 0.749 (best_rmse) | 0.765 (combo 17) | **0.777** (combo 33) | outputs8_spearman_surrogate |
+| **playoff_spearman** | 0.568 | 0.725 (best_rmse) | 0.742 (combo 30) | **0.854** (combo 38) | outputs8_spearman_surrogate |
+| **rank_mae** | 6.33 | 5.27 (best_rmse) | 5.13 (combo 1) | **4.80** (combo 33) | outputs8_spearman_surrogate |
+| **rank_rmse** | 8.15 | 6.13 (best_rmse) | 5.94 (combo 17) | **5.78** (combo 33) | outputs8_spearman_surrogate |
+| **NDCG@30** | — | 0.450 (best_ndcg16) | 0.487 (combo 16) | **0.522** (combo 32) | outputs8_spearman_surrogate |
 
 - **outputs4:** Phase 3 fine NDCG@16 combo 18; `listmle_target: final_rank`, rolling [15,30]. See [SWEEP_ANALYSIS_02-08.md](SWEEP_ANALYSIS_02-08.md).
-- **outputs6 phase_1 outcome (run_028):** Pipeline runs into `outputs6/phase_1/outcome/best_*` using configs from outputs4 (e.g. WSL combo_0018 for best_rmse, Phase 6 combo_0016 for best_ndcg16). ListMLE, rolling [15,30].
-- **outputs7:** Sweep 20260217_235940, 40 trials; ListMLE, rolling [10,30]. See [OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md](OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md).
-- **outputs8:** Sweep 20260217_042955, 40 trials; **Spearman-surrogate** loss, rolling [10,30]. See [OUTPUTS8_SWEEP_ANALYSIS_02-17.md](OUTPUTS8_SWEEP_ANALYSIS_02-17.md).
+- **outputs6_baseline phase_1 outcome (run_028):** Pipeline runs into `outputs6_baseline/phase_1/outcome/best_*` using configs from outputs4 (e.g. WSL combo_0018 for best_rmse, Phase 6 combo_0016 for best_ndcg16). ListMLE, rolling [15,30].
+- **outputs7_listmle_sweep:** Sweep 20260217_235940, 40 trials; ListMLE, rolling [10,30]. See [OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md](OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md).
+- **outputs8_spearman_surrogate:** Sweep 20260217_042955, 40 trials; **Spearman-surrogate** loss, rolling [10,30]. See [OUTPUTS8_SWEEP_ANALYSIS_02-17.md](OUTPUTS8_SWEEP_ANALYSIS_02-17.md).
 
 ---
 
@@ -57,7 +57,7 @@ Both use **ListMLE** and **listmle_target: playoff_outcome**. Differences:
 
 | Aspect | outputs6 | outputs7 |
 |--------|----------|----------|
-| **What it is** | Pipeline run **destination**: runs use **existing** configs from outputs4 with `--outputs "outputs6/phase_1/outcome/best_*"`. | **Sweep** output: Optuna **generated** 40 configs under `outputs7/sweeps/<batch_id>/combo_*/`. |
+| **What it is** | Pipeline run **destination**: runs use **existing** configs from outputs4 with `--outputs "outputs6_baseline/phase_1/outcome/best_*"`. | **Sweep** output: Optuna **generated** 40 configs under `outputs7_listmle_sweep/sweeps/<batch_id>/combo_*/`. |
 | **Config source** | Fixed configs from outputs4 (e.g. WSL combo_0018, Phase 6 combo_0016). | New configs from the sweep. |
 | **training.rolling_windows** | **[15, 30]** (from outputs4). | **[10, 30]** (sweep/defaults). |
 | **stacking.use_confidence** | **true** (in WSL configs used for best_rmse, best_ndcg30). | **false** (outputs7 baseline). |
@@ -79,10 +79,10 @@ A sweep **outputs9** is planned with the **same mechanics** as outputs7 and outp
 
 ## 6. Model lineup and next steps
 
-- **Baseline:** **outputs6** (phase_1 outcome runs). **Best:** outputs8 (Spearman surrogate).
-- **Still to test:** **MAP run** → **outputs14** (`config/outputs14_map_run.yaml`); per-game eval; compare to outputs6, outputs8. **RMSE surrogate:** use **outputs13** sweep (`config/outputs13_sweep_rmse_surrogate.yaml`, `--objective rank_rmse`); compare to outputs8. See [OUTPUTS13_RMSE_SURROGATE_SWEEP.md](OUTPUTS13_RMSE_SURROGATE_SWEEP.md), [OUTPUTS14_MAP_RUN.md](OUTPUTS14_MAP_RUN.md).
-- **Baseline-style + standing rank:** Single run with same training as baseline config but standing rank as input. Config: `config/outputs4_baseline_standing_rank.yaml`; run to `outputs12/baseline_standing_rank`. Compare to **baseline (outputs6)**. See [MODEL_LINEUP_AND_NEXT_STEPS.md](MODEL_LINEUP_AND_NEXT_STEPS.md).
-- **Per-folder model docs:** Each output folder (outputs/ through outputs14/) has a **`MODEL.md`** at its root describing the model that produced those results and the difference from the previous output (e.g. `outputs6/MODEL.md` = baseline, `outputs8/MODEL.md` = best).
+- **Baseline:** **outputs6_baseline** (phase_1 outcome runs). **Best:** outputs8_spearman_surrogate (Spearman surrogate).
+- **Still to test:** **MAP run** → **outputs14_map_run** (`config/outputs14_map_run.yaml`); per-game eval; compare to outputs6_baseline, outputs8_spearman_surrogate. **RMSE surrogate:** use **outputs13_rmse_surrogate** sweep (`config/outputs13_sweep_rmse_surrogate.yaml`, `--objective rank_rmse`); compare to outputs8_spearman_surrogate. See [OUTPUTS13_RMSE_SURROGATE_SWEEP.md](OUTPUTS13_RMSE_SURROGATE_SWEEP.md), [OUTPUTS14_MAP_RUN.md](OUTPUTS14_MAP_RUN.md).
+- **Baseline-style + standing rank:** Single run with same training as baseline config but standing rank as input. Config: `config/outputs4_baseline_standing_rank.yaml`; run to `outputs12_baseline_standing_rank/baseline_standing_rank`. Compare to **baseline (outputs6_baseline)**. See [MODEL_LINEUP_AND_NEXT_STEPS.md](MODEL_LINEUP_AND_NEXT_STEPS.md).
+- **Per-folder model docs:** Each output folder has a **`MODEL.md`** at its root. Folder names use differentiators (e.g. **outputs6_baseline**, **outputs8_spearman_surrogate**). See [OUTPUT_FOLDER_NAMING.md](OUTPUT_FOLDER_NAMING.md).
 
 ## 7. Related docs
 

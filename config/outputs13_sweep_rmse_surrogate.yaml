@@ -1,6 +1,6 @@
 # outputs13 — Rank RMSE surrogate sweep (same methodology as outputs8, different loss).
 # Model A trains with rank_rmse_surrogate loss; Optuna minimizes rank_rmse (pred vs playoff outcome).
-# Writes to outputs13/sweeps/<batch_id>/.
+# Writes to outputs13_rmse_surrogate/sweeps/<batch_id>/.
 #
 # Usage (WSL, from project root):
 #   export PYTHONPATH="$PWD"
@@ -11,7 +11,7 @@
 # Compare: outputs8 (Spearman surrogate, best so far) vs outputs13 (RMSE surrogate).
 
 paths:
-  outputs: "outputs13"
+  outputs: "outputs13_rmse_surrogate"
 
 training:
   listmle_target: "playoff_outcome"

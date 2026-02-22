@@ -9,7 +9,7 @@
 - **Config:** `config/outputs11_sweep_listmle_standing_rank.yaml`
 - **Training:** `loss_type: listmle`, `listmle_target: playoff_outcome`, `listmle_position_aware: false`
 - **Input:** Standing rank via defaults (`stat_dim: 22` includes `standing_rank_norm` in Model A; Model B uses `TEAM_CONTEXT_FEATURE_COLS` with `standing_rank_norm`)
-- **Output root:** `outputs11/`. Sweep writes to `outputs11/sweeps/<batch_id>/`
+- **Output root:** `outputs11_listmle_standing_rank/`. Sweep writes to `outputs11_listmle_standing_rank/sweeps/<batch_id>/`
 
 ---
 
@@ -33,8 +33,8 @@ Other objectives (same as other sweeps):
 
 ## After the sweep
 
-- **Results:** `outputs11/sweeps/listmle_standing_rank_40/sweep_results_summary.json`, `sweep_results.csv`, `optuna_study.json`
-- **Best config:** `outputs11/sweeps/listmle_standing_rank_40/combo_<NN>/config.yaml` (combo index from `best_optuna_trial` or `best_by_spearman`)
+- **Results:** `outputs11_listmle_standing_rank/sweeps/listmle_standing_rank_40/sweep_results_summary.json`, `sweep_results.csv`, `optuna_study.json`
+- **Best config:** `outputs11_listmle_standing_rank/sweeps/listmle_standing_rank_40/combo_<NN>/config.yaml` (combo index from `best_optuna_trial` or `best_by_spearman`)
 - If inference fails with missing `multi_temp_aggregation`, ensure `src/models/multi_temp_aggregation.py` exists (added for outputs10).
 
 ---
@@ -43,8 +43,8 @@ Other objectives (same as other sweeps):
 
 | Batch    | Role / loss         | Standing rank | Best for |
 |----------|---------------------|--------------|----------|
-| **outputs6** | **Baseline** (listmle) | No          | Reference for comparisons |
-| outputs8 | spearman_surrogate  | No          | Spearman / playoff_spearman (0.77 / 0.85) |
-| outputs9 | listmle             | Yes (defaults) | ListMLE best Spearman ~0.48 (combo 16) |
-| outputs10| spearman_surrogate  | Yes         | Standing + surrogate; Model A inverted |
-| outputs11| listmle             | Yes         | ListMLE + standing (this sweep) |
+| **outputs6_baseline** | **Baseline** (listmle) | No          | Reference for comparisons |
+| outputs8_spearman_surrogate | spearman_surrogate  | No          | Spearman / playoff_spearman (0.77 / 0.85) |
+| outputs9_listmle_spearman | listmle             | Yes (defaults) | ListMLE best Spearman ~0.48 (combo 16) |
+| outputs10_spearman_surrogate_standing_rank | spearman_surrogate  | Yes         | Standing + surrogate; Model A inverted |
+| outputs11_listmle_standing_rank | listmle             | Yes         | ListMLE + standing (this sweep) |

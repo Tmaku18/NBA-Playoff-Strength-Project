@@ -7,8 +7,8 @@
 ## Setup
 
 - **Config:** `config/outputs14_map_run.yaml`
-- **Paths:** `paths.outputs: "outputs14"`
-- **Baseline reference:** outputs6. **Best reference:** outputs8.
+- **Paths:** `paths.outputs: "outputs14_map_run"`
+- **Baseline reference:** outputs6_baseline. **Best reference:** outputs8_spearman_surrogate.
 
 ---
 
@@ -17,14 +17,14 @@
 From project root:
 
 ```powershell
-python -m scripts.run_pipeline_from_model_a --config config/outputs14_map_run.yaml --outputs outputs14/map_run
+python -m scripts.run_pipeline_from_model_a --config config/outputs14_map_run.yaml --outputs outputs14_map_run/map_run
 ```
 
 WSL:
 
 ```bash
 export PYTHONPATH="$PWD"
-python -m scripts.run_pipeline_from_model_a --config config/outputs14_map_run.yaml --outputs outputs14/map_run
+python -m scripts.run_pipeline_from_model_a --config config/outputs14_map_run.yaml --outputs outputs14_map_run/map_run
 ```
 
 If a MAP-specific script is added (e.g. `run_pipeline_map`), use that with the same config and `--outputs outputs14/map_run`.
@@ -34,6 +34,6 @@ If a MAP-specific script is added (e.g. `run_pipeline_map`), use that with the s
 ## After the run
 
 - Run **per-game** evaluation as needed.
-- Compare metrics to **outputs6** (baseline) and **outputs8** (best).
+- Compare metrics to **outputs6_baseline** (baseline) and **outputs8_spearman_surrogate** (best).
 
 See [MODEL_LINEUP_AND_NEXT_STEPS.md](MODEL_LINEUP_AND_NEXT_STEPS.md) for the full lineup.

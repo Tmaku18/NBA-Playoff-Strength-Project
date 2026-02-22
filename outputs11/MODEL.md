@@ -1,4 +1,6 @@
-# outputs11 — Model and role
+# outputs11_listmle_standing_rank — Model and role
+
+**Folder name:** `outputs11_listmle_standing_rank` (rename from `outputs11` to match; see [OUTPUT_FOLDER_NAMING.md](../docs/OUTPUT_FOLDER_NAMING.md).)
 
 **Role:** ListMLE sweep with **standing rank as input** (Model A/B/C). Same standing-rank feature as outputs10, but training loss = **listmle** (not Spearman surrogate). Compare to **baseline (outputs6)** and to outputs10 (Spearman surrogate + standing).
 

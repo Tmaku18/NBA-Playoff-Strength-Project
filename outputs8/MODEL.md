@@ -1,4 +1,6 @@
-# outputs8 — Model and role (best)
+# outputs8_spearman_surrogate — Model and role (best)
+
+**Folder name:** `outputs8_spearman_surrogate` (rename from `outputs8` to match; see [OUTPUT_FOLDER_NAMING.md](../docs/OUTPUT_FOLDER_NAMING.md).)
 
 **Role:** **Official best** for playoff-outcome evaluation. Spearman-surrogate loss (not ListMLE), 40 Optuna trials, `listmle_target: playoff_outcome`, rolling [10,30]. Best Spearman 0.777 (combo_0033), best playoff_spearman 0.854 (combo_0038), best rank_mae/rank_rmse (combo_0033), best NDCG@30 (combo_0032).
 

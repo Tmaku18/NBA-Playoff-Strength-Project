@@ -1,13 +1,13 @@
 # outputs14 — Future MAP (Maximum A Posteriori) branch run.
-# Use when running the MAP branch model; writes to outputs14/.
+# Use when running the MAP branch model; writes to outputs14_map_run/.
 # Per-game evaluation and comparison to baseline (outputs6) and best (outputs8) to be run after pipeline.
 #
 # Usage (when MAP branch is ready):
-#   python -m scripts.run_pipeline_from_model_a --config config/outputs14_map_run.yaml --outputs outputs14/map_run
+#   python -m scripts.run_pipeline_from_model_a --config config/outputs14_map_run.yaml --outputs outputs14_map_run/map_run
 # Or with a MAP-specific entrypoint if added:
 #   python -m scripts.run_pipeline_map --config config/outputs14_map_run.yaml --outputs outputs14/map_run
 #
 # Compare: baseline (outputs6), best (outputs8); run per-game evaluation as needed.
 
 paths:
-  outputs: "outputs14"
+  outputs: "outputs14_map_run"
