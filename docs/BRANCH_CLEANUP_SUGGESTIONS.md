@@ -1,6 +1,8 @@
 # Branch cleanup suggestions
 
-**Purpose:** Suggest which branches can be deleted to simplify the repo. **No branches are deleted by this doc** — you decide and run `git branch -d` / `git push origin --delete <branch>` yourself after verifying.
+**Purpose:** Suggest which branches can be deleted to simplify the repo.
+
+**Execution (Feb 2026):** Main was pushed; **11 remote branches** were deleted; **6 local branches** were deleted. **4 local branches** could not be deleted (in use by other worktrees): `docs/implementation-roadmap`, `feature/sweep-and-hparam-docs`, `implement-plan-phases-fpg`, `update-readme-and-pipeline`. Remove those worktrees or switch them to main, then run `git branch -d <branch>` to delete locally.
 
 **Current default branch:** **main** (Spearman surrogate line; merged with baseline-listmle so main has full docs, outputs8 best, outputs13/15/16 docs, RMSE findings, and loss logging).
 
