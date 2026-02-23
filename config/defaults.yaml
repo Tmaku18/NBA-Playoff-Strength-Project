@@ -36,14 +36,13 @@ repro:
   seed: 42
 
 model_a:
-  stat_dim: 21  # 18 (L10+L30 incl ts_pct, usage) + 2 (on_court_pm_approx L10/L30) + 1 (pct_min_returning)
+  stat_dim: 22  # 18 (L10+L30) + 2 (on_court_pm) + 1 (pct_min_returning) + 1 (standing_rank_norm)
   num_embeddings: 500
   embedding_dim: 32
   encoder_hidden: [128, 64]
   attention_heads: 4   # WSL best (combo_0014/0018): 4 heads for non-negative Spearman
   dropout: 0.2
   learning_rate: 0.0001
-  weight_decay: 0.0  # MAP (Gaussian prior) when > 0; 0.0 = MLE default
   grad_clip_max_norm: 5.0  # looser than 1.0 to avoid zero effective gradients when norm is large
   epochs: 27  # WSL best combo_0014
   early_stopping_patience: 0
