@@ -2,7 +2,7 @@
 
 **Purpose:** Suggest which branches can be deleted to simplify the repo.
 
-**Execution (Feb 2026):** Main was pushed; **11 remote branches** were deleted; **6 local branches** were deleted. **4 local branches** could not be deleted (in use by other worktrees): `docs/implementation-roadmap`, `feature/sweep-and-hparam-docs`, `implement-plan-phases-fpg`, `update-readme-and-pipeline`. Remove those worktrees or switch them to main, then run `git branch -d <branch>` to delete locally.
+**Execution (Feb 2026):** Main was pushed; **11 remote branches** were deleted; **10 local branches** were deleted. The 4 worktree-blocked locals (`docs/implementation-roadmap`, `feature/sweep-and-hparam-docs`, `implement-plan-phases-fpg`, `update-readme-and-pipeline`) were removed by force-removing their worktrees (axi, net, fpg, hbf), then the branches were deleted. **Remaining local branches:** main, Per_Game_Prediction, feature/model-a-map-estimator, feature/post-checkpoint-updates.
 
 **Current default branch:** **main** (Spearman surrogate line; merged with baseline-listmle so main has full docs, outputs8 best, outputs13/15/16 docs, RMSE findings, and loss logging).
 
