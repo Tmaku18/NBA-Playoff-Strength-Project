@@ -8,4 +8,14 @@
 
 **Difference from outputs11_listmle_standing_rank:** outputs11 = ListMLE **sweep** (Optuna) with standing rank. outputs12 = **single run** with baseline config + standing rank.
 
+**Run in WSL (from project root):**
+```bash
+export PYTHONPATH="$PWD"
+python -m scripts.run_pipeline_from_model_a --config config/outputs4_baseline_standing_rank.yaml --outputs outputs12_baseline_standing_rank/baseline_standing_rank
+```
+Sweep (Optuna):
+```bash
+python -m scripts.sweep_hparams --config config/outputs4_baseline_standing_rank.yaml --method optuna --objective spearman --n-trials 40 --n-jobs 4 --batch-id baseline_standing_rank_40
+```
+
 **See also:** [docs/MODEL_LINEUP_AND_NEXT_STEPS.md](../docs/MODEL_LINEUP_AND_NEXT_STEPS.md), [docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](../docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md).

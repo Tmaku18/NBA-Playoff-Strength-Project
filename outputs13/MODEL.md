@@ -8,4 +8,10 @@
 
 **Difference from outputs10:** outputs10 = Spearman surrogate **with standing rank as input**. outputs13 = **RMSE surrogate** (no standing rank in baseline config), dedicated folder so RMSE-surrogate results are separate from Spearman-surrogate (outputs8) and ListMLE (outputs7/9).
 
+**Run in WSL (from project root):**
+```bash
+export PYTHONPATH="$PWD"
+python -m scripts.sweep_hparams --config config/outputs13_sweep_rmse_surrogate.yaml --method optuna --objective rank_rmse --n-trials 40 --n-jobs 4 --listmle-target playoff_outcome --batch-id rmse_surrogate_40
+```
+
 **See also:** [docs/OUTPUTS13_RMSE_SURROGATE_SWEEP.md](../docs/OUTPUTS13_RMSE_SURROGATE_SWEEP.md), [docs/MODEL_LINEUP_AND_NEXT_STEPS.md](../docs/MODEL_LINEUP_AND_NEXT_STEPS.md), [docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](../docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md).

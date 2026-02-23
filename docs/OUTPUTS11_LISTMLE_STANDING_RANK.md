@@ -39,6 +39,14 @@ Other objectives (same as other sweeps):
 
 ---
 
+## Sweep results (listmle_standing_rank_40)
+
+- **Best combo (Spearman):** combo_012 — Spearman 0.459, playoff_spearman 0.467, rank_mae 7.13, rank_rmse 9.01, NDCG@30 0.596.
+- **vs outputs8:** outputs11 is weaker on Spearman/playoff_spearman/rank_mae/rank_rmse; stronger on NDCG@30 (0.596 vs 0.522). Same ListMLE vs surrogate pattern as outputs9.
+- **Full analysis:** [outputs11_listmle_standing_rank/sweeps/listmle_standing_rank_40/ANALYSIS_01.md](../outputs11_listmle_standing_rank/sweeps/listmle_standing_rank_40/ANALYSIS_01.md).
+
+---
+
 ## Comparison matrix
 
 | Batch    | Role / loss         | Standing rank | Best for |
@@ -47,4 +55,4 @@ Other objectives (same as other sweeps):
 | outputs8_spearman_surrogate | spearman_surrogate  | No          | Spearman / playoff_spearman (0.77 / 0.85) |
 | outputs9_listmle_spearman | listmle             | Yes (defaults) | ListMLE best Spearman ~0.48 (combo 16) |
 | outputs10_spearman_surrogate_standing_rank | spearman_surrogate  | Yes         | Standing + surrogate; Model A inverted |
-| outputs11_listmle_standing_rank | listmle             | Yes         | ListMLE + standing (this sweep) |
+| outputs11_listmle_standing_rank | listmle             | Yes         | ListMLE + standing; best Spearman 0.46 (combo_12), best NDCG@30 0.60 |

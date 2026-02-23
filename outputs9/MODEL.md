@@ -8,4 +8,10 @@
 
 **Difference from outputs8:** outputs8 = **Spearman-surrogate** loss (best overall metrics). outputs9 = **ListMLE** loss with same Optuna objective (spearman). Directly compares ListMLE vs surrogate: surrogate (outputs8) wins on correlation and rank error; ListMLE (outputs9) can do better on NDCG at top-4.
 
+**Run in WSL (from project root):**
+```bash
+export PYTHONPATH="$PWD"
+python -m scripts.sweep_hparams --config config/outputs9_sweep_listmle.yaml --method optuna --objective spearman --n-trials 40 --n-jobs 4 --listmle-target playoff_outcome
+```
+
 **See also:** [docs/MODEL_LINEUP_AND_NEXT_STEPS.md](../docs/MODEL_LINEUP_AND_NEXT_STEPS.md), [docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](../docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md), `scripts/aggregate_outputs9.py` for eval summary.

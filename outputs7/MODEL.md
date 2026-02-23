@@ -8,4 +8,10 @@
 
 **Difference from outputs6:** outputs6 = runs using **fixed outputs4 configs** (playoff_outcome, [15,30]). outputs7 = **new sweep** that **generates** 40 configs (rolling [10,30], ListMLE only). Beats outputs4 on all primary metrics; later superseded by outputs8 (Spearman surrogate).
 
+**Run in WSL (from project root):**
+```bash
+export PYTHONPATH="$PWD"
+python -m scripts.sweep_hparams --config config/outputs7_sweep_rmse.yaml --method optuna --objective rank_rmse --n-trials 40 --n-jobs 4 --listmle-target playoff_outcome
+```
+
 **See also:** [docs/OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md](../docs/OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md), [docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](../docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md).

@@ -8,4 +8,10 @@
 
 **Difference from outputs9:** outputs9 = ListMLE sweep (with standing in defaults). outputs10 = **Spearman-surrogate** sweep **with standing rank as input** (same as outputs8 setup + standing). Compare to outputs8 (no standing) to isolate effect of standing; compare to outputs9 for ListMLE vs surrogate with standing.
 
+**Run in WSL (from project root):**
+```bash
+export PYTHONPATH="$PWD"
+python -m scripts.sweep_hparams --config config/outputs10_sweep_standing_rank.yaml --method optuna --objective spearman --n-trials 40 --n-jobs 4 --listmle-target playoff_outcome
+```
+
 **See also:** [docs/OUTPUTS10_SWEEP_STANDING_RANK.md](../docs/OUTPUTS10_SWEEP_STANDING_RANK.md), [docs/MODEL_A_STANDING_RANK_INVERSION.md](../docs/MODEL_A_STANDING_RANK_INVERSION.md), [docs/MODEL_LINEUP_AND_NEXT_STEPS.md](../docs/MODEL_LINEUP_AND_NEXT_STEPS.md).

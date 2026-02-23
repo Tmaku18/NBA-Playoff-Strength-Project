@@ -8,4 +8,11 @@
 
 **Difference from outputs5:** outputs5 = outcome vs standings **comparison** (multiple targets, same structure). outputs6 = **baseline** destination for re-runs of outputs4-style configs with playoff_outcome and optional confidence stacking.
 
+**Run in WSL (from project root):**
+```bash
+export PYTHONPATH="$PWD"
+python -m scripts.run_pipeline_from_model_a --config "outputs4/sweeps/wsl_playoff_spearman/combo_0018/config.yaml" --outputs "outputs6_baseline/phase_1/outcome/best_rmse"
+```
+Use other combo configs and `best_spearman`, `best_ndcg30`, etc. as needed. See [docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](../docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md).
+
 **See also:** [docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](../docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md), [docs/MODEL_LINEUP_AND_NEXT_STEPS.md](../docs/MODEL_LINEUP_AND_NEXT_STEPS.md).
