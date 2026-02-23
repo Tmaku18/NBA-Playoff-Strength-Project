@@ -189,8 +189,9 @@ def _run_walk_forward(config, train_lists, games, tgl, teams, pgl, out, root, pl
                 step_val_lists, games, tgl, teams, pgl, config, device=device,
             )
 
+        loss_log_path = out / "training_loss.csv" if k == n_steps else None
         model = train_model_a_on_batches(
-            config, train_batches, device, max_epochs=epochs, val_batches=val_batches or None
+            config, train_batches, device, max_epochs=epochs, val_batches=val_batches or None, loss_log_path=loss_log_path
         )
         if val_batches and val_metas:
             conf_cfg = (config.get("model_a") or {}).get("confidence", {})
