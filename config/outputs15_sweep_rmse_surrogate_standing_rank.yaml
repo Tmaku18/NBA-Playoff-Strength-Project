@@ -1,0 +1,24 @@
+# outputs15 — Rank RMSE surrogate sweep with standing rank as input (Model A/B/C).
+# Same as outputs13_rmse_surrogate (rank_rmse_surrogate loss, Optuna rank_rmse) but with
+# standing_rank_norm in the feature set (stat_dim 22, use_standing_rank true).
+# Writes to outputs15_rmse_surrogate_standing_rank/sweeps/<batch_id>/.
+#
+# Usage (WSL, from project root):
+#   export PYTHONPATH="$PWD"
+#   python -m scripts.sweep_hparams --config config/outputs15_sweep_rmse_surrogate_standing_rank.yaml --method optuna --objective rank_rmse --n-trials 40 --n-jobs 4 --listmle-target playoff_outcome --batch-id rmse_surrogate_standing_rank_40
+#
+# Other objectives: --objective spearman | playoff_spearman | ndcg4 | ndcg16
+#
+# Compare: outputs13_rmse_surrogate (no standing), outputs8_spearman_surrogate, outputs10_spearman_surrogate_standing_rank.
+
+paths:
+  outputs: "outputs15_rmse_surrogate_standing_rank"
+
+training:
+  listmle_target: "playoff_outcome"
+  loss_type: "rank_rmse_surrogate"
+  loss_tau: 1.0
+
+model_a:
+  stat_dim: 22
+  use_standing_rank: true

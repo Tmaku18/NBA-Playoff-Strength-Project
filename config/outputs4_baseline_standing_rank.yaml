@@ -1,0 +1,39 @@
+# Baseline-style + standing rank as input (single run, not a sweep).
+# Same training as baseline config (ListMLE, final_rank, rolling [15,30]; outputs4-style) but with
+# standing_rank_norm in the feature set (stat_dim 22, use_standing_rank true). Compare to baseline (outputs6).
+# Compare to: baseline (outputs6), outputs8 (best, Spearman surrogate).
+#
+# Usage (from project root):
+#   python -m scripts.run_pipeline_from_model_a --config config/outputs4_baseline_standing_rank.yaml --outputs outputs12_baseline_standing_rank/baseline_standing_rank
+#
+# WSL:
+#   export PYTHONPATH="$PWD"
+#   python -m scripts.run_pipeline_from_model_a --config config/outputs4_baseline_standing_rank.yaml --outputs outputs12_baseline_standing_rank/baseline_standing_rank
+
+paths:
+  outputs: "outputs12_baseline_standing_rank"
+
+# outputs4 baseline training (Phase 3 fine NDCG@16 style)
+training:
+  listmle_target: "final_rank"
+  rolling_windows: [15, 30]
+  loss_type: "listmle"
+
+# Add standing rank as input (outputs4 baseline had stat_dim 21 = no standing)
+model_a:
+  stat_dim: 22
+  use_standing_rank: true
+  epochs: 22   # match outputs4 phase3 combo_0018
+
+# Match outputs4 phase3 combo_0018 Model B for fair comparison
+model_b:
+  xgb:
+    n_estimators: 229
+    max_depth: 5
+    learning_rate: 0.072
+    subsample: 0.8
+    colsample_bytree: 0.7
+  rf:
+    n_estimators: 173
+    max_depth: 12
+    min_samples_leaf: 5

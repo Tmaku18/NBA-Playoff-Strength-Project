@@ -1,0 +1,16 @@
+# outputs16 — MAP (Maximum A Posteriori) branch run with standing rank as input.
+# Same as outputs14_map_run but with standing_rank_norm in the feature set (stat_dim 22, use_standing_rank true).
+# Use when running the MAP branch model with standing rank; writes to outputs16_map_standing_rank/.
+#
+# Usage (when MAP branch is ready):
+#   export PYTHONPATH="$PWD"
+#   python -m scripts.run_pipeline_from_model_a --config config/outputs16_map_standing_rank.yaml --outputs outputs16_map_standing_rank/map_standing_rank
+#
+# Compare: outputs14_map_run (MAP, no standing), outputs6_baseline, outputs8_spearman_surrogate.
+
+paths:
+  outputs: "outputs16_map_standing_rank"
+
+model_a:
+  stat_dim: 22
+  use_standing_rank: true

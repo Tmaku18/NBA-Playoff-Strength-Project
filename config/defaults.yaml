@@ -36,7 +36,7 @@ repro:
   seed: 42
 
 model_a:
-  stat_dim: 21  # 18 (L10+L30 incl ts_pct, usage) + 2 (on_court_pm_approx L10/L30) + 1 (pct_min_returning)
+  stat_dim: 22  # 18 (L10+L30) + 2 (on_court_pm) + 1 (pct_min_returning) + 1 (standing_rank_norm)
   num_embeddings: 500
   embedding_dim: 32
   encoder_hidden: [128, 64]
