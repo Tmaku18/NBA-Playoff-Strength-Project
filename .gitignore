@@ -92,6 +92,12 @@ outputs13/*
 outputs14/*
 !outputs14/MODEL.md
 !outputs14/**/ANALYSIS*.md
+outputs15_rmse_surrogate_standing_rank/*
+!outputs15_rmse_surrogate_standing_rank/MODEL.md
+!outputs15_rmse_surrogate_standing_rank/**/ANALYSIS*.md
+outputs16_map_standing_rank/*
+!outputs16_map_standing_rank/MODEL.md
+!outputs16_map_standing_rank/**/ANALYSIS*.md
 outputs_player_game/*
 !outputs_player_game/**/ANALYSIS*.md
 

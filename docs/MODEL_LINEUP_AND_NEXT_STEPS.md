@@ -14,8 +14,10 @@
 | **Best** | **outputs8_spearman_surrogate** (e.g. combo_0033 / combo_0038) | **Spearman-surrogate** loss, playoff_outcome, rolling [10,30]. Best Spearman / playoff_spearman / rank_mae / rank_rmse. See [OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md). |
 | **MAP run** | **outputs14_map_run** (`config/outputs14_map_run.yaml`) | Future MAP branch model; per-game evaluation. Compare to baseline (outputs6_baseline) and best (outputs8_spearman_surrogate). See [OUTPUTS14_MAP_RUN.md](OUTPUTS14_MAP_RUN.md). |
 | **RMSE surrogate** | **outputs13_rmse_surrogate** (`config/outputs13_sweep_rmse_surrogate.yaml`) | Same as outputs8_spearman_surrogate but **rank_rmse_surrogate** loss; Optuna minimizes rank_rmse. Compare to outputs8_spearman_surrogate. See [OUTPUTS13_RMSE_SURROGATE_SWEEP.md](OUTPUTS13_RMSE_SURROGATE_SWEEP.md). |
+| **RMSE surrogate + standing rank** | **outputs15_rmse_surrogate_standing_rank** (`config/outputs15_sweep_rmse_surrogate_standing_rank.yaml`) | RMSE surrogate sweep with **standing rank as input**. Compare to outputs13_rmse_surrogate (no standing). See [OUTPUTS15_RMSE_SURROGATE_STANDING_RANK.md](OUTPUTS15_RMSE_SURROGATE_STANDING_RANK.md). |
 | **Baseline-style + standing rank** | **outputs12_baseline_standing_rank** (`config/outputs4_baseline_standing_rank.yaml`) | Same as baseline config (ListMLE, final_rank, [15,30]) but with **standing rank as input** (stat_dim 22). Single run. Compare to **baseline (outputs6_baseline)**. |
 | **ListMLE + standing (sweep)** | **outputs11_listmle_standing_rank** | ListMLE loss, playoff_outcome, standing rank; Optuna sweep. Compare to **baseline (outputs6_baseline)** and outputs10_spearman_surrogate_standing_rank. |
+| **MAP + standing rank** | **outputs16_map_standing_rank** (`config/outputs16_map_standing_rank.yaml`) | MAP branch run with **standing rank as input**. Compare to outputs14_map_run (MAP, no standing). See [OUTPUTS16_MAP_STANDING_RANK.md](OUTPUTS16_MAP_STANDING_RANK.md). |
 
 ---
 
@@ -64,3 +66,5 @@ Results under `outputs12_baseline_standing_rank/baseline_standing_rank/` (e.g. `
 | outputs12_baseline_standing_rank/ | Baseline-style + standing rank (single run); compare to outputs6_baseline. |
 | outputs13_rmse_surrogate/ | **RMSE surrogate** sweep (rank_rmse_surrogate); diff from outputs10_spearman_surrogate_standing_rank. |
 | outputs14_map_run/ | **MAP run** (future); per-game evaluation; compare to outputs6_baseline, outputs8_spearman_surrogate. |
+| outputs15_rmse_surrogate_standing_rank/ | **RMSE surrogate + standing rank**; diff from outputs13_rmse_surrogate. |
+| outputs16_map_standing_rank/ | **MAP + standing rank** (future); compare to outputs14_map_run. |

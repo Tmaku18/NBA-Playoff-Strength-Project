@@ -15,5 +15,7 @@ Output folders use the pattern **`outputs#_<differentiator>`** so you can tell a
 | **outputs12_baseline_standing_rank** | baseline_standing_rank | Baseline-style config + standing rank (single run). |
 | **outputs13_rmse_surrogate** | rmse_surrogate | Rank RMSE surrogate sweep. |
 | **outputs14_map_run** | map_run | Future MAP branch runs. |
+| **outputs15_rmse_surrogate_standing_rank** | rmse_surrogate_standing_rank | RMSE surrogate sweep + standing rank as input. |
+| **outputs16_map_standing_rank** | map_standing_rank | MAP branch run + standing rank as input. |
 
 Configs set `paths.outputs` to these folder names (e.g. `config/outputs8_sweep_spearman.yaml` → `outputs8_spearman_surrogate`). If you have existing data in old folder names (e.g. `outputs8`), rename the folder to the new name (e.g. `outputs8_spearman_surrogate`) to match.
