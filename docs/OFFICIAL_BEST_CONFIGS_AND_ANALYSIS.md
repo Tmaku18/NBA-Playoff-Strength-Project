@@ -80,14 +80,23 @@ A sweep **outputs9** is planned with the **same mechanics** as outputs7 and outp
 ## 6. Model lineup and next steps
 
 - **Baseline:** **outputs6_baseline** (phase_1 outcome runs). **Best:** outputs8_spearman_surrogate (Spearman surrogate).
-- **Still to test:** **MAP run** → **outputs14_map_run** (`config/outputs14_map_run.yaml`); per-game eval; compare to outputs6_baseline, outputs8_spearman_surrogate. **RMSE surrogate:** use **outputs13_rmse_surrogate** sweep (`config/outputs13_sweep_rmse_surrogate.yaml`, `--objective rank_rmse`); compare to outputs8_spearman_surrogate. See [OUTPUTS13_RMSE_SURROGATE_SWEEP.md](OUTPUTS13_RMSE_SURROGATE_SWEEP.md), [OUTPUTS14_MAP_RUN.md](OUTPUTS14_MAP_RUN.md).
+- **Still to test:** **MAP run** → **outputs14_map_run** (`config/outputs14_map_run.yaml`); per-game eval; compare to outputs6_baseline, outputs8_spearman_surrogate. See [OUTPUTS14_MAP_RUN.md](OUTPUTS14_MAP_RUN.md).
+- **outputs13 / RMSE surrogate:** Tested (sweep + 80-epoch singular run). **Not recommended** — underperformed Spearman surrogate on all primary metrics; see [RMSE_SURROGATE_FINDINGS.md](RMSE_SURROGATE_FINDINGS.md) and [OUTPUTS13_RMSE_SURROGATE_SWEEP.md](OUTPUTS13_RMSE_SURROGATE_SWEEP.md).
 - **Baseline-style + standing rank:** Single run with same training as baseline config but standing rank as input. Config: `config/outputs4_baseline_standing_rank.yaml`; run to `outputs12_baseline_standing_rank/baseline_standing_rank`. Compare to **baseline (outputs6_baseline)**. See [MODEL_LINEUP_AND_NEXT_STEPS.md](MODEL_LINEUP_AND_NEXT_STEPS.md).
 - **Per-folder model docs:** Each output folder has a **`MODEL.md`** at its root. Folder names use differentiators (e.g. **outputs6_baseline**, **outputs8_spearman_surrogate**). See [OUTPUT_FOLDER_NAMING.md](OUTPUT_FOLDER_NAMING.md).
 
-## 7. Related docs
+## 7. outputs13 / RMSE surrogate (not recommended)
 
-- [MODEL_LINEUP_AND_NEXT_STEPS.md](MODEL_LINEUP_AND_NEXT_STEPS.md) — Baseline vs best, MAP/per-game, RMSE surrogate, outputs4+standing
+The **rank_rmse_surrogate** sweep (outputs13) and an 80-epoch singular run were run and compared to outputs8. **Findings:** RMSE surrogate did not achieve positive correlation; best rank_rmse was ~13.2 (vs outputs8 5.78); Spearman and playoff_spearman were negative or near zero. **Use outputs8 (Spearman surrogate) for production.** Full write-up: [RMSE_SURROGATE_FINDINGS.md](RMSE_SURROGATE_FINDINGS.md).
+
+---
+
+## 8. Related docs
+
+- [MODEL_LINEUP_AND_NEXT_STEPS.md](MODEL_LINEUP_AND_NEXT_STEPS.md) — Baseline vs best, MAP/per-game, outputs4+standing
+- [RMSE_SURROGATE_FINDINGS.md](RMSE_SURROGATE_FINDINGS.md) — outputs13 RMSE surrogate consolidated findings (not recommended)
 - [OUTPUTS8_SWEEP_ANALYSIS_02-17.md](OUTPUTS8_SWEEP_ANALYSIS_02-17.md) — outputs8 sweep details and combo metrics  
 - [OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md](OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md) — outputs4 / outputs7 / outputs8 three-way comparison  
 - [BEST_METRICS_02-15.md](BEST_METRICS_02-15.md) — Best configs and outputs6 layout  
 - [SWEEP_ANALYSIS_02-08.md](SWEEP_ANALYSIS_02-08.md) — outputs4 Phase 2/3 sweep history  
+- [BRANCH_CLEANUP_SUGGESTIONS.md](BRANCH_CLEANUP_SUGGESTIONS.md) — which branches can be deleted (no dedicated output or unproductive)  
