@@ -1,0 +1,38 @@
+---
+description: Ensure output-folder model docs, analysis docs, and best-run paths are not gitignored
+alwaysApply: true
+---
+
+# Outputs: model docs, analysis docs, and best runs must not be gitignored
+
+When adding or changing **output folders**, **best runs**, **model explanation docs**, or **analysis docs** in this project:
+
+1. **New output folder (e.g. outputs17_…)**  
+   In `.gitignore`, add a block that **ignores** the folder contents but **un-ignores**:
+   - `!<folder>/MODEL.md` (and any other **model explanation doc** at the root of that folder, e.g. `README.md` if it describes the model)
+   - `!<folder>/**/ANALYSIS*.md`  
+   so that MODEL.md, other model docs, and any analysis doc under that folder are **not** ignored.
+
+2. **New model explanation doc in an output folder**  
+   Any doc that explains the model for that output (e.g. `MODEL.md`, or a `README.md` in the output root) must **not** be gitignored. For a new output folder, always include `!<folder>/MODEL.md`. If you add a new model doc with a different name (e.g. `outputs17_foo/README.md`), add an explicit un-ignore for it so it is tracked.
+
+3. **New best-run combo or sweep-level analysis**  
+   If you add a new “best” combo or a sweep-level analysis file (e.g. `outputs15_…/sweeps/<batch>/ANALYSIS_01.md`):
+   - Either ensure the folder’s existing `!**/ANALYSIS*.md` pattern already covers that path, or  
+   - Add an explicit un-ignore for that path.
+
+4. **After creating or moving model docs or analysis docs**  
+   Run for each new or moved doc:
+   ```bash
+   git check-ignore -v path/to/MODEL.md
+   git check-ignore -v path/to/ANALYSIS_01.md
+   ```
+   If the file is ignored, update `.gitignore` so that path (or a pattern that includes it) is un-ignored.
+
+**Pattern to follow in .gitignore (per output folder):**
+```gitignore
+outputs<X>_<name>/*
+!outputs<X>_<name>/MODEL.md
+!outputs<X>_<name>/**/ANALYSIS*.md
+```
+Add explicit un-ignores for any other model-explanation docs in that folder (e.g. `!outputs<X>_<name>/README.md`). Then add any best-run combo dirs with `!.../combo_XXXX/` and `!.../combo_XXXX/**` as needed.

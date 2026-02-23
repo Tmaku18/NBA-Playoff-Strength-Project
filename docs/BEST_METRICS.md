@@ -4,14 +4,6 @@ Best configs per metric and side-by-side comparison of all "best runs," includin
 
 ---
 
-## Current official best (outputs8)
-
-**Official best configs** for playoff-outcome metrics are from the **outputs8** sweep (batch 20260217_042955, Spearman-surrogate loss, 40 trials). For the full cross-run comparison (outputs4, outputs6 phase_1, outputs7, outputs8) and exact config paths, see **[OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md)**.
-
-**Planned: outputs9 sweep** — outputs9 will use the same sweep setup as outputs7/8 but with **ListMLE** (outputs6-style config) instead of Spearman surrogate. See OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md.
-
----
-
 ## Listmle target (outcome vs standings)
 
 | `listmle_target`   | Meaning |
@@ -27,19 +19,6 @@ Best configs per metric and side-by-side comparison of all "best runs," includin
 
 ## Best config per metric
 
-### Official best (outputs8)
-
-| Metric | Config path | Key value |
-|--------|-------------|-----------|
-| **Spearman** | `outputs8/sweeps/20260217_042955/combo_0033/config.yaml` | 0.777 |
-| **playoff_spearman** | `outputs8/sweeps/20260217_042955/combo_0038/config.yaml` | 0.854 |
-| **rank_mae / rank_rmse** | `outputs8/sweeps/20260217_042955/combo_0033/config.yaml` | 4.80 / 5.78 |
-| **NDCG@4, NDCG@16, NDCG@20, NDCG@30** | `outputs8/sweeps/20260217_042955/combo_0032/config.yaml` | NDCG@30 0.522 |
-
-See [OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md) for the full list and cross-run comparison.
-
-### Historical best (pre-outputs8)
-
 | Metric | Sweep | Combo | Listmle target | Config path | Ensemble (test) |
 |--------|-------|-------|----------------|-------------|------------------|
 | **Spearman** | WSL playoff_spearman | 18 | playoff_outcome | `outputs4/sweeps/wsl_playoff_spearman/combo_0018/config.yaml` | Spearman 0.532, NDCG 0.611 |
@@ -47,13 +26,13 @@ See [OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.m
 | **Playoff Spearman** | WSL playoff_spearman | 14 | playoff_outcome | `outputs4/sweeps/wsl_playoff_spearman/combo_0014/config.yaml` | Playoff ρ 0.523, NDCG 0.608 |
 | **Rank RMSE** (vs playoff outcome) | WSL playoff_spearman | 18 | playoff_outcome | same as Spearman (combo_0018) | RMSE 8.37 |
 | **Rank MAE** (vs playoff outcome) | WSL playoff_spearman | 14 | playoff_outcome | same as Playoff Spearman (combo_0014) | MAE 6.53 |
+| **Spearman (standings eval)** | WSL playoff_spearman | 4 | playoff_outcome | `outputs4/sweeps/wsl_playoff_spearman/combo_0004/config.yaml` | Standings ρ 0.419 |
+| **Rank RMSE (standings eval)** | WSL playoff_spearman | 6 | playoff_outcome | `outputs4/sweeps/wsl_playoff_spearman/combo_0006/config.yaml` | Standings RMSE 8.48 |
 | **Spearman** (Phase 6) | Phase 6 NDCG16 | 5 | playoff_outcome | `outputs4/sweeps/phase6_ndcg16_playoff_narrow/combo_0005/config.yaml` | Spearman 0.536, NDCG 0.486 |
 | **NDCG** (Phase 6) | Phase 6 NDCG16 | 10 | playoff_outcome | `outputs4/sweeps/phase6_ndcg16_playoff_narrow/combo_0010/config.yaml` | NDCG 0.531, Spearman 0.503 |
 | **NDCG@4** (Phase 6) | Phase 6 NDCG16 | 6 | playoff_outcome | `outputs4/sweeps/phase6_ndcg16_playoff_narrow/combo_0006/config.yaml` | NDCG@4 0.506, NDCG@16 0.542 |
 
 *Standings eval = same training (playoff_outcome), but reported metric is correlation/RMSE vs W/L standings rank.*
-
-**Model C (RF):** The pipeline does not train Model C by default (`training.train_model_c: false`). Ensemble = A + B only. When present (e.g. older runs), Model C metrics are kept in reports for analytic comparison only.
 
 ---
 
@@ -100,37 +79,7 @@ outputs6/
       best_rmse/
 ```
 
-When `--outputs` contains:
-
-- `"outputs6"`: pipeline sets `inference.run_id` = `run_028` and `run_id_base` = 28
-- `"outputs7"`: pipeline sets `inference.run_id` = `run_029` and `run_id_base` = 29
-- `"outputs8"`: pipeline sets `inference.run_id` = `run_030` and `run_id_base` = 30
-- `"standings"`: pipeline sets `training.listmle_target` = `final_rank`
-
-### outputs7 / outputs8: sweep roots (new)
-
-Both **outputs7** and **outputs8** follow the same sweep method as outputs4/outputs6: `scripts/sweep_hparams.py` deep-merges a config overlay on top of `config/defaults.yaml`, writes sweeps under `<outputsX>/sweeps/<batch_id>/combo_*/outputs/`, and you can then run the full pipeline into `outputs7/phase_<N>/...` or `outputs8/phase_<N>/...` using the winning combo’s `config.yaml`.
-
-- **outputs7** (RMSE-optimized): run sweeps with `--objective rank_rmse` (minimize) using `config/outputs7_sweep_rmse.yaml`.
-- **outputs8** (Spearman-optimized): run sweeps with `--objective spearman` (or `playoff_spearman`) using `config/outputs8_sweep_spearman.yaml`.
-
-Example WSL sweep commands (Optuna; 4 parallel jobs):
-
-```bash
-cd "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project" ; export PYTHONPATH="$PWD" ; python -m scripts.sweep_hparams --config config/outputs7_sweep_rmse.yaml --method optuna --objective rank_rmse --n-trials 20 --listmle-target playoff_outcome --n-jobs 4
-```
-
-```bash
-cd "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project" ; export PYTHONPATH="$PWD" ; python -m scripts.sweep_hparams --config config/outputs8_sweep_spearman.yaml --method optuna --objective spearman --n-trials 20 --listmle-target playoff_outcome --n-jobs 4
-```
-
-**Training toward Spearman or rank RMSE (different branches)**  
-Model A can train with a **differentiable surrogate** for Spearman or rank RMSE instead of ListMLE. Use `training.loss_type`: `listmle` (default), `spearman_surrogate`, or `rank_rmse_surrogate`. Two branches and config overlays:
-
-- **Branch `feature/train-spearman-surrogate`**: train Model A with Spearman-surrogate loss. Use config `config/outputs8_train_spearman_surrogate.yaml` (sets `loss_type: spearman_surrogate`, `paths.outputs: outputs8`). Merge with defaults or defaults_playoff_outcome when running the pipeline.
-- **Branch `feature/train-rank-rmse-surrogate`**: train Model A with rank-RMSE-surrogate loss. Use config `config/outputs7_train_rank_rmse_surrogate.yaml` (sets `loss_type: rank_rmse_surrogate`, `paths.outputs: outputs7`).
-
-Both branches contain the same code (both losses); the branch name and overlay indicate which objective to use. Optional: `training.loss_tau` (default 1.0) controls the soft-rank temperature for surrogate losses.
+When `--outputs` contains `"outputs6"`, the pipeline sets `inference.run_id` = `run_028` and `run_id_base` = 28. When `--outputs` contains `"standings"`, it sets `training.listmle_target` = `final_rank`.
 
 **Single-line WSL commands (phase_1; 3 jobs in parallel, 5 threads per job):**
 
@@ -162,71 +111,23 @@ For **phase_2**, replace `phase_1` with `phase_2` in the `--outputs` paths.
 
 ### outputs6 phase_1 outcome results (run_028)
 
-All six outcome runs completed (WSL). **Important:** `eval_report.json` reports multiple “Spearman” variants:
+All six outcome runs completed (WSL). Test metrics below are from `outputs6/phase_1/outcome/<metric>/run_028/eval_report.json` (last season / aggregated).
 
-- **Overall Spearman** = `test_metrics_ensemble.spearman` (computed using the report’s relevance definition; tends to be the largest number).
-- **Playoff Spearman** = `test_metrics_ensemble.playoff_metrics.spearman_pred_vs_playoff_outcome_rank` (predicted global order vs playoff outcome rank).
-- **Standings Spearman** = `test_metrics_ensemble.spearman_standings` (predicted order vs regular-season W/L standings) — expected to be **negative** when we train/eval for playoff outcome.
+| Run | Ensemble Spearman | Ensemble NDCG | Ensemble RMSE | Model A Spearman | Model A NDCG | Model A RMSE | Model B Spearman | Model B RMSE |
+|-----|-------------------|---------------|---------------|------------------|---------------|--------------|------------------|--------------|
+| best_spearman | −0.68 | 0.30 | 15.85 | **0.47** | **0.61** | 8.90 | 0.53 | 8.41 |
+| best_ndcg4 | −0.73 | 0.30 | 16.08 | 0.49 | 0.60 | 8.75 | **0.61** | **7.69** |
+| best_ndcg12 | −0.73 | 0.29 | 16.09 | 0.49 | 0.60 | 8.70 | **0.61** | **7.69** |
+| best_ndcg16 | −0.70 | 0.30 | 15.97 | 0.47 | 0.60 | 8.94 | **0.64** | **7.37** |
+| best_ndcg30 | −0.73 | 0.29 | 16.09 | 0.45 | 0.60 | 9.12 | **0.68** | **6.88** |
+| best_rmse | −0.70 | 0.30 | 15.98 | 0.45 | 0.51 | 9.09 | **0.62** | **6.88** |
 
-The notes below focus on the **“best runs we saw in-chat”** where **Overall Spearman \(\gtrsim 0.7\)**, all from `outputs6/phase_1/outcome/.../eval_report.json`.
+**Insights**
 
-| outputs6 folder | Config used | Overall Spearman | Playoff Spearman | Ensemble NDCG@30 | Ensemble rank RMSE (vs outcome) |
-|---|---|---:|---:|---:|---:|
-| `best_rmse` | `outputs4/sweeps/wsl_playoff_spearman/combo_0018/config.yaml` | **0.749499** | **0.725473** | 0.413982 | 6.126445 |
-| `best_ndcg16` | `outputs4/sweeps/phase6_ndcg16_playoff_narrow/combo_0016/config.yaml` | **0.738376** | **0.715239** | 0.450277 | 6.260991 |
-| `best_ndcg30` | `outputs4/sweeps/wsl_playoff_spearman/combo_0010/config.yaml` | **0.721468** | **0.717019** | 0.425699 | 6.460134 |
-| `best_ndcg12` | `outputs4/sweeps/phase6_ndcg16_playoff_narrow/combo_0006/config.yaml` | **0.713014** | **0.685428** | 0.400204 | 6.557438 |
-
-**Config notes (exact settings that produced each run)**
-
-Common to all four runs:
-
-- **training.listmle_target**: `playoff_outcome` (outcome ranking)
-- **training.rolling_windows**: `[15, 30]`
-- **training.n_folds**: `5`, **training.train_frac**: `0.75`
-- **training.use_prior_season_baseline**: `true` (lookback `365` days)
-- **elo.enabled / massey.enabled / raptor.enabled / motivation.enabled**: `true`
-- **injury.enabled / team_rolling.enabled / sos_srs.enabled**: `false`
-
-Per-run deltas (what differs across the configs):
-
-- **`best_rmse`** (`combo_0018`, WSL sweep)
-  - **Model A**: `epochs: 27`; attention **multi-temp enabled** with `temperature: 3`, `temperatures: [1, 5, 10]`, `multi_temp_base_weights: {1: 0.85, 5: 1.0, 10: 0.7}`; `use_amp: true`; confidence weights `entropy_weight: 0.5`, `max_weight_weight: 0.5`
-  - **Model B (XGB)**: `n_estimators: 220`, `max_depth: 5`, `learning_rate: 0.085397...`, `subsample: 0.8`, `colsample_bytree: 0.7`, `early_stopping_rounds: 20`
-  - **Stacking**: `use_confidence: true`
-
-- **`best_ndcg16`** (`combo_0016`, Phase 6 narrow)
-  - **Model A**: `epochs: 28` (no explicit attention override in this combo config)
-  - **Model B (XGB)**: `n_estimators: 230`, `max_depth: 5`, `learning_rate: 0.083699...`, `subsample: 0.8`, `colsample_bytree: 0.7`, `early_stopping_rounds: 20`
-
-- **`best_ndcg30`** (`combo_0010`, WSL sweep)
-  - **Model A**: `epochs: 24`; same **multi-temp attention** block as `combo_0018`
-  - **Model B (XGB)**: `n_estimators: 231`, `max_depth: 5`, `learning_rate: 0.087824...`, `subsample: 0.8`, `colsample_bytree: 0.7`, `early_stopping_rounds: 20`
-  - **Stacking**: `use_confidence: true`
-
-- **`best_ndcg12`** (`combo_0006`, Phase 6 narrow)
-  - **Model A**: `epochs: 24` (no explicit attention override in this combo config)
-  - **Model B (XGB)**: `n_estimators: 233`, `max_depth: 5`, `learning_rate: 0.080557...`, `subsample: 0.8`, `colsample_bytree: 0.7`, `early_stopping_rounds: 20`
-
-**Quick interpretation**
-
-- These are **high correlations** (Spearman ~0.71–0.75) for the “overall” Spearman metric used by the report, and **Playoff Spearman** is also strong (~0.69–0.73).
-- But **rank RMSE vs outcome (~6.1–6.6)** is still worse than the **W/L standings baseline RMSE (~4.45)** in these same reports (`rank_rmse_wl_record_standings_vs_playoff_outcome_rank`), so these runs are “good at ordering” but not necessarily “good at exact rank error” relative to the baseline.
-
-### Model vs standings significance (p-value) — outputs6 phase_1
-
-Evaluation reports include a **paired bootstrap** over teams: resample teams, compute mean(standings MAE − model MAE); **p_value_model_better_than_standings** = proportion of bootstrap samples where that mean ≤ 0. So **high p-value** ⇒ we cannot reject the null that the model is no better than W/L standings.
-
-| Phase 1 metric folder | p-value range (model better than standings) |
-|-----------------------|--------------------------------------------|
-| **best_spearman**     | 0.9975 – **1.0**                           |
-| **best_ndcg4**        | 0.9965 – **1.0**                           |
-| **best_ndcg12**       | 0.993 – **1.0**                            |
-| **best_ndcg16**       | 0.992 – **1.0**                            |
-| **best_rmse**         | 0.9905 – **1.0**                           |
-| **best_ndcg30**       | 0.9845 – **0.9995** (lowest in phase_1)    |
-
-**Interpretation:** Across all outputs6 phase_1 outcome runs, p-values are **~0.98–1.0**. We do **not** have statistically significant evidence that any model (A, B, or ensemble) is better than regular-season W/L standings at predicting playoff outcome rank; the test says the observed improvement could easily be chance. Source: `outputs6/phase_1/outcome/<metric>/eval_report.json` (and run-level `run_028_02-15/eval_report.json`), key `significance.p_value_model_better_than_standings` per model.
+- **Ensemble** is again strongly negative (Spearman −0.68 to −0.73) and weak on NDCG (~0.29–0.30); stacking is inverting/cancelling signal. Same pattern as outputs4 local runs.
+- **Model A** is stable: Spearman 0.45–0.49, NDCG 0.51–0.61, RMSE 8.7–9.1. best_spearman gives best Model A NDCG (0.61); best_ndcg4/12 give best Model A Spearman (0.49).
+- **Model B** is best for rank accuracy: Spearman 0.53–0.68, RMSE 6.88–8.41. best_ndcg30 and best_rmse tie for lowest Model B RMSE (6.88); best_ndcg16 has best Model B NDCG@16 (0.42) and Spearman 0.64.
+- **Recommendation:** Use **Model A** or **Model B** (or a simple blend) for playoff-outcome ranking until ensemble stacking is fixed. For lowest rank error, use best_ndcg30 or best_rmse (Model B RMSE 6.88).
 
 ### East vs West (run_028, best_spearman)
 
@@ -237,38 +138,7 @@ Per-conference metrics live in **`test_metrics_by_conference`** in `eval_report.
 | East (E)   | 0.546 | 0.54    | 6.93                     | 8.73        | 7.47        |
 | West (W)   | 0.636 | 0.81    | 4.67                     | 5.13        | 5.73        |
 
-Interpretation: West has higher NDCG and Spearman and lower rank error in this run; ensemble and Model A both do better in the West. For full East/West semantics and caveats, see [MODEL_A_VS_B_02-15.md](MODEL_A_VS_B_02-15.md) §7 and [ANALYSIS_OF_ATTENTION_WEIGHTS_02-03.md](ANALYSIS_OF_ATTENTION_WEIGHTS_02-03.md) §5.
-
-### Analysis: outputs6 phase_2 outcome (best_ndcg4 run_028)
-
-Run path: **`outputs6/phase_2/outcome/best_ndcg4/run_028`**. EOS source: **eos_final_rank** (playoff outcome rank). Ensemble = A + B only; Model C present for comparison.
-
-**Test metrics (ensemble)**
-
-| Metric | Value |
-|--------|-------|
-| **Spearman** | **0.740** |
-| **Playoff Spearman** (pred vs playoff outcome rank) | **0.702** |
-| **Kendall τ** | 0.549 |
-| **NDCG@30** | 0.394 |
-| **NDCG@4** (Conference Finals) | 0.050 |
-| **Rank MAE** (pred vs outcome) | 5.40 |
-| **Rank RMSE** (pred vs outcome) | 6.24 |
-| **Standings baseline** (W/L vs outcome) | MAE 3.13, RMSE 4.45 |
-| **precision@4** / **precision@8** | 0 / 0.625 |
-| **champion_rank** / **champion_in_top_4** | 9 / 0 |
-| **Brier (champ odds)** / **ECE (champ odds)** | 0.032 / 0.0 |
-
-**Model vs standings (same outcome ranks)**  
-Ensemble and both A and B have **worse** MAE/RMSE than W/L standings (Δ MAE ≈ −2.27, Δ RMSE ≈ −1.79). Bootstrap p-values (model better than standings): ensemble 0.998, A 1.0, B 0.9965, C 1.0 — no evidence that any model beats the standings.
-
-**East vs West (phase_2 best_ndcg4)**  
-West has stronger correlation and lower error: East NDCG 0.596, Spearman 0.68, Kendall 0.52, ensemble MAE 6.2; West NDCG 0.569, Spearman **0.81**, Kendall **0.62**, ensemble MAE **4.6**.
-
-**Takeaways**  
-- Strong overall and playoff Spearman (~0.74 / 0.70) and good precision@8 (0.625); NDCG@4 is low (0.05), champion not in top 4.  
-- Ranking quality (order) is good; rank error is still worse than standings baseline.  
-- Use `run_028/confusion_matrix_ranking_top16.png` and `eval_report.json` → `confusion_matrices_ranking_top16` for top-16 ordering detail; full narrative in `run_028/ANALYSIS_03.md`.
+Interpretation: West has higher NDCG and Spearman and lower rank error in this run; ensemble and Model A both do better in the West. For full East/West semantics and caveats, see [MODEL_A_VS_B.md](MODEL_A_VS_B.md) §7 and [ANALYSIS_OF_ATTENTION_WEIGHTS.md](ANALYSIS_OF_ATTENTION_WEIGHTS.md) §5.
 
 ---
 
