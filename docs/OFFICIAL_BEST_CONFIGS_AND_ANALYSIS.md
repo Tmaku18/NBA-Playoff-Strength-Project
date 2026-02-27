@@ -12,7 +12,7 @@ The **outputs8_spearman_surrogate** sweep (Spearman-surrogate loss, 40 Optuna tr
 
 ## 1. Official best config per metric (outputs8_spearman_surrogate)
 
-All paths under `output/outputs8_spearman_surrogate/sweeps/20260217_042955/`. Eval: test seasons 2023-24, 2024-25; `eos_final_rank` (playoff outcome rank).
+All paths under `output/8_spearman_surrogate_sweep/sweeps/20260217_042955/`. Eval: test seasons 2023-24, 2024-25; `eos_final_rank` (playoff outcome rank).
 
 | Metric | Official best config | Key value |
 |--------|----------------------|-----------|
@@ -29,7 +29,7 @@ All paths under `output/outputs8_spearman_surrogate/sweeps/20260217_042955/`. Ev
 
 **Example:** Run pipeline with best Spearman config:
 ```powershell
-python -m scripts.run_pipeline_from_model_a --config "output/outputs8_spearman_surrogate/sweeps/20260217_042955/combo_0033/config.yaml" --outputs "output/outputs8_spearman_surrogate/official_best_spearman"
+python -m scripts.run_pipeline_from_model_a --config "output/8_spearman_surrogate_sweep/sweeps/20260217_042955/combo_0033/config.yaml" --outputs "output/8_spearman_surrogate_sweep/official_best_spearman"
 ```
 
 ---

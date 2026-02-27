@@ -3,7 +3,7 @@
 # Extends defaults_playoff_outcome (listmle_target: playoff_outcome).
 
 paths:
-  outputs: "output/outputs5/playoff_ndcg"
+  outputs: "output/5_listmle/playoff_ndcg"
 
 training:
   listmle_target: "playoff_outcome"  # Playoff Outcome Rank

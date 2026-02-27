@@ -9,7 +9,7 @@
 # Compare: outputs14_map_run (MAP, no standing), outputs6_baseline, outputs8_spearman_surrogate.
 
 paths:
-  outputs: "output/outputs16_map_standing_rank"
+  outputs: "output/16_map_standing_rank"
 
 model_a:
   stat_dim: 27  # 22 base (with standing rank) + 5 team stats

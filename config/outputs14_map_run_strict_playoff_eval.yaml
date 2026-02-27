@@ -4,7 +4,7 @@
 # - require eos_final_rank in inference/eval
 
 paths:
-  outputs: "output/outputs14_map_run"
+  outputs: "output/14_legacy_map_run"
 
 training:
   loss_type: "spearman_surrogate"

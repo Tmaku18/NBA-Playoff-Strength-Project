@@ -4,7 +4,7 @@
 # Extends outputs4_phase1; overrides only what the narrow phase uses.
 
 paths:
-  outputs: "output/outputs4"
+  outputs: "output/4_listmle"
 
 inference:
   run_id: null

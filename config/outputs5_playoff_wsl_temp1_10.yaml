@@ -3,7 +3,7 @@
 # Pipeline merges: defaults + defaults_playoff_outcome + this overlay.
 
 paths:
-  outputs: "output/outputs4/wsl_single_temp1_10"
+  outputs: "output/4_listmle/wsl_single_temp1_10"
 
 training:
   listmle_target: "playoff_outcome"

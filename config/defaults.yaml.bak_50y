@@ -23,7 +23,7 @@ paths:
   db: "C:/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/data/processed/nba_build.duckdb"
   raw: "data/raw"
   processed: "data/processed"
-  outputs: "output/outputs4"
+  outputs: "output/4_listmle"
   # When set, script 3 caches built batches (lists, oof_batches, all_batches) keyed by config+DB.
   # Reuse on cache hit to save ~1-3 min per sweep trial. null = use data/processed/batch_cache.
   batch_cache: null

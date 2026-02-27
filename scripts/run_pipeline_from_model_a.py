@@ -71,7 +71,7 @@ def main() -> int:
                 out_path = Path(out_val)
                 config.setdefault("paths", {})["outputs"] = str(out_path.resolve() if out_path.is_absolute() else (ROOT / out_val).resolve())
             else:
-                config.setdefault("paths", {})["outputs"] = str((ROOT / "output/outputs5").resolve())
+                config.setdefault("paths", {})["outputs"] = str((ROOT / "output/5_listmle").resolve())
             fd, temp_config_path = tempfile.mkstemp(suffix=".yaml", prefix="pipeline_config_")
             try:
                 with open(fd, "w", encoding="utf-8") as f:

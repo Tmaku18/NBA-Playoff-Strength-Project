@@ -3,7 +3,7 @@
 # Extends defaults.yaml; includes baseline_max_features training/sweep overrides.
 
 paths:
-  outputs: "output/outputs4"
+  outputs: "output/4_listmle"
 
 inference:
   run_id: null

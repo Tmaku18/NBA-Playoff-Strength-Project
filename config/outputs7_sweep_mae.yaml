@@ -6,7 +6,7 @@
 # Note: scripts/sweep_hparams.py deep-merges this file on top of config/defaults.yaml.
 
 paths:
-  outputs: "output/outputs7"
+  outputs: "output/7_listmle"
 
 training:
   listmle_target: "playoff_outcome"

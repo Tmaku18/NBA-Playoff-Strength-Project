@@ -1,5 +1,5 @@
 paths:
-  outputs: output/outputs14_map_run
+  outputs: output/14_legacy_map_run
   db: /mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff
     Strentgh Project/data/processed/nba_build_small.duckdb
 training:

@@ -5,7 +5,7 @@
 # (Merge with defaults: use config that already sets listmle_target and paths; this file only sets loss_type.)
 
 paths:
-  outputs: "output/outputs8"
+  outputs: "output/8_spearman_surrogate"
 
 training:
   listmle_target: "playoff_outcome"

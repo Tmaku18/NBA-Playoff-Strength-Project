@@ -64,7 +64,7 @@ def compute_metrics(teams: list, *, k: int = 10) -> dict:
 def main():
     with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
-    out_name = config.get("paths", {}).get("outputs", "output/outputs4")
+    out_name = config.get("paths", {}).get("outputs", "output/4_listmle")
     out_dir = Path(out_name) if Path(out_name).is_absolute() else ROOT / out_name
     pattern = re.compile(r"^run_(\d+)$", re.I)
     run_dirs = []
