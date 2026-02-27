@@ -268,7 +268,7 @@ def _run_one_combo(
     if phase in ("phase1", "phase1_xgb", "rolling"):
         cfg.setdefault("inference", {})["run_id"] = "run_024"
         cfg.setdefault("inference", {})["run_id_base"] = 24
-    elif phase in ("phase2", "phase2_fine", "phase2_playoff_broad", "phase2_playoff_narrow", "feature_subset"):
+    elif phase in ("phase2", "phase2_fine", "phase2_playoff_broad", "phase2_playoff_narrow", "feature_subset", "feature_subset_model_a"):
         cfg.setdefault("inference", {})["run_id"] = "run_025"
         cfg.setdefault("inference", {})["run_id_base"] = 25
     cfg["training"] = cfg.get("training", {})
@@ -332,8 +332,8 @@ def main() -> int:
         "--phase",
         type=str,
         default="full",
-        choices=("full", "phase1", "phase1_xgb", "phase2", "phase2_fine", "phase2_playoff_broad", "phase2_playoff_narrow", "phase2_rf", "baseline", "rolling", "feature_subset"),
-        help="full=config grid; phase1=narrowed Optuna ranges; phase2=coarse refinement; phase2_fine=fine refinement; phase1_xgb/phase2_rf=phased Model B; baseline=wide ranges; rolling=test rolling_windows",
+        choices=("full", "phase1", "phase1_xgb", "phase2", "phase2_fine", "phase2_playoff_broad", "phase2_playoff_narrow", "phase2_rf", "baseline", "rolling", "feature_subset", "feature_subset_model_a"),
+        help="full=config grid; phase1=narrowed Optuna ranges; phase2=coarse refinement; phase2_fine=fine refinement; phase1_xgb/phase2_rf=phased Model B; baseline=wide ranges; rolling=test rolling_windows; feature_subset=Model B features; feature_subset_model_a=Model A features",
     )
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML (default: config/defaults.yaml)")
     parser.add_argument(
@@ -361,7 +361,7 @@ def main() -> int:
     args = parser.parse_args()
 
     config = _load_config(args.config)
-    out_name = config.get("paths", {}).get("outputs", "outputs")
+    out_name = config.get("paths", {}).get("outputs", "output/outputs4")
     out_dir = Path(out_name) if Path(out_name).is_absolute() else ROOT / out_name
     sweeps_dir = out_dir / "sweeps"
     sweeps_dir.mkdir(parents=True, exist_ok=True)
@@ -627,6 +627,169 @@ def main() -> int:
             with open(batch_dir / "sweep_results_summary.json", "w", encoding="utf-8") as f:
                 json.dump(summary, f, indent=2)
         print(f"Feature-subset sweep done. Best value: {study.best_value}", flush=True)
+        if not args.no_run_explain and study.best_trial is not None:
+            best_combo = study.best_trial.number
+            best_cfg = batch_dir / f"combo_{best_combo:04d}" / "config.yaml"
+            if best_cfg.exists():
+                print(f"Running explain on best combo {best_combo}...", flush=True)
+                _run_cmd("scripts/5b_explain.py", ["--config", str(best_cfg)])
+        sys.exit(0)
+
+    # Optional: Optuna over Model A feature subset (each trial = which Model A player stats to include)
+    if phase == "feature_subset_model_a" and args.method == "optuna":
+        from src.features.rolling import PLAYER_STAT_COLS_WITH_ON_OFF
+        full_feature_list = list(PLAYER_STAT_COLS_WITH_ON_OFF)
+        if not full_feature_list:
+            print("No Model A features available for feature_subset_model_a. Exiting.", file=sys.stderr)
+            sys.exit(1)
+
+        import optuna
+        _OBJECTIVE_KEYS = {
+            "spearman": "test_metrics_ensemble_spearman",
+            "ndcg4": "test_metrics_ensemble_ndcg_at_4",
+            "ndcg16": "test_metrics_ensemble_ndcg_at_16",
+            "ndcg20": "test_metrics_ensemble_ndcg_at_20",
+            "ndcg30": "test_metrics_ensemble_ndcg_at_30",
+            "playoff_spearman": "test_metrics_ensemble_playoff_spearman_pred_vs_playoff_outcome_rank",
+            "rank_rmse": "test_metrics_ensemble_rank_rmse_pred_vs_playoff_outcome_rank",
+            "spearman_standings": "test_metrics_ensemble_spearman_standings",
+            "ndcg4_standings": "test_metrics_ensemble_ndcg_at_4_standings",
+            "ndcg16_standings": "test_metrics_ensemble_ndcg_at_16_standings",
+            "ndcg30_standings": "test_metrics_ensemble_ndcg_at_30_standings",
+            "rank_rmse_standings": "test_metrics_ensemble_rank_rmse_standings",
+        }
+        metric_key = _OBJECTIVE_KEYS[args.objective]
+        direction = "minimize" if args.objective in ("rank_rmse", "rank_rmse_standings") else "maximize"
+        # Fixed hyperparams locked to outputs8 best run combo_0033; only Model A feature subset varies
+        fixed_rolling = [10, 30]
+        fixed_epochs, fixed_md = 15, 6
+        fixed_lr, fixed_xgb, fixed_rf = 0.07963763436288537, 250, 200
+        fixed_sub, fixed_col, fixed_leaf = 0.8, 0.7, 5
+
+        def objective_feature_model_a(trial: "optuna.Trial") -> float:
+            include_mask = {}
+            for f in full_feature_list:
+                key = "f_" + f.replace(" ", "_")
+                include_mask[f] = trial.suggest_categorical(key, [True, False])
+            include_list = [f for f in full_feature_list if include_mask[f]]
+            if not include_list:
+                include_list = list(full_feature_list)
+
+            cfg_trial = copy.deepcopy(config)
+            ma_trial = cfg_trial.setdefault("model_a", {})
+            ma_trial["player_stat_cols"] = include_list
+            ma_trial["top_n_player_stats"] = None
+            team_stats_dim = 0
+            if bool(ma_trial.get("use_team_stats", False)):
+                team_stats_cols = ma_trial.get("team_stats_cols") or ["eFG", "TOV_pct", "FT_rate", "ORB_pct", "pace"]
+                team_stats_dim = len(team_stats_cols)
+            ma_trial["stat_dim"] = len(include_list) + 4 + team_stats_dim
+
+            i = trial.number
+            print(
+                f"[Optuna feature_subset_model_a trial {i+1}/{args.n_trials}] n_features={len(include_list)} stat_dim={ma_trial['stat_dim']}",
+                flush=True,
+            )
+            metrics = _run_one_combo(
+                batch_dir, i, cfg_trial, list(fixed_rolling), fixed_epochs,
+                fixed_md, fixed_lr, fixed_xgb, fixed_rf, fixed_sub, fixed_col, fixed_leaf, include_clone,
+                val_frac=val_frac, listmle_target=listmle_target, phase="feature_subset_model_a",
+            )
+            if "error" in metrics:
+                print(f"  FAILED: {metrics['error']}", flush=True)
+                return float("-inf")
+            val = metrics.get(metric_key)
+            if val is None:
+                return float("-inf") if direction == "maximize" else float("inf")
+            v = float(val)
+            return -v if direction == "minimize" else v
+
+        study = optuna.create_study(direction="maximize")
+        study.optimize(
+            objective_feature_model_a,
+            n_trials=min(args.n_trials, 30),
+            show_progress_bar=False,
+            n_jobs=1,
+        )
+        results = []
+        for t in study.trials:
+            combo_out = batch_dir / f"combo_{t.number:04d}" / "outputs"
+            metrics = _collect_metrics(combo_out / "eval_report.json") if combo_out.exists() else {}
+            row = {"combo": t.number, "value": t.value, **{k: v for k, v in t.params.items()}}
+            if t.value is None:
+                row["error"] = "failed"
+                row["value"] = None
+            else:
+                for k, v in metrics.items():
+                    if isinstance(v, (int, float)):
+                        row[k] = v
+            results.append(row)
+        with open(batch_dir / "optuna_study.json", "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "best_value": study.best_value,
+                    "best_params": study.best_params,
+                    "n_trials": len(study.trials),
+                    "objective": args.objective,
+                    "phase": "feature_subset_model_a",
+                },
+                f,
+                indent=2,
+            )
+        # Human-readable summary for Model A feature selection
+        try:
+            best_params = study.best_params if study.best_params else {}
+            selected_features = []
+            for f in full_feature_list:
+                key = "f_" + f.replace(" ", "_")
+                if bool(best_params.get(key, False)):
+                    selected_features.append(f)
+            if not selected_features:
+                selected_features = list(full_feature_list)
+            summary_payload = {
+                "phase": "feature_subset_model_a",
+                "objective": args.objective,
+                "best_value": study.best_value,
+                "n_trials": len(study.trials),
+                "selected_features": selected_features,
+                "selected_feature_count": len(selected_features),
+                "full_feature_count": len(full_feature_list),
+            }
+            with open(batch_dir / "model_a_feature_selection_summary.json", "w", encoding="utf-8") as f:
+                json.dump(summary_payload, f, indent=2)
+            with open(batch_dir / "model_a_feature_selection_summary.md", "w", encoding="utf-8") as f:
+                f.write("# Model A feature selection summary\n\n")
+                f.write(f"- objective: {args.objective}\n")
+                f.write(f"- best_value: {study.best_value}\n")
+                f.write(f"- n_trials: {len(study.trials)}\n")
+                f.write(f"- selected_feature_count: {len(selected_features)} / {len(full_feature_list)}\n\n")
+                f.write("## Selected features (best trial)\n\n")
+                for feat in selected_features:
+                    f.write(f"- {feat}\n")
+        except Exception as e:
+            print(f"Warning: failed to write Model A feature selection summary: {e}", flush=True)
+        if results:
+            import csv
+            all_keys = set()
+            for r in results:
+                all_keys.update(r.keys())
+            cols = sorted(all_keys)
+            with open(batch_dir / "sweep_results.csv", "w", newline="", encoding="utf-8") as f:
+                w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+                w.writeheader()
+                w.writerows(results)
+            valid_optuna = [r for r in results if "value" in r and r.get("value") is not None]
+            summary = {}
+            if valid_optuna:
+                best_trial = max(valid_optuna, key=lambda x: float(x.get("value", -2)))
+                summary["best_optuna_trial"] = best_trial
+            by_conf = _build_by_conference_summary(results)
+            if by_conf:
+                summary["by_conference_summary"] = by_conf
+            summary["metrics_mean_std_across_trials"] = _metrics_mean_std_across_trials(results)
+            with open(batch_dir / "sweep_results_summary.json", "w", encoding="utf-8") as f:
+                json.dump(summary, f, indent=2)
+        print(f"Model A feature-subset sweep done. Best value: {study.best_value}", flush=True)
         if not args.no_run_explain and study.best_trial is not None:
             best_combo = study.best_trial.number
             best_cfg = batch_dir / f"combo_{best_combo:04d}" / "config.yaml"

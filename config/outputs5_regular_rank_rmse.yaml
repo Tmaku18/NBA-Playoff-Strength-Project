@@ -2,7 +2,7 @@
 # Run: --config config/outputs5_regular_rank_rmse.yaml
 
 paths:
-  outputs: "outputs5/regular_rank_rmse"
+  outputs: "output/outputs5/regular_rank_rmse"
 
 training:
   listmle_target: "final_rank"  # W/L record standings

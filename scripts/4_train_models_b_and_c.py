@@ -13,6 +13,7 @@ import argparse
 import sys
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 import yaml
@@ -28,6 +29,11 @@ from src.utils.split import load_split_info
 
 from src.models.xgb_model import build_xgb, fit_xgb, predict_with_uncertainty
 from src.models.rf_model import build_rf, fit_rf
+
+from src.models.bayesian_ridge_model import fit_bayesian_ridge
+from src.models.gmm_rank_model import fit_gmm_supervised_rank
+from src.models.gpr_model import fit_gpr
+from src.models.linear_regression_model import fit_linear_regression_with_uncertainty
 
 
 def main():
@@ -62,6 +68,25 @@ def main():
         config=config, teams=teams, pgl=pgl,
     )
     df = flat.merge(feat_df, on=["team_id", "as_of_date"], how="inner")
+
+    # Optional: add Model A OOF score as a feature for team-stats models (leak-safe via OOF join).
+    tsm_cfg = config.get("team_stats_models", {}) or {}
+    if bool(tsm_cfg.get("include_model_a_score", False)):
+        oof_a_path = Path(config["paths"]["outputs"])
+        if not oof_a_path.is_absolute():
+            oof_a_path = ROOT / oof_a_path
+        oof_a_path = oof_a_path / "oof_model_a.parquet"
+        if oof_a_path.exists():
+            try:
+                oof_a = pd.read_parquet(oof_a_path)
+                if {"team_id", "as_of_date", "oof_a"} <= set(oof_a.columns):
+                    oof_a = oof_a[["team_id", "as_of_date", "oof_a"]].copy()
+                    oof_a["team_id"] = oof_a["team_id"].astype(int)
+                    oof_a["as_of_date"] = oof_a["as_of_date"].astype(str)
+                    df = df.merge(oof_a, on=["team_id", "as_of_date"], how="left")
+                    df["model_a_score"] = df["oof_a"].fillna(0.0).astype(np.float32)
+            except Exception:
+                pass
     all_feat_cols = get_team_context_feature_cols(config)
     feat_cols = [c for c in all_feat_cols if c in df.columns]
     if not feat_cols:
@@ -107,6 +132,20 @@ def main():
     rf_cfg = mb.get("rf", {})
     es = xgb_cfg.get("early_stopping_rounds", 20)
     train_model_c = config.get("training", {}).get("train_model_c", False)
+    train_lin = bool(config.get("training", {}).get("train_team_stats_linear", False))
+    train_bayes = bool(config.get("training", {}).get("train_team_stats_bayesian_ridge", False))
+    train_gpr = bool(config.get("training", {}).get("train_team_stats_gpr", False))
+    train_gmm = bool(config.get("training", {}).get("train_team_stats_gmm", False))
+    tsm_cfg = config.get("team_stats_models", {}) or {}
+    use_model_a_score = bool(tsm_cfg.get("include_model_a_score", False)) and ("model_a_score" in df.columns)
+    feat_cols_ts = list(feat_cols) + (["model_a_score"] if use_model_a_score else [])
+    gpr_cfg = tsm_cfg.get("gpr", {}) if isinstance(tsm_cfg.get("gpr", {}), dict) else {}
+    gpr_kernels = gpr_cfg.get("kernels", ["rbf", "matern", "rational_quadratic"])
+    gmm_cfg = tsm_cfg.get("gmm", {}) if isinstance(tsm_cfg.get("gmm", {}), dict) else {}
+    gmm_n_grid = gmm_cfg.get("n_components_grid", [1, 2, 3, 4, 5])
+    gmm_cov_grid = gmm_cfg.get("covariance_type_grid", ["full", "diag"])
+    lin_cfg = tsm_cfg.get("linear", {}) if isinstance(tsm_cfg.get("linear", {}), dict) else {}
+    br_cfg = tsm_cfg.get("bayesian_ridge", {}) if isinstance(tsm_cfg.get("bayesian_ridge", {}), dict) else {}
 
     oof_rows = []
     for fold in range(n_folds):
@@ -136,6 +175,82 @@ def main():
         val_df = df.loc[val_mask, val_cols].copy()
         val_df["oof_xgb"] = oof_xgb
         val_df["conf_xgb"] = conf_xgb
+
+        # Additional team-stats models (optional)
+        if any([train_lin, train_bayes, train_gpr, train_gmm]):
+            X_train_ts = df.loc[train_mask, feat_cols_ts].values.astype(np.float32)
+            X_val_ts = df.loc[val_mask, feat_cols_ts].values.astype(np.float32)
+
+            if train_lin:
+                try:
+                    lr_m = fit_linear_regression_with_uncertainty(
+                        X_train_ts, y_train, fit_intercept=bool(lin_cfg.get("fit_intercept", True))
+                    )
+                    p_mean, p_std = lr_m.predict(X_val_ts, return_std=True)
+                    val_df["oof_linreg"] = p_mean
+                    val_df["std_linreg"] = p_std
+                except Exception:
+                    pass
+
+            if train_bayes:
+                try:
+                    br_m = fit_bayesian_ridge(
+                        X_train_ts,
+                        y_train,
+                        alpha_1=float(br_cfg.get("alpha_1", 1e-6)),
+                        alpha_2=float(br_cfg.get("alpha_2", 1e-6)),
+                        lambda_1=float(br_cfg.get("lambda_1", 1e-6)),
+                        lambda_2=float(br_cfg.get("lambda_2", 1e-6)),
+                    )
+                    p_mean, p_std = br_m.predict(X_val_ts, return_std=True)
+                    val_df["oof_bayes_ridge"] = p_mean
+                    val_df["std_bayes_ridge"] = p_std
+                except Exception:
+                    pass
+
+            if train_gmm:
+                try:
+                    gmm_m = fit_gmm_supervised_rank(
+                        X_train_ts,
+                        y_train,
+                        n_components_grid=list(gmm_n_grid),
+                        covariance_type_grid=list(gmm_cov_grid),
+                        random_state=int(gmm_cfg.get("random_state", 42)),
+                    )
+                    p_mean, p_std = gmm_m.predict(X_val_ts, return_std=True)
+                    val_df["oof_gmm"] = p_mean
+                    val_df["std_gmm"] = p_std
+                except Exception:
+                    pass
+
+            if train_gpr:
+                best_kernel = None
+                best_mse = None
+                best_mean = None
+                best_std = None
+                for kname in gpr_kernels:
+                    try:
+                        gpr_m = fit_gpr(
+                            X_train_ts,
+                            y_train,
+                            kernel_name=str(kname),
+                            cfg=gpr_cfg,
+                            random_state=int(gpr_cfg.get("random_state", 42)),
+                        )
+                        p_mean, p_std = gpr_m.predict(X_val_ts, return_std=True)
+                        mse = float(np.mean((p_mean - y_val) ** 2)) if len(y_val) else float("inf")
+                        if best_mse is None or mse < best_mse:
+                            best_mse = mse
+                            best_kernel = str(kname)
+                            best_mean = p_mean
+                            best_std = p_std
+                    except Exception:
+                        continue
+                if best_mean is not None and best_std is not None:
+                    val_df["oof_gpr"] = best_mean
+                    val_df["std_gpr"] = best_std
+                    val_df["gpr_kernel"] = best_kernel
+
         oof_rows.append(val_df)
         print(f"Fold {fold+1}/{n_folds} OOF collected {len(val_df)} rows")
 
@@ -163,6 +278,90 @@ def main():
     y_val = y[val_mask] if val_mask.any() else None
     p1, p2 = train_model_b(X_train, y_train, X_val, y_val, config, feat_cols, out)
     print(f"Saved {p1}" + (f", {p2}" if p2 else " (Model C skipped)"))
+
+    # Train and persist extra team-stats models on full train split (optional)
+    if any([train_lin, train_bayes, train_gpr, train_gmm]):
+        X_train_ts = df.loc[~val_mask, feat_cols_ts].values.astype(np.float32)
+        y_train_ts = df.loc[~val_mask, "y"].values.astype(np.float32)
+        X_val_ts = df.loc[val_mask, feat_cols_ts].values.astype(np.float32) if val_mask.any() else None
+        y_val_ts = df.loc[val_mask, "y"].values.astype(np.float32) if val_mask.any() else None
+
+        if train_lin:
+            try:
+                lr_m = fit_linear_regression_with_uncertainty(
+                    X_train_ts, y_train_ts, fit_intercept=bool(lin_cfg.get("fit_intercept", True))
+                )
+                joblib.dump({"model": lr_m, "feature_cols": feat_cols_ts}, out / "linreg_model.joblib")
+            except Exception:
+                pass
+
+        if train_bayes:
+            try:
+                br_m = fit_bayesian_ridge(
+                    X_train_ts,
+                    y_train_ts,
+                    alpha_1=float(br_cfg.get("alpha_1", 1e-6)),
+                    alpha_2=float(br_cfg.get("alpha_2", 1e-6)),
+                    lambda_1=float(br_cfg.get("lambda_1", 1e-6)),
+                    lambda_2=float(br_cfg.get("lambda_2", 1e-6)),
+                )
+                joblib.dump({"model": br_m, "feature_cols": feat_cols_ts}, out / "bayesian_ridge_model.joblib")
+            except Exception:
+                pass
+
+        if train_gmm:
+            try:
+                gmm_m = fit_gmm_supervised_rank(
+                    X_train_ts,
+                    y_train_ts,
+                    n_components_grid=list(gmm_n_grid),
+                    covariance_type_grid=list(gmm_cov_grid),
+                    random_state=int(gmm_cfg.get("random_state", 42)),
+                )
+                joblib.dump({"model": gmm_m, "feature_cols": feat_cols_ts}, out / "gmm_rank_model.joblib")
+            except Exception:
+                pass
+
+        if train_gpr:
+            best_kernel = None
+            best_mse = None
+            best_model = None
+            if X_val_ts is not None and y_val_ts is not None and len(y_val_ts):
+                for kname in gpr_kernels:
+                    try:
+                        gpr_m = fit_gpr(
+                            X_train_ts,
+                            y_train_ts,
+                            kernel_name=str(kname),
+                            cfg=gpr_cfg,
+                            random_state=int(gpr_cfg.get("random_state", 42)),
+                        )
+                        p_mean = gpr_m.predict(X_val_ts, return_std=False)
+                        mse = float(np.mean((p_mean - y_val_ts) ** 2))
+                        if best_mse is None or mse < best_mse:
+                            best_mse = mse
+                            best_kernel = str(kname)
+                            best_model = gpr_m
+                    except Exception:
+                        continue
+            if best_model is None:
+                # Fallback: just train the first kernel
+                try:
+                    best_kernel = str(gpr_kernels[0])
+                    best_model = fit_gpr(
+                        X_train_ts,
+                        y_train_ts,
+                        kernel_name=str(best_kernel),
+                        cfg=gpr_cfg,
+                        random_state=int(gpr_cfg.get("random_state", 42)),
+                    )
+                except Exception:
+                    best_model = None
+            if best_model is not None:
+                joblib.dump(
+                    {"model": best_model, "feature_cols": feat_cols_ts, "kernel": best_kernel},
+                    out / "gpr_model.joblib",
+                )
 
 
 if __name__ == "__main__":

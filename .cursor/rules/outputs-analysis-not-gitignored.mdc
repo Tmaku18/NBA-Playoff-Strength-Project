@@ -7,7 +7,9 @@ alwaysApply: true
 
 When adding or changing **output folders**, **best runs**, **model explanation docs**, or **analysis docs** in this project:
 
-1. **New output folder (e.g. outputs17_…)**  
+**Note:** All output roots live under the parent folder **`output/`** (e.g. `output/outputs4/`, `output/outputs8_spearman_surrogate/`). Use paths like `output/outputs<X>_<name>/` in `.gitignore` and configs.
+
+1. **New output folder (e.g. output/outputs17_…)**  
    In `.gitignore`, add a block that **ignores** the folder contents but **un-ignores**:
    - `!<folder>/MODEL.md` (and any other **model explanation doc** at the root of that folder, e.g. `README.md` if it describes the model)
    - `!<folder>/**/ANALYSIS*.md`  
@@ -29,10 +31,10 @@ When adding or changing **output folders**, **best runs**, **model explanation d
    ```
    If the file is ignored, update `.gitignore` so that path (or a pattern that includes it) is un-ignored.
 
-**Pattern to follow in .gitignore (per output folder):**
+**Pattern to follow in .gitignore (per output folder under `output/`):**
 ```gitignore
-outputs<X>_<name>/*
-!outputs<X>_<name>/MODEL.md
-!outputs<X>_<name>/**/ANALYSIS*.md
+output/outputs<X>_<name>/*
+!output/outputs<X>_<name>/MODEL.md
+!output/outputs<X>_<name>/**/ANALYSIS*.md
 ```
 Add explicit un-ignores for any other model-explanation docs in that folder (e.g. `!outputs<X>_<name>/README.md`). Then add any best-run combo dirs with `!.../combo_XXXX/` and `!.../combo_XXXX/**` as needed.

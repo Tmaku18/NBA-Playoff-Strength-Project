@@ -6,13 +6,13 @@
 
 ## Summary
 
-The **outputs8_spearman_surrogate** sweep (Spearman-surrogate loss, 40 Optuna trials, batch 20260217_042955) is the current **official best** for playoff-outcome evaluation. This doc lists the official best config path per metric, compares outputs4, outputs6 phase_1 outcome (run_028), outputs7, and outputs8, notes the difference between outputs6 and outputs7, and states the planned **outputs9** sweep.
+The **outputs8_spearman_surrogate** sweep (Spearman-surrogate loss, 40 Optuna trials, batch 20260217_042955) is the current **official best** for playoff-outcome evaluation. This doc lists the official best config path per metric, compares outputs4, outputs6 phase_1 outcome (run_028), outputs7, and outputs8, notes the difference between outputs6 and outputs7, includes MAP run findings (outputs14), and states the planned **outputs9** sweep.
 
 ---
 
 ## 1. Official best config per metric (outputs8_spearman_surrogate)
 
-All paths under `outputs8_spearman_surrogate/sweeps/20260217_042955/`. Eval: test seasons 2023-24, 2024-25; `eos_final_rank` (playoff outcome rank).
+All paths under `output/outputs8_spearman_surrogate/sweeps/20260217_042955/`. Eval: test seasons 2023-24, 2024-25; `eos_final_rank` (playoff outcome rank).
 
 | Metric | Official best config | Key value |
 |--------|----------------------|-----------|
@@ -29,7 +29,7 @@ All paths under `outputs8_spearman_surrogate/sweeps/20260217_042955/`. Eval: tes
 
 **Example:** Run pipeline with best Spearman config:
 ```powershell
-python -m scripts.run_pipeline_from_model_a --config "outputs8_spearman_surrogate/sweeps/20260217_042955/combo_0033/config.yaml" --outputs "outputs8_spearman_surrogate/official_best_spearman"
+python -m scripts.run_pipeline_from_model_a --config "output/outputs8_spearman_surrogate/sweeps/20260217_042955/combo_0033/config.yaml" --outputs "output/outputs8_spearman_surrogate/official_best_spearman"
 ```
 
 ---
@@ -80,7 +80,7 @@ A sweep **outputs9** is planned with the **same mechanics** as outputs7 and outp
 ## 6. Model lineup and next steps
 
 - **Baseline:** **outputs6_baseline** (phase_1 outcome runs). **Best:** outputs8_spearman_surrogate (Spearman surrogate).
-- **Still to test:** **MAP run** → **outputs14_map_run** (`config/outputs14_map_run.yaml`); per-game eval; compare to outputs6_baseline, outputs8_spearman_surrogate. See [OUTPUTS14_MAP_RUN.md](OUTPUTS14_MAP_RUN.md).
+- **MAP run (tested):** **outputs14_map_run** has been run and analyzed. Mixed result: stronger NDCG/top-end behavior, weaker Spearman/rank error vs outputs8. See [OUTPUTS14_MAP_ANALYSIS.md](OUTPUTS14_MAP_ANALYSIS.md) and [OUTPUTS14_MAP_RUN.md](OUTPUTS14_MAP_RUN.md).
 - **outputs13 / RMSE surrogate:** Tested (sweep + 80-epoch singular run). **Not recommended** — underperformed Spearman surrogate on all primary metrics; see [RMSE_SURROGATE_FINDINGS.md](RMSE_SURROGATE_FINDINGS.md) and [OUTPUTS13_RMSE_SURROGATE_SWEEP.md](OUTPUTS13_RMSE_SURROGATE_SWEEP.md).
 - **Baseline-style + standing rank:** Single run with same training as baseline config but standing rank as input. Config: `config/outputs4_baseline_standing_rank.yaml`; run to `outputs12_baseline_standing_rank/baseline_standing_rank`. Compare to **baseline (outputs6_baseline)**. See [MODEL_LINEUP_AND_NEXT_STEPS.md](MODEL_LINEUP_AND_NEXT_STEPS.md).
 - **Per-folder model docs:** Each output folder has a **`MODEL.md`** at its root. Folder names use differentiators (e.g. **outputs6_baseline**, **outputs8_spearman_surrogate**). See [OUTPUT_FOLDER_NAMING.md](OUTPUT_FOLDER_NAMING.md).
@@ -94,6 +94,7 @@ The **rank_rmse_surrogate** sweep (outputs13) and an 80-epoch singular run were 
 ## 8. Related docs
 
 - [MODEL_LINEUP_AND_NEXT_STEPS.md](MODEL_LINEUP_AND_NEXT_STEPS.md) — Baseline vs best, MAP/per-game, outputs4+standing
+- [OUTPUTS14_MAP_ANALYSIS.md](OUTPUTS14_MAP_ANALYSIS.md) — outputs14 MAP run analysis and outputs8 comparisons
 - [RMSE_SURROGATE_FINDINGS.md](RMSE_SURROGATE_FINDINGS.md) — outputs13 RMSE surrogate consolidated findings (not recommended)
 - [OUTPUTS8_SWEEP_ANALYSIS_02-17.md](OUTPUTS8_SWEEP_ANALYSIS_02-17.md) — outputs8 sweep details and combo metrics  
 - [OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md](OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md) — outputs4 / outputs7 / outputs8 three-way comparison  

@@ -17,7 +17,7 @@
 # Note: scripts/sweep_hparams.py deep-merges this file on top of config/defaults.yaml.
 
 paths:
-  outputs: "outputs10_spearman_surrogate_standing_rank"
+  outputs: "output/outputs10_spearman_surrogate_standing_rank"
 
 training:
   listmle_target: "playoff_outcome"

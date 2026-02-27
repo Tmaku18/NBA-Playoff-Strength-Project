@@ -210,7 +210,7 @@ By project end, this document will include:
 
 ## 9. References
 
-- **Plan:** [.cursor/plans/centralize_training_config_attention_eval_expansion.plan.md](../.cursor/plans/centralize_training_config_attention_eval_expansion.plan.md)
+- **Plan:** [.cursor/plans/archive/centralize_training_config_attention_eval_expansion.plan.md](../.cursor/plans/archive/centralize_training_config_attention_eval_expansion.plan.md)
 - **SetAttention:** `src/models/set_attention.py` — σReparam, minutes bias, fallback
 - **Predictions:** `outputs3/run_023/predictions.json` — roster_dependence.primary_contributors
 - **Eval:** `outputs3/eval_report.json`

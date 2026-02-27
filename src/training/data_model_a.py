@@ -9,15 +9,53 @@ import torch
 from src.features.build_roster_set import build_roster_set, get_roster_as_of_date, latest_team_map_as_of
 from src.features.lineup_continuity import pct_min_returning_per_team
 from src.features.on_off import get_on_court_pm_as_of_date
-from src.features.team_context import standing_rank_as_of_date, standing_rank_norm
+from src.features.team_context import build_team_context_as_of_dates
 from src.features.rolling import (
     ON_OFF_STAT_COLS,
-    PLAYER_STAT_COLS_L10_L30,
-    PLAYER_STAT_COLS_WITH_ON_OFF,
+    get_model_a_stat_cols,
     get_player_stats_as_of_date,
     get_prior_season_stats,
 )
 from src.training.build_lists import build_lists
+
+# Default team stats columns for Model A when use_team_stats is true.
+DEFAULT_TEAM_STATS_COLS = ["eFG", "TOV_pct", "FT_rate", "ORB_pct", "pace"]
+
+
+def _get_team_stats_for_list(
+    tgl: pd.DataFrame,
+    games: pd.DataFrame,
+    team_ids: list[Any],
+    as_of_date: str,
+    teams: pd.DataFrame,
+    pgl: pd.DataFrame,
+    config: dict,
+) -> dict[int, list[float]]:
+    """
+    Return team_id -> list of float team-context values for the given list.
+    Used when model_a.use_team_stats is true. Columns from model_a.team_stats_cols or DEFAULT_TEAM_STATS_COLS.
+    """
+    team_dates = [(int(tid), as_of_date) for tid in team_ids]
+    df = build_team_context_as_of_dates(
+        tgl, games, team_dates, teams=teams, pgl=pgl, config=config,
+    )
+    if df.empty:
+        return {int(tid): [] for tid in team_ids}
+    ma = config.get("model_a", {})
+    cols = ma.get("team_stats_cols") or list(DEFAULT_TEAM_STATS_COLS)
+    cols = [c for c in cols if c in df.columns]
+    out: dict[int, list[float]] = {}
+    for tid in team_ids:
+        tid_int = int(tid)
+        row = df[df["team_id"] == tid_int]
+        if row.empty:
+            out[tid_int] = [0.0] * len(cols)
+        else:
+            out[tid_int] = [
+                float(row[c].iloc[0]) if pd.notna(row[c].iloc[0]) else 0.0
+                for c in cols
+            ]
+    return out
 
 
 def build_batches_from_lists(
@@ -49,6 +87,7 @@ def build_batches_from_lists(
     # Prior season baseline config
     use_prior_baseline = bool(training_cfg.get("use_prior_season_baseline", False))
     lookback_days = int(training_cfg.get("prior_season_lookback_days", 365))
+    model_a_stat_cols = get_model_a_stat_cols(config)
     
     # Cache for prior season stats (keyed by season_start)
     prior_stats_cache: dict[str, pd.DataFrame] = {}
@@ -71,7 +110,7 @@ def build_batches_from_lists(
             if season_start not in prior_stats_cache:
                 prior_stats_cache[season_start] = get_prior_season_stats(
                     pgl, season_start,
-                    stat_cols=PLAYER_STAT_COLS_L10_L30,
+                    stat_cols=model_a_stat_cols,
                     lookback_days=lookback_days,
                 )
             prior_season_stats = prior_stats_cache[season_start]
@@ -79,7 +118,7 @@ def build_batches_from_lists(
         player_stats_df = get_player_stats_as_of_date(
             pgl, as_of_date,
             windows=training_cfg.get("rolling_windows", [10, 30]),
-            stat_cols=PLAYER_STAT_COLS_L10_L30,
+            stat_cols=model_a_stat_cols,
             prior_season_stats=prior_season_stats,
         )
         on_court_df = get_on_court_pm_as_of_date(pgl, tgl, games, as_of_date)
@@ -100,8 +139,12 @@ def build_batches_from_lists(
             debug=roster_debug,
             warn_missing_season=True,
         )
-        use_standing = bool(ma.get("use_standing_rank", True))
-        standing_map = standing_rank_as_of_date(tgl, games, as_of_date) if use_standing else {}
+        use_team_stats = bool(ma.get("use_team_stats", False))
+        team_stats_lookup: dict[int, list[float]] = {}
+        if use_team_stats:
+            team_stats_lookup = _get_team_stats_for_list(
+                tgl, games, team_ids, as_of_date, teams, pgl, config,
+            )
         embs_list = []
         stats_list = []
         min_list = []
@@ -124,15 +167,15 @@ def build_batches_from_lists(
                 order = order[:roster_size]
                 pad = 0
             player_ids_per_team.append([int(pid) for pid in order] + [None] * pad)
-            standing_norm = standing_rank_norm(standing_map.get(int(tid), 30)) if use_standing else 0.0
+            team_stats_vec = team_stats_lookup.get(int(tid)) if use_team_stats else None
             emb, rows, minutes, mask = build_roster_set(
                 roster,
                 player_stats_df,
                 n_pad=roster_size,
-                stat_cols=PLAYER_STAT_COLS_WITH_ON_OFF,
+                stat_cols=model_a_stat_cols,
                 num_embeddings=num_emb,
                 team_continuity_scalar=continuity.get(int(tid), 0.0),
-                team_standing_rank_norm=standing_norm,
+                team_stats_vec=team_stats_vec,
             )
             embs_list.append(emb)
             stats_list.append(rows)
@@ -202,8 +245,8 @@ def build_batches_from_db(
     training_cfg = config.get("training", {})
     num_emb = ma.get("num_embeddings", 500)
     roster_size = training_cfg.get("roster_size", 15)
-    stat_dim = int(ma.get("stat_dim", 14))
     roster_debug = bool((config.get("logging") or {}).get("roster_debug", False))
+    model_a_stat_cols = get_model_a_stat_cols(config)
     
     # Prior season baseline config
     use_prior_baseline = bool(training_cfg.get("use_prior_season_baseline", False))
@@ -229,7 +272,7 @@ def build_batches_from_db(
             if season_start not in prior_stats_cache:
                 prior_stats_cache[season_start] = get_prior_season_stats(
                     pgl, season_start,
-                    stat_cols=PLAYER_STAT_COLS_L10_L30,
+                    stat_cols=model_a_stat_cols,
                     lookback_days=lookback_days,
                 )
             prior_season_stats = prior_stats_cache[season_start]
@@ -238,7 +281,7 @@ def build_batches_from_db(
         player_stats_df = get_player_stats_as_of_date(
             pgl, as_of_date,
             windows=windows,
-            stat_cols=PLAYER_STAT_COLS_L10_L30,
+            stat_cols=model_a_stat_cols,
             prior_season_stats=prior_season_stats,
         )
         on_court_df = get_on_court_pm_as_of_date(pgl, tgl, games, as_of_date)
@@ -259,8 +302,12 @@ def build_batches_from_db(
             debug=roster_debug,
             warn_missing_season=True,
         )
-        use_standing = bool(ma.get("use_standing_rank", True))
-        standing_map = standing_rank_as_of_date(tgl, games, as_of_date) if use_standing else {}
+        use_team_stats = bool(ma.get("use_team_stats", False))
+        team_stats_lookup: dict[int, list[float]] = {}
+        if use_team_stats:
+            team_stats_lookup = _get_team_stats_for_list(
+                tgl, games, team_ids, as_of_date, teams, pgl, config,
+            )
         embs_list: list[list[int]] = []
         stats_list: list[list[list[float]]] = []
         min_list: list[list[float]] = []
@@ -276,15 +323,15 @@ def build_batches_from_db(
                 debug=roster_debug,
                 warn_missing_season=True,
             )
-            standing_norm = standing_rank_norm(standing_map.get(int(tid), 30)) if use_standing else 0.0
+            team_stats_vec = team_stats_lookup.get(int(tid)) if use_team_stats else None
             emb, rows, minutes, mask = build_roster_set(
                 roster,
                 player_stats_df,
                 n_pad=roster_size,
-                stat_cols=PLAYER_STAT_COLS_WITH_ON_OFF,
+                stat_cols=model_a_stat_cols,
                 num_embeddings=num_emb,
                 team_continuity_scalar=continuity.get(int(tid), 0.0),
-                team_standing_rank_norm=standing_norm,
+                team_stats_vec=team_stats_vec,
             )
             embs_list.append(emb)
             stats_list.append(rows)
@@ -292,7 +339,7 @@ def build_batches_from_db(
             mask_list.append(mask)
         K, P = len(team_ids), roster_size
         embedding_indices = torch.tensor(embs_list, dtype=torch.long, device=device).unsqueeze(0)  # (1, K, P)
-        player_stats = torch.tensor(stats_list, dtype=torch.float32, device=device).unsqueeze(0)  # (1, K, P, 7)
+        player_stats = torch.tensor(stats_list, dtype=torch.float32, device=device).unsqueeze(0)  # (1, K, P, S)
         minutes = torch.tensor(min_list, dtype=torch.float32, device=device).unsqueeze(0)  # (1, K, P)
         key_padding_mask = torch.tensor(mask_list, dtype=torch.bool, device=device).unsqueeze(0)  # (1, K, P)
         rel = torch.tensor([rel_values], dtype=torch.float32, device=device)  # (1, K)

@@ -2,6 +2,8 @@
 
 Summary of the retention run and how output folders are tracked.
 
+**Layout:** All output roots (outputs, outputs2, outputs4, outputs8_spearman_surrogate, etc.) live under the single parent folder **`output/`**, e.g. `output/outputs4/`, `output/outputs8_spearman_surrogate/`.
+
 ## Retention policy
 
 - **Rule:** [.cursor/rules/outputs-retention-rmse.mdc](../.cursor/rules/outputs-retention-rmse.mdc)  
@@ -37,7 +39,7 @@ No batch had more than four combos, so nothing was deleted; all existing combos 
 
 ## Gitignore: disposable outputs
 
-All output roots **except outputs8** are treated as disposable for version control:
+All output roots under **`output/`** except **output/outputs8** are treated as disposable for version control:
 
 - **Files inside** those output folders are **gitignored** (sweep combos, run dirs, models, reports, etc. are not committed).
 - **Folders** are kept in the repo via `.gitkeep` so future runs can write into the same paths; if a future run is better, you can re-add specific files or un-ignore patterns as needed.
@@ -51,4 +53,4 @@ python -m scripts.retain_top3_worst1_rmse --dry-run
 python -m scripts.retain_top3_worst1_rmse
 ```
 
-To target one root: `python -m scripts.retain_top3_worst1_rmse --outputs outputs4`
+To target one root: `python -m scripts.retain_top3_worst1_rmse --outputs output/outputs4`
