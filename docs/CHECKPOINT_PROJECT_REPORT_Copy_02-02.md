@@ -185,8 +185,8 @@ Chronological narrative from commit history and plans:
 **Run 21** is the first run where Model A contributes meaningfully (attention and primary_contributors) and ensemble ranking versus playoff outcome clearly improves (NDCG, Spearman, MRR). From here:
 
 - **Hyperparameter sweeps:** Run `sweep_hparams`; results write to `outputs3/sweeps/<batch_id>/`. Grid over Model A epochs, Model B hyperparameters, rolling windows, etc.
-- **Optional features:** Elo, team rolling, motivation, injury (e.g. nbainjuries), Monte Carlo championship odds, SOS/SRS (e.g. Team_Records.csv). See `.cursor/plans/enable_optional_features_7b94a57e.plan.md`.
-- **Calibration and playoff residual:** Ideas in `.cursor/plans/comprehensive_feature_and_evaluation_expansion.plan.md` (ECE, Platt scaling, playoff residual model, NBA-specific XGBoost tuning).
+- **Optional features:** Elo, team rolling, motivation, injury (e.g. nbainjuries), Monte Carlo championship odds, SOS/SRS (e.g. Team_Records.csv). See `.cursor/plans/archive/enable_optional_features_7b94a57e.plan.md`.
+- **Calibration and playoff residual:** Ideas in `.cursor/plans/archive/comprehensive_feature_and_evaluation_expansion.plan.md` (ECE, Platt scaling, playoff residual model, NBA-specific XGBoost tuning).
 
 ---
 

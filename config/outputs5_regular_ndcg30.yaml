@@ -3,7 +3,7 @@
 # Params from phase6 best NDCG@16 (combo 19); NDCG@30 optimizes full 30-team order.
 
 paths:
-  outputs: "outputs5/regular_ndcg30"
+  outputs: "output/outputs5/regular_ndcg30"
 
 training:
   listmle_target: "final_rank"  # W/L record standings

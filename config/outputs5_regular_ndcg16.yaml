@@ -2,7 +2,7 @@
 # Run: --config config/outputs5_regular_ndcg16.yaml --outputs outputs5/regular_ndcg16
 
 paths:
-  outputs: "outputs5/regular_ndcg16"
+  outputs: "output/outputs5/regular_ndcg16"
 
 training:
   listmle_target: "final_rank"  # W/L record standings

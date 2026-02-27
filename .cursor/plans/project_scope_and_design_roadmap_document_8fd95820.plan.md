@@ -38,7 +38,7 @@ Create one new document that serves as a **report-style plan** for the NBA True 
   - Stacking with OOF and RidgeCV (not simple averaging; not Logistic Regression meta) — stability and avoidance of overfitting on limited OOF.
   - Zhai et al. (arXiv:2303.06296) — σReparam for attention stability; [.cursor/plans/Attention_Report.md](.cursor/plans/Attention_Report.md).
   - Bergstra & Bengio (2012), Optuna (Akiba et al. 2019), Hyperband/BOHB (for hyperparameter evolution) — [docs/HYPERPARAMETER_TESTING_EVOLUTION.md](docs/HYPERPARAMETER_TESTING_EVOLUTION.md).
-  - Four Factors, SRS, Pythagorean expectation — [.cursor/plans/comprehensive_feature_and_evaluation_expansion.plan.md](.cursor/plans/comprehensive_feature_and_evaluation_expansion.plan.md).
+  - Four Factors, SRS, Pythagorean expectation — [.cursor/plans/archive/comprehensive_feature_and_evaluation_expansion.plan.md](.cursor/plans/archive/comprehensive_feature_and_evaluation_expansion.plan.md).
 
 ---
 
@@ -59,45 +59,45 @@ Organize into **logical time-ordered groups** (not strictly by Update number whe
 
 **Group A — Data and evaluation target (playoff-aware)**
 
-- **Update1 ([.cursor/plans/Update1.md](.cursor/plans/Update1.md)):** Playoff tables, playoff-performance rank (3-phase: playoff wins → tie-break reg-season win % → non-playoff 17–30), config `training.target_rank: standings | playoffs`, championship odds (softmax + temperature), conference rank 1–15, new plots (pred_vs_playoff_rank, title_contender_scatter, odds_top10), playoff_metrics (Spearman vs playoff rank, NDCG@4, Brier champion).
+- **Update1 ([.cursor/plans/archive/Update1.md](.cursor/plans/archive/Update1.md)):** Playoff tables, playoff-performance rank (3-phase: playoff wins → tie-break reg-season win % → non-playoff 17–30), config `training.target_rank: standings | playoffs`, championship odds (softmax + temperature), conference rank 1–15, new plots (pred_vs_playoff_rank, title_contender_scatter, odds_top10), playoff_metrics (Spearman vs playoff rank, NDCG@4, Brier champion).
 - **Rationale:** Align evaluation with “who goes furthest in playoffs” and support conference-level outputs; Play-In excluded by design.
 - **Alternatives not chosen:** Keeping only standings would not answer playoff outcome; using net rating as target would reintroduce leakage.
 
 **Group B — Train/test and inference discipline**
 
-- **75/25 split plan ([.cursor/plans/75-25_split_and_richer_metrics_78a2db80.plan.md](.cursor/plans/75-25_split_and_richer_metrics_78a2db80.plan.md)):** Season-based train/test (e.g. train 2015–16–2022–23, test 2023–24, 2024–25); `split_info.json`; inference on **last test date** only; scripts 3/4 use train lists only.
+- **75/25 split plan ([.cursor/plans/archive/75-25_split_and_richer_metrics_78a2db80.plan.md](.cursor/plans/archive/75-25_split_and_richer_metrics_78a2db80.plan.md)):** Season-based train/test (e.g. train 2015–16–2022–23, test 2023–24, 2024–25); `split_info.json`; inference on **last test date** only; scripts 3/4 use train lists only.
 - **Rationale:** Time-order holdout; no future leakage; reproducible split.
 - **Alternatives not chosen:** Random split would leak time; using “latest date overall” would mix train/test.
 
 **Group C — EOS final rank and walk-forward**
 
-- **Update7 ([.cursor/plans/Update7.md](.cursor/plans/Update7.md)):** EOS final rank (Option B): when playoff data exists (≥16 teams), set `EOS_global_rank` to playoff outcome (champion=1 … first two eliminated=29–30); `eos_rank_source` in outputs; EOS_playoff_standings; per-season inference (`predictions_{season}.json`) and evaluation; optional walk-forward training (train on 1..k, validate on k+1).
+- **Update7 ([.cursor/plans/archive/Update7.md](.cursor/plans/archive/Update7.md)):** EOS final rank (Option B): when playoff data exists (≥16 teams), set `EOS_global_rank` to playoff outcome (champion=1 … first two eliminated=29–30); `eos_rank_source` in outputs; EOS_playoff_standings; per-season inference (`predictions_{season}.json`) and evaluation; optional walk-forward training (train on 1..k, validate on k+1).
 - **Rationale:** Ground truth for evaluation = playoff outcome when available; per-season outputs for clear comparison.
 - **Alternatives not chosen:** Option A (separate playoff rank field only) would leave evaluation scale ambiguous; no walk-forward by default to keep pipeline simple.
 
 **Group D — Output and inference quality (Update2)**
 
-- **Update2 ([.cursor/plans/Update2.md](.cursor/plans/Update2.md)):** IG batching fix (Captum auxiliary tensors expanded to batch size); latest-team roster (player’s most recent team as of `as_of_date`); `EOS_global_rank` (1–30) for evaluation; manifest `db_path` relative to project root; conference plot uses only valid conference ranks (no global fallback); NaN attention/IG sanitized, JSON `allow_nan=False`; ensemble agreement High/Medium/Low with scaled thresholds and handling of missing models; ensemble_score percentile can reach 0.0/1.0; optional IG in predictions (`ig_inference_top_k`, `ig_inference_steps`).
+- **Update2 ([.cursor/plans/archive/Update2.md](.cursor/plans/archive/Update2.md)):** IG batching fix (Captum auxiliary tensors expanded to batch size); latest-team roster (player’s most recent team as of `as_of_date`); `EOS_global_rank` (1–30) for evaluation; manifest `db_path` relative to project root; conference plot uses only valid conference ranks (no global fallback); NaN attention/IG sanitized, JSON `allow_nan=False`; ensemble agreement High/Medium/Low with scaled thresholds and handling of missing models; ensemble_score percentile can reach 0.0/1.0; optional IG in predictions (`ig_inference_top_k`, `ig_inference_steps`).
 - **Rationale:** IG failed with batched inputs; roster showed traded players on wrong teams; NaN broke JSON parsers; scale mixing (1–15 vs 1–30) confused metrics.
 - **Alternatives not chosen:** Keeping absolute db_path reduces portability; using global rank on conference plot would mislead; emitting NaN would break strict JSON.
 
 **Group E — Playoff rank computation and season mapping (Update3)**
 
-- **Update3 ([.cursor/plans/Update3.md](.cursor/plans/Update3.md)):** Date-range filtering for playoff/reg-season (from config season start/end) instead of season-string matching (`"2024"` vs `"2023-24"`); playoff teams = teams that appear in playoff logs (not only playoff_wins > 0); masked query in set attention (exclude padded positions from mean for query); configurable Model A epochs (and early stopping); attention debug and fallback policy (`contributors_are_fallback`).
+- **Update3 ([.cursor/plans/archive/Update3.md](.cursor/plans/archive/Update3.md)):** Date-range filtering for playoff/reg-season (from config season start/end) instead of season-string matching (`"2024"` vs `"2023-24"`); playoff teams = teams that appear in playoff logs (not only playoff_wins > 0); masked query in set attention (exclude padded positions from mean for query); configurable Model A epochs (and early stopping); attention debug and fallback policy (`contributors_are_fallback`).
 - **Rationale:** Season format mismatch caused all teams to get ranks 17–30; swept teams (0 wins) must still be playoff teams; padded positions diluted query; flat loss required more epochs and diagnostics.
 - **Alternatives not chosen:** String normalization alone is fragile across sources; including padding in query keeps attention degenerate; fixed 3 epochs were insufficient.
 
 **Group F — Model A attention collapse and σReparam (Attention_Report, fix_attention plan)**
 
-- **Attention_Report ([.cursor/plans/Attention_Report.md](.cursor/plans/Attention_Report.md)), fix_attention ([.cursor/plans/fix_attention_+_trustworthy_run_d52cdb1c.plan.md](.cursor/plans/fix_attention_+_trustworthy_run_d52cdb1c.plan.md)), MODEL_A_NOT_LEARNING ([docs/MODEL_A_NOT_LEARNING_ANALYSIS.md](docs/MODEL_A_NOT_LEARNING_ANALYSIS.md)):** σReparam on Q/K/V (Zhai et al., arXiv:2303.06296) in SetAttention; configurable learning_rate and grad_clip_max_norm; minutes reweighting only when meaningful; uniform/minutes fallback when raw attention is zero or non-finite; extended attention debug (encoder Z variance, scores, grad norms); pipeline order (inference before evaluate); evaluation scale-consistent (EOS_global_rank only, no conference fallback for global metrics); roster and playoff rank guards.
+- **Attention_Report ([.cursor/plans/Attention_Report.md](.cursor/plans/Attention_Report.md)), fix_attention ([.cursor/plans/archive/fix_attention_+_trustworthy_run_d52cdb1c.plan.md](.cursor/plans/archive/fix_attention_+_trustworthy_run_d52cdb1c.plan.md)), MODEL_A_NOT_LEARNING ([docs/MODEL_A_NOT_LEARNING_ANALYSIS.md](docs/MODEL_A_NOT_LEARNING_ANALYSIS.md)):** σReparam on Q/K/V (Zhai et al., arXiv:2303.06296) in SetAttention; configurable learning_rate and grad_clip_max_norm; minutes reweighting only when meaningful; uniform/minutes fallback when raw attention is zero or non-finite; extended attention debug (encoder Z variance, scores, grad norms); pipeline order (inference before evaluate); evaluation scale-consistent (EOS_global_rank only, no conference fallback for global metrics); roster and playoff rank guards.
 - **Rationale:** Collapsed attention → constant Z → constant scores → flat ListMLE loss; Zhai et al. bounds spectral norm to stabilize attention; fallbacks keep gradients finite.
 - **Alternatives not chosen:** PyTorch spectral_norm alone (no learnable γ) is less flexible than σReparam; no fallback would leave NaN in batches; evaluating on conference rank for global metrics would mix scales.
 
 **Group G — Sweeps and hyperparameter methodology (Update4–6, Update8, HYPERPARAMETER_TESTING_EVOLUTION)**
 
-- **Update4 ([.cursor/plans/Update4.md](.cursor/plans/Update4.md)):** Sweep script with real DB data, configurable epochs, Model B grid; outputs under `outputs/sweeps/`.
+- **Update4 ([.cursor/plans/archive/Update4.md](.cursor/plans/archive/Update4.md)):** Sweep script with real DB data, configurable epochs, Model B grid; outputs under `outputs/sweeps/`.
 - **Update5–6:** Sweep rerun with attention diagnostics; phased Model B (phase1_xgb, phase2_rf); `--val-frac`, `--batch-id`.
-- **Update8 ([.cursor/plans/Update8.md](.cursor/plans/Update8.md)):** Outputs to outputs2; run_id from 19; sweeps to `outputs2/sweeps/<batch_id>/`; foreground, no timeout; per-season inference and conference rank as primary.
+- **Update8 ([.cursor/plans/archive/Update8.md](.cursor/plans/archive/Update8.md)):** Outputs to outputs2; run_id from 19; sweeps to `outputs2/sweeps/<batch_id>/`; foreground, no timeout; per-season inference and conference rank as primary.
 - **HYPERPARAMETER_TESTING_EVOLUTION ([docs/HYPERPARAMETER_TESTING_EVOLUTION.md](docs/HYPERPARAMETER_TESTING_EVOLUTION.md)):** Grid → smaller default grid; Optuna (TPE) with multiple objectives; successive halving (cheap vs full epochs); `--n-jobs`; phased grids; post-sweep explain on best combo. References: Bergstra & Bengio 2012, Optuna (Akiba et al. 2019), Hyperband/BOHB.
 - **Rationale:** Full grid (e.g. 1,728 combos) infeasible; Bayesian and halving reduce evaluations; phased grids focus on high-impact params; foreground avoids hidden timeouts.
 - **Alternatives not chosen:** Single huge grid without parallelism would not finish; random search only (no Optuna) would give no importance analysis; background daemon would complicate debugging.
@@ -117,7 +117,7 @@ Organize into **logical time-ordered groups** (not strictly by Update number whe
 - **Akiba et al. (2019):** Optuna: A Next-generation Hyperparameter Optimization Framework. KDD.
 - **Li et al. (2017):** Hyperband. JMLR 18(1).
 - **Falkner et al. (2018):** BOHB. ICML.
-- **Plan and updates:** `.cursor/plans/Plan.md`, `Update1.md`–`Update8.md`, and the specific plan files named in each group above.
+- **Plan and updates:** `.cursor/plans/Plan.md`, `archive/Update1.md`–`archive/Update8.md`, and the specific plan files named in each group above.
 - **Project docs:** `docs/CHECKPOINT_PROJECT_REPORT.md`, `docs/ATTENTION_AND_BATCHES.md`, `docs/MODEL_A_NOT_LEARNING_ANALYSIS.md`, `docs/HYPERPARAMETER_TESTING_EVOLUTION.md`, `docs/METRICS_USED.md`, `docs/PLATT_CALIBRATION.md`, `README.md`.
 
 ---

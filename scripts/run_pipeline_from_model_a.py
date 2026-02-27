@@ -22,14 +22,17 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG_SCRIPTS = {"3_train_model_a.py", "4_train_models_b_and_c.py", "4b_train_stacking.py", "6_run_inference.py", "5_evaluate.py", "5b_explain.py"}
 
 
-def run(script: str, config_path: str | None = None) -> int:
+def run(script: str, config_path: str | None = None, env_override: dict | None = None) -> int:
     cmd = [sys.executable, str(ROOT / "scripts" / script)]
     if config_path and script in CONFIG_SCRIPTS:
         cmd.extend(["--config", config_path])
+    env = {**__import__("os").environ, "PYTHONPATH": str(ROOT)}
+    if env_override:
+        env.update(env_override)
     return subprocess.run(
         cmd,
         cwd=str(ROOT),
-        env={**__import__("os").environ, "PYTHONPATH": str(ROOT)},
+        env=env,
     ).returncode
 
 
@@ -68,7 +71,7 @@ def main() -> int:
                 out_path = Path(out_val)
                 config.setdefault("paths", {})["outputs"] = str(out_path.resolve() if out_path.is_absolute() else (ROOT / out_val).resolve())
             else:
-                config.setdefault("paths", {})["outputs"] = str((ROOT / "outputs5").resolve())
+                config.setdefault("paths", {})["outputs"] = str((ROOT / "output/outputs5").resolve())
             fd, temp_config_path = tempfile.mkstemp(suffix=".yaml", prefix="pipeline_config_")
             try:
                 with open(fd, "w", encoding="utf-8") as f:
@@ -81,8 +84,11 @@ def main() -> int:
             if not args.config:
                 print("--outputs requires --config.", file=sys.stderr)
                 return 1
-            with open(config_path_resolved, "r", encoding="utf-8") as f:
+            # Overlay configs (e.g. outputs14_map_run) may only set paths.outputs and run; merge with defaults so paths.db, model_a, etc. exist.
+            with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
+            with open(config_path_resolved, "r", encoding="utf-8") as f:
+                _deep_update(config, yaml.safe_load(f))
             out_val = args.outputs
             out_path = Path(out_val)
             config.setdefault("paths", {})["outputs"] = str(out_path.resolve() if out_path.is_absolute() else (ROOT / out_val).resolve())
@@ -94,6 +100,25 @@ def main() -> int:
             except Exception:
                 Path(temp_config_path).unlink(missing_ok=True)
                 raise
+
+    # When config has run.total_cores and run.n_jobs (e.g. MAP run: 18 cores, 3 jobs), set thread env for all steps.
+    env_override = None
+    if config_path and Path(config_path).exists():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f) or {}
+            run_cfg = cfg.get("run") or {}
+            total = run_cfg.get("total_cores")
+            n_jobs = run_cfg.get("n_jobs")
+            if isinstance(total, int) and isinstance(n_jobs, int) and n_jobs >= 1 and total >= 1:
+                threads = max(1, total // n_jobs)
+                env_override = {
+                    "OMP_NUM_THREADS": str(threads),
+                    "MKL_NUM_THREADS": str(threads),
+                }
+                print(f"Run config: total_cores={total}, n_jobs={n_jobs} → {threads} threads per job", flush=True)
+        except Exception:
+            pass
 
     steps = [
         "2_build_db.py",           # conditional: skip if raw unchanged
@@ -108,7 +133,7 @@ def main() -> int:
     try:
         for i, script in enumerate(steps, 1):
             print(f"\n--- Step {i}/{len(steps)}: {script} ---")
-            code = run(script, config_path)
+            code = run(script, config_path, env_override=env_override)
             if code != 0:
                 print(f"Pipeline failed at {script} (exit {code})")
                 return code

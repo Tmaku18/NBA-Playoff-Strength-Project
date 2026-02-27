@@ -169,7 +169,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Aggregate sweep results from combo outputs")
     parser.add_argument("--batch-id", type=str, required=True, help="Batch folder name (e.g. baseline_ndcg_playoff_outcome)")
     parser.add_argument("--objective", type=str, default="spearman", choices=("spearman", "ndcg4", "ndcg16", "ndcg20", "playoff_spearman", "rank_rmse"))
-    parser.add_argument("--outputs", type=str, default="outputs3", help="Outputs root (default outputs3)")
+    parser.add_argument("--outputs", type=str, default="output/outputs3", help="Outputs root (default output/outputs3)")
     args = parser.parse_args()
 
     out_dir = Path(args.outputs) if Path(args.outputs).is_absolute() else ROOT / args.outputs

@@ -18,7 +18,7 @@ Build a system that predicts **NBA team “true strength”** for **future outco
   - **Model A (Deep Set):** Roster-based; uses player-level stats and set attention over players to produce a latent representation **Z** and a team score. Trained with **ListMLE** on ordered lists (by date/conference) so the model learns to rank teams.
   - **Model B (XGBoost):** Team-context features only (rolling stats, ELO, SOS/SRS, etc.); no roster. Trained by regression on the same target (e.g. win rate or rank) as used for ListMLE.
 - **Ensemble:** Model A + Model B only. Level-2 **RidgeCV** meta-learner is fit on **out-of-fold (OOF)** predictions from both models (K-fold over time). The meta output is the **ensemble score**, which is then mapped to percentile (0–1 and 0–100) for interpretability and championship odds.
-- **Model C (Logistic Regression):** Trained on the same team-context features as XGB; used **only for evaluation and diagnostics** (e.g. `model_c_rank` in predictions), not in the stack.
+- **Model C (Random Forest):** Trained on the same team-context features as XGB when `training.train_model_c` is true; used **only for evaluation and diagnostics** (e.g. `model_c_rank` in predictions), not in the stack.
 - **Evaluation:** NDCG (e.g. NDCG@10, NDCG@16), Spearman correlation, playoff-specific metrics (when playoff data exists), Brier score on championship odds, rank MAE/RMSE. See `eval_report.json` and sweep outputs (e.g. `outputs4/sweeps/`, `docs/SWEEP_ANALYSIS.md`).
 
 ---
@@ -51,7 +51,7 @@ These are computed at **training time** (script 3 for \(c_A\), script 4 for \(c_
 
 1. **Scripts 1–2:** Data download and DB build (DuckDB; optional playoff tables).
 2. **Script 3:** Train Model A (Deep Set + ListMLE); produce OOF and optionally `conf_a`; save `best_deep_set.pt` and `oof_model_a.parquet`.
-3. **Script 4:** Train Model B (XGB) and Model C (LR); produce OOF and optionally `conf_xgb`; save `oof_model_b.parquet`, `xgb_model.joblib`, `lr_model.joblib`.
+3. **Script 4:** Train Model B (XGB) and optionally Model C (RF); produce OOF and optionally `conf_xgb`; save `oof_model_b.parquet`, `xgb_model.joblib`, and `rf_model.joblib` when `train_model_c` is true.
 4. **Script 4b:** Merge OOF from A and B; train RidgeCV meta (2 or 4 cols); save `ridgecv_meta.joblib` and `oof_pooled.parquet`.
 5. **Script 5:** Evaluate on test dates/seasons (NDCG, Spearman, playoff metrics, etc.); write `eval_report.json`.
 6. **Script 6:** Run inference (load models, build lists for target date, run A/B, stack with meta, output predictions JSON and figures).

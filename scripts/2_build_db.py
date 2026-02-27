@@ -42,6 +42,24 @@ def _current_raw_hashes(raw_dir: Path, seasons: list[str]) -> dict[str, str]:
     return out
 
 
+def _build_db_config_fingerprint(cfg: dict) -> str:
+    """Fingerprint config parts that affect DB build scope.
+
+    If this changes (e.g. seasons list changes), we should rebuild even when raw files
+    are otherwise unchanged.
+    """
+    paths_cfg = cfg.get("paths", {}) or {}
+    payload = {
+        "seasons": cfg.get("seasons", {}) or {},
+        "paths": {
+            "raw": str(paths_cfg.get("raw", "")),
+            "db": str(paths_cfg.get("db", "")),
+        },
+    }
+    js = json.dumps(payload, sort_keys=True, default=str)
+    return hashlib.sha256(js.encode("utf-8")).hexdigest()
+
+
 def main():
     import sys
     sys.path.insert(0, str(ROOT))
@@ -67,13 +85,18 @@ def main():
     current_raw = _current_raw_hashes(raw_dir, seasons)
     stored_raw = manifest.get("raw") or {}
     raw_unchanged = current_raw == stored_raw and len(current_raw) > 0
-    if raw_unchanged and db_path.exists():
+    current_cfg_fp = _build_db_config_fingerprint(cfg)
+    stored_cfg_fp = manifest.get("build_db_config_fingerprint")
+    config_unchanged = stored_cfg_fp == current_cfg_fp
+    if raw_unchanged and config_unchanged and db_path.exists():
         print("Raw files unchanged; skipping DB rebuild.")
         return
+    if db_path.exists() and raw_unchanged and not config_unchanged:
+        print("Config changed since last DB build; forcing DB rebuild.", flush=True)
 
     from src.data.db_loader import load_playoff_into_db, load_raw_into_db
 
-    if skip_if_exists and db_path.exists():
+    if skip_if_exists and db_path.exists() and raw_unchanged and config_unchanged:
         print(f"Skipping main build (DB exists and build_db.skip_if_exists=true): {db_path}")
         load_playoff_into_db(raw_dir, db_path, seasons=seasons)
     else:
@@ -88,13 +111,9 @@ def main():
     # Update manifest: store hash of the DB file and preserve or recompute raw file hashes.
     if db_path.exists():
         manifest["processed"] = hashlib.sha256(db_path.read_bytes()).hexdigest()
-    # If script 1 was not run, we can still hash whatever raw files exist for the manifest.
-    if "raw" not in manifest or not manifest["raw"]:
-        manifest["raw"] = {}
-        for p in (raw_dir).glob("*.parquet"):
-            manifest["raw"][p.name] = hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in (raw_dir).glob("*.csv"):
-            manifest["raw"][p.name] = hashlib.sha256(p.read_bytes()).hexdigest()
+    # Save hashes used for skip logic and config fingerprint used to detect build-scope changes.
+    manifest["raw"] = current_raw
+    manifest["build_db_config_fingerprint"] = current_cfg_fp
     try:
         manifest["db_path"] = str(db_path.relative_to(ROOT))
     except ValueError:

@@ -95,6 +95,35 @@ ON_OFF_STAT_COLS: list[str] = ["on_court_pm_approx_L10", "on_court_pm_approx_L30
 PLAYER_STAT_COLS_WITH_ON_OFF: list[str] = PLAYER_STAT_COLS_L10_L30 + ON_OFF_STAT_COLS
 
 
+def get_model_a_stat_cols(config: dict | None = None) -> list[str]:
+    """Resolve Model A player stat columns from config.
+
+    Priority:
+    1) model_a.player_stat_cols (explicit allowlist)
+    2) model_a.top_n_player_stats (first N columns)
+    3) default full list (PLAYER_STAT_COLS_WITH_ON_OFF)
+    """
+    full = list(PLAYER_STAT_COLS_WITH_ON_OFF)
+    cfg = config or {}
+    ma = cfg.get("model_a") or {}
+
+    explicit = ma.get("player_stat_cols")
+    if isinstance(explicit, list) and explicit:
+        valid = [c for c in explicit if c in full]
+        return valid if valid else full
+
+    top_n = ma.get("top_n_player_stats")
+    if top_n is not None:
+        try:
+            n = int(top_n)
+        except (TypeError, ValueError):
+            n = len(full)
+        n = max(1, min(len(full), n))
+        return full[:n]
+
+    return full
+
+
 def get_prior_season_stats(
     pgl: pd.DataFrame,
     season_start: str | pd.Timestamp,
