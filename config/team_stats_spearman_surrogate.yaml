@@ -1,8 +1,8 @@
 # Canonical config for branch feature/team-stats-spearman-surrogate:
-# Model A with standing rank as team-stat input + Spearman-surrogate loss.
+# Model A with team stats (eFG, TOV_pct, etc.); standing rank off. Spearman-surrogate loss.
 
 paths:
-  outputs: "outputs_team_stats_spearman_surrogate"
+  outputs: "output/outputs_team_stats_spearman_surrogate"
 
 training:
   loss_type: "spearman_surrogate"
@@ -11,5 +11,7 @@ training:
   rolling_windows: [10, 30]
 
 model_a:
-  stat_dim: 22
-  use_standing_rank: true
+  stat_dim: 27
+  use_standing_rank: false
+  use_team_stats: true
+  team_stats_cols: [eFG, TOV_pct, FT_rate, ORB_pct, pace]

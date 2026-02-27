@@ -11,7 +11,7 @@
 # Note: scripts/sweep_hparams.py deep-merges this file on top of config/defaults.yaml.
 
 paths:
-  outputs: "outputs10"
+  outputs: "output/outputs10"
 
 training:
   listmle_target: "playoff_outcome"

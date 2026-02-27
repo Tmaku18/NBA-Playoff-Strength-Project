@@ -1,0 +1,14 @@
+---
+description: Prefer approaches that yield better results over simpler ones, unless implementation is clearly impossible.
+alwaysApply: true
+---
+
+# Prioritize better results over simplicity
+
+When designing or implementing features, models, or pipelines in this project:
+
+1. **Prefer what gives better results** — Choose the option that is expected to improve metrics or outcomes (e.g. ranking, calibration, robustness) even if it is more complex or more work.
+2. **Do not avoid complexity for its own sake** — Only prefer a simpler approach when you are confident the more complex one cannot be implemented (e.g. missing tooling, infeasible runtime, or unsupported platform), or when the user explicitly asks for simplicity.
+3. **When in doubt, implement the stronger approach** — If two designs are plausible and one is more likely to improve results, implement that one unless it is clearly impossible.
+
+This rule applies to model choices, feature engineering, evaluation design, and pipeline behavior.

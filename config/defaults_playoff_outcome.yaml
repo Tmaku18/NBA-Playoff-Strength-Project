@@ -3,7 +3,7 @@
 # Extends config/defaults.yaml; overrides only listmle_target and combo_002 params.
 
 paths:
-  outputs: "outputs4"
+  outputs: "output/outputs4"
 
 training:
   listmle_target: "playoff_outcome"

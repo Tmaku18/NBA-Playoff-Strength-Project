@@ -31,7 +31,7 @@ Even with non-zero attention, **encoder output nearly constant** (no team signal
 
 - [docs/ATTENTION_AND_BATCHES.md](docs/ATTENTION_AND_BATCHES.md) — NaN/collapse, all-masked batches, roster fallbacks.  
 - [docs/MODEL_A_NOT_LEARNING_ANALYSIS.md](docs/MODEL_A_NOT_LEARNING_ANALYSIS.md) — Run summary, cause (attention → constant Z → constant scores → fixed loss), next steps.  
-- [.cursor/plans/fix_attention_+_trustworthy_run_d52cdb1c.plan.md](.cursor/plans/fix_attention_+_trustworthy_run_d52cdb1c.plan.md) — Minutes reweighting, fallback policy, evaluation/pipeline fixes.
+- [.cursor/plans/archive/fix_attention_+_trustworthy_run_d52cdb1c.plan.md](.cursor/plans/archive/fix_attention_+_trustworthy_run_d52cdb1c.plan.md) — Minutes reweighting, fallback policy, evaluation/pipeline fixes.
 
 ---
 

@@ -67,7 +67,7 @@ def test_build_roster_set_shape(sample_roster_df, sample_player_stats):
     assert len(mask) == 15
     assert sum(1 for m in mask if not m) == 2  # 2 valid players
     assert sum(1 for m in mask if m) == 13  # padding
-    # Each row has 18 base (L10+L30 incl ts_pct, usage) + 2 on_off + team continuity + 3 usage features = 24
+    # Each row has 20 (L10+L30+on_off) + 1 team continuity + 3 usage/positional = 24 (no standing_rank in Model A)
     assert len(rows[0]) == 24
 
 

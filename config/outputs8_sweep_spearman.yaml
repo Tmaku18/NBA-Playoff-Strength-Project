@@ -8,7 +8,7 @@
 # Note: scripts/sweep_hparams.py deep-merges this file on top of config/defaults.yaml.
 
 paths:
-  outputs: "outputs8_spearman_surrogate"
+  outputs: "output/outputs8_spearman_surrogate"
 
 training:
   listmle_target: "playoff_outcome"

@@ -1,5 +1,5 @@
 ---
-description: Whenever running the pipeline in this project, never run in background; let it run as long as it needs to finish. Foreground only, maximum timeout.
+description: Whenever running the pipeline in this project, never run in background; let it run as long as it needs to finish. Foreground only, maximum timeout. WSL sweep commands: 3 jobs, 18 cores total.
 alwaysApply: true
 ---
 
@@ -9,8 +9,16 @@ Whenever you are **running the pipeline** in this project (e.g. run_full_pipelin
 
 1. **Foreground only** — Never run in background. Do **not** use `is_background: true`. Run in the foreground so the process completes and outputs are captured.
 2. **Let it finish** — Use the maximum timeout the run command supports (e.g. 24 hours or the tool limit) so the run is not cut off early. Let it run as long as it needs to finish.
-3. **Sweeps:** Always use `--n-jobs 4` (4 parallel workers). No timeout.
-4. **Follow the plan** — Use the relevant plan for working directory, PYTHONPATH, and step order. Run from the project root (worktree or main project as specified).
-5. **No chaining** — Prefer a single invocation with correct cwd and env; do not chain with `&&` in PowerShell (use `;` or separate commands if needed).
+3. **Sweeps:** Use **3 jobs in parallel** and **18 cores total** (6 threads per job). Always use `--n-jobs 3`. No timeout.
+4. **WSL commands for sweeps** — When giving the command to run in WSL, always give the sweep with 3 jobs and 18 cores total. Set thread env so 3 workers × 6 threads = 18 cores, then run the sweep:
+   ```bash
+   export PYTHONPATH="$PWD"
+   export OMP_NUM_THREADS=6
+   export MKL_NUM_THREADS=6
+   python -m scripts.sweep_hparams --config <config> --method optuna --n-trials <N> --n-jobs 3 <other-args>
+   ```
+   (Replace `<config>`, `<N>`, and `<other-args>` with the actual config path, trial count, and options for that sweep.)
+5. **Follow the plan** — Use the relevant plan for working directory, PYTHONPATH, and step order. Run from the project root (worktree or main project as specified).
+6. **No chaining** — Prefer a single invocation with correct cwd and env; do not chain with `&&` in PowerShell (use `;` or separate commands if needed).
 
 Example: for the full pipeline, run `python -m scripts.run_pipeline_from_model_a` from the project root with PYTHONPATH set, in the foreground, with the longest allowed timeout.

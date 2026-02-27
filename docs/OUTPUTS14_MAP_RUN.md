@@ -8,6 +8,8 @@
 
 - **Config:** `config/outputs14_map_run.yaml`
 - **Paths:** `paths.outputs: "outputs14_map_run"`
+- **Loss setup:** `training.loss_type: "spearman_surrogate"`, `training.listmle_target: "playoff_outcome"` (tau `1.0`).
+- **Parallelism:** `run.total_cores: 18`, `run.n_jobs: 3` → 6 threads per job (OMP_NUM_THREADS/MKL_NUM_THREADS set automatically when the pipeline runs).
 - **Baseline reference:** outputs6_baseline. **Best reference:** outputs8_spearman_surrogate.
 
 ---

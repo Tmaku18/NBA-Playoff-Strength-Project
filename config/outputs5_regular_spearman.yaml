@@ -2,7 +2,7 @@
 # Run: --config config/outputs5_regular_spearman.yaml --outputs outputs5/regular_spearman
 
 paths:
-  outputs: "outputs5/regular_spearman"
+  outputs: "output/outputs5/regular_spearman"
 
 training:
   listmle_target: "final_rank"  # W/L record standings
