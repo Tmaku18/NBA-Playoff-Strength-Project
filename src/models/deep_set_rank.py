@@ -48,16 +48,23 @@ class DeepSetRank(nn.Module):
         player_stats: torch.Tensor,
         minutes: torch.Tensor,
         key_padding_mask: torch.Tensor,
+        temperature_override: float | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         embedding_indices: (B, P) int. player_stats: (B, P, S). minutes: (B, P). key_padding_mask: (B, P) bool, True=ignore.
+        temperature_override: optional; when set (e.g. multi-temp inference), passed to attention softmax.
         Returns (score, Z, attn_weights): score (B,), Z (B, D), attn_weights (B, P).
         """
         B, P, _ = player_stats.shape
         e = self.emb(embedding_indices)  # (B, P, E)
         x = torch.cat([e, player_stats], dim=-1)  # (B, P, E+S)
         z = self.enc(x)  # (B, P, D)
-        pooled, attn_w = self.attn(z, key_padding_mask=key_padding_mask, minutes=minutes)
+        pooled, attn_w = self.attn(
+            z,
+            key_padding_mask=key_padding_mask,
+            minutes=minutes,
+            temperature_override=temperature_override,
+        )
         Z = pooled  # (B, D)
         score = self.scorer(Z).squeeze(-1)  # (B,)
         return score, Z, attn_w

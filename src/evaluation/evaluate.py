@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 
 from .baselines import rank_by_srs, rank_by_net_rating
-from .metrics import ndcg_score, spearman, mrr, roc_auc_upset
+from .metrics import ndcg_score, spearman, kendall_tau, mrr, pearson, precision_at_k, roc_auc_upset
 
 
 def evaluate_ranking(
@@ -19,6 +19,10 @@ def evaluate_ranking(
     return {
         "ndcg": ndcg_score(y_true, y_score, k=k),
         "spearman": spearman(y_true, y_score),
+        "kendall_tau": kendall_tau(y_true, y_score),
+        "pearson": pearson(y_true, y_score),
+        "precision_at_4": precision_at_k(y_true, y_score, 4),
+        "precision_at_8": precision_at_k(y_true, y_score, 8),
         "mrr_top2": mrr(y_true, y_score, top_n_teams=2),
         "mrr_top4": mrr(y_true, y_score, top_n_teams=4),
     }

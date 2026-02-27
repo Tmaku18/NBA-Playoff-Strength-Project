@@ -1,200 +1,360 @@
-# NBA True Strength — runtime config
-# Source of truth: .cursor/plans/Plan.md
-
-# Season boundaries (hard-coded to avoid play-in ambiguity)
 seasons:
-  "2014-15": { start: "2014-10-01", end: "2015-04-15" }  # prior season baseline only
-  "2015-16": { start: "2015-10-01", end: "2016-04-15" }
-  "2016-17": { start: "2016-10-01", end: "2017-04-15" }
-  "2017-18": { start: "2017-10-01", end: "2018-04-15" }
-  "2018-19": { start: "2018-10-01", end: "2019-04-15" }
-  "2019-20": { start: "2019-10-01", end: "2020-04-15" }
-  "2020-21": { start: "2020-12-01", end: "2021-05-15" }
-  "2021-22": { start: "2021-10-01", end: "2022-04-15" }
-  "2022-23": { start: "2022-10-01", end: "2023-04-15" }
-  "2023-24": { start: "2023-10-01", end: "2024-04-15" }
-  "2024-25": { start: "2024-10-01", end: "2025-04-15" }
-  "2025-26": { start: "2025-10-01", end: "2026-04-15" }
-
+  1975-76:
+    start: '1975-10-01'
+    end: '1976-04-15'
+  1976-77:
+    start: '1976-10-01'
+    end: '1977-04-15'
+  1977-78:
+    start: '1977-10-01'
+    end: '1978-04-15'
+  1978-79:
+    start: '1978-10-01'
+    end: '1979-04-15'
+  1979-80:
+    start: '1979-10-01'
+    end: '1980-04-15'
+  1980-81:
+    start: '1980-10-01'
+    end: '1981-04-15'
+  1981-82:
+    start: '1981-10-01'
+    end: '1982-04-15'
+  1982-83:
+    start: '1982-10-01'
+    end: '1983-04-15'
+  1983-84:
+    start: '1983-10-01'
+    end: '1984-04-15'
+  1984-85:
+    start: '1984-10-01'
+    end: '1985-04-15'
+  1985-86:
+    start: '1985-10-01'
+    end: '1986-04-15'
+  1986-87:
+    start: '1986-10-01'
+    end: '1987-04-15'
+  1987-88:
+    start: '1987-10-01'
+    end: '1988-04-15'
+  1988-89:
+    start: '1988-10-01'
+    end: '1989-04-15'
+  1989-90:
+    start: '1989-10-01'
+    end: '1990-04-15'
+  1990-91:
+    start: '1990-10-01'
+    end: '1991-04-15'
+  1991-92:
+    start: '1991-10-01'
+    end: '1992-04-15'
+  1992-93:
+    start: '1992-10-01'
+    end: '1993-04-15'
+  1993-94:
+    start: '1993-10-01'
+    end: '1994-04-15'
+  1994-95:
+    start: '1994-10-01'
+    end: '1995-04-15'
+  1995-96:
+    start: '1995-10-01'
+    end: '1996-04-15'
+  1996-97:
+    start: '1996-10-01'
+    end: '1997-04-15'
+  1997-98:
+    start: '1997-10-01'
+    end: '1998-04-15'
+  1998-99:
+    start: '1998-10-01'
+    end: '1999-04-15'
+  1999-00:
+    start: '1999-10-01'
+    end: '2000-04-15'
+  2000-01:
+    start: '2000-10-01'
+    end: '2001-04-15'
+  2001-02:
+    start: '2001-10-01'
+    end: '2002-04-15'
+  2002-03:
+    start: '2002-10-01'
+    end: '2003-04-15'
+  2003-04:
+    start: '2003-10-01'
+    end: '2004-04-15'
+  2004-05:
+    start: '2004-10-01'
+    end: '2005-04-15'
+  2005-06:
+    start: '2005-10-01'
+    end: '2006-04-15'
+  2006-07:
+    start: '2006-10-01'
+    end: '2007-04-15'
+  2007-08:
+    start: '2007-10-01'
+    end: '2008-04-15'
+  2008-09:
+    start: '2008-10-01'
+    end: '2009-04-15'
+  2009-10:
+    start: '2009-10-01'
+    end: '2010-04-15'
+  2010-11:
+    start: '2010-10-01'
+    end: '2011-04-15'
+  2011-12:
+    start: '2011-10-01'
+    end: '2012-04-15'
+  2012-13:
+    start: '2012-10-01'
+    end: '2013-04-15'
+  2013-14:
+    start: '2013-10-01'
+    end: '2014-04-15'
+  2014-15:
+    start: '2014-10-01'
+    end: '2015-04-15'
+  2015-16:
+    start: '2015-10-01'
+    end: '2016-04-15'
+  2016-17:
+    start: '2016-10-01'
+    end: '2017-04-15'
+  2017-18:
+    start: '2017-10-01'
+    end: '2018-04-15'
+  2018-19:
+    start: '2018-10-01'
+    end: '2019-04-15'
+  2019-20:
+    start: '2019-10-01'
+    end: '2020-04-15'
+  2020-21:
+    start: '2020-10-01'
+    end: '2021-04-15'
+  2021-22:
+    start: '2021-10-01'
+    end: '2022-04-15'
+  2022-23:
+    start: '2022-10-01'
+    end: '2023-04-15'
+  2023-24:
+    start: '2023-10-01'
+    end: '2024-04-15'
+  2024-25:
+    start: '2024-10-01'
+    end: '2025-04-15'
 paths:
-  # Canonical DB with playoff data (playoff_games, playoff_team_game_logs) for sweeps and eval.
-  # Use this same absolute path in every worktree so --objective playoff_spearman gets real metrics.
-  # Override from any worktree with env: NBA_DB_PATH=/path/to/data/processed/nba_build.duckdb
-  db: "C:/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/data/processed/nba_build.duckdb"
-  raw: "data/raw"
-  processed: "data/processed"
-  outputs: "outputs4"
-  # When set, script 3 caches built batches (lists, oof_batches, all_batches) keyed by config+DB.
-  # Reuse on cache hit to save ~1-3 min per sweep trial. null = use data/processed/batch_cache.
+  db: C:/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff
+    Strentgh Project/data/processed/nba_build.duckdb
+  raw: data/raw
+  processed: data/processed
+  outputs: outputs4
   batch_cache: null
-
-# Skip rebuilding DB if file already exists (saves existing DB; set false to force rebuild from raw)
 build_db:
   skip_if_exists: true
-
 repro:
   seed: 42
-
 model_a:
-  stat_dim: 22  # 18 (L10+L30) + 2 (on_court_pm) + 1 (pct_min_returning) + 1 (standing_rank_norm)
+  stat_dim: 24  # no standing_rank in Model A (removed); 20 player stats (L10+L30+on_off) + 1 continuity + 3 usage/positional
+  top_n_player_stats: null  # optional: use first N columns from PLAYER_STAT_COLS_WITH_ON_OFF (e.g. 10)
+  player_stat_cols: null  # optional explicit subset list of Model A player stat columns
   num_embeddings: 500
   embedding_dim: 32
-  encoder_hidden: [128, 64]
-  attention_heads: 4   # WSL best (combo_0014/0018): 4 heads for non-negative Spearman
+  encoder_hidden:
+  - 128
+  - 64
+  attention_heads: 4
   dropout: 0.2
   learning_rate: 0.0001
-  grad_clip_max_norm: 5.0  # looser than 1.0 to avoid zero effective gradients when norm is large
-  epochs: 27  # WSL best combo_0014
+  grad_clip_max_norm: 5.0
+  epochs: 27
   early_stopping_patience: 0
   early_stopping_min_delta: 0.0
   early_stopping_val_frac: 0.25
   minutes_bias_weight: 0.3
-  minutes_sum_min: 1.0e-6
-  attention_debug: false  # set true when debugging attention collapse; false for faster training
-  # When raw attention collapses (nearly zero on valid positions): "minutes" or "uniform"
-  attention_fallback_strategy: "minutes"
-  # Softmax temperature for attention (WSL best: 3; multi-temp [1,5,10] for star/mid/depth)
+  minutes_sum_min: 1.0e-06
+  attention_debug: false
+  attention_fallback_strategy: minutes
   attention:
     temperature: 3
     multi_temp_enabled: true
-    temperatures: [1, 5, 10]
-    multi_temp_base_weights: {1: 0.85, 5: 1.0, 10: 0.7}
+    temperatures:
+    - 1
+    - 5
+    - 10
+    multi_temp_base_weights:
+      1: 0.85
+      5: 1.0
+      10: 0.7
     use_availability_in_aggregation: true
     use_availability_in_attention: false
-  # Automatic Mixed Precision (AMP) for faster training on CUDA; loss stays float32. Set false if numerical issues.
   use_amp: true
-  # Per-instance confidence for ensemble weighting (script 3 OOF, inference): entropy + max weight.
-  # High entropy = diffuse attention = high confidence; high max = star-dependent = low confidence.
   confidence:
     entropy_weight: 0.5
     max_weight_weight: 0.5
-
 model_b:
-  # Feature subset: null = use full list from get_team_context_feature_cols. Set to reduce inputs (e.g. from export_feature_importances --threshold).
-  include_features: null   # allowlist: only these features (order preserved)
-  exclude_features: []     # blocklist: drop these (e.g. low-importance names)
+  include_features: null
+  exclude_features: []
   xgb:
-    n_estimators: 229  # Phase 3 fine NDCG@16 combo 18
+    n_estimators: 229
     max_depth: 5
     learning_rate: 0.072
     early_stopping_rounds: 20
     subsample: 0.8
     colsample_bytree: 0.7
-  rf:  # Model C (diagnostics only; ensemble = A + XGB)
+  rf:
     n_estimators: 200
     max_depth: 12
     min_samples_leaf: 5
-
-# Meta-learner: when use_confidence false, Ridge uses 2 cols (s_A, s_X) only to avoid inverted ensemble weights.
+team_stats_models:
+  # If true, adds Model A OOF score at train time (merge on team_id+as_of_date) and live Model A score at inference time.
+  include_model_a_score: false
+  linear:
+    fit_intercept: true
+  bayesian_ridge:
+    alpha_1: 1.0e-06
+    alpha_2: 1.0e-06
+    lambda_1: 1.0e-06
+    lambda_2: 1.0e-06
+  gpr:
+    kernels: [rbf, matern, rational_quadratic]
+    normalize_y: true
+    alpha: 1.0e-06
+    n_restarts_optimizer: 1
+    rbf:
+      length_scale: 1.0
+      length_scale_bounds: [1.0e-02, 100.0]
+    matern:
+      length_scale: 1.0
+      length_scale_bounds: [1.0e-02, 100.0]
+      nu: 1.5
+    rational_quadratic:
+      length_scale: 1.0
+      alpha: 1.0
+  gmm:
+    n_components_grid: [1, 2, 3, 4, 5]
+    covariance_type_grid: [full, diag]
+    random_state: 42
 stacking:
-  use_confidence: false  # reverted: 4-col (with conf) was producing negative ensemble; 2-col Ridge restores positive Spearman
-  # Fixed blend toward XGB (Option 2): set in (0, 1) to use ens = (1-w)*s_A + w*s_X and skip Ridge; null = use Ridge when available.
+  use_confidence: false
   xgb_weight: null
-
 training:
-  train_model_c: false  # Model C (RF) not trained; results kept for analytic comparison only; ensemble = A + B only
-  # Model A loss: listmle (default), spearman_surrogate, or rank_rmse_surrogate (see feature branches / docs)
-  loss_type: "listmle"
-  loss_tau: 1.0  # temperature for surrogate soft ranks (used when loss_type is spearman_surrogate or rank_rmse_surrogate)
+  train_model_c: false
+  train_team_stats_linear: false
+  train_team_stats_bayesian_ridge: false
+  train_team_stats_gpr: false
+  train_team_stats_gmm: false
+  loss_type: listmle
+  loss_tau: 1.0
   n_folds: 5
-  rolling_windows: [15, 30]  # Phase 3 fine NDCG@16 combo 18
+  rolling_windows:
+  - 15
+  - 30
   roster_size: 15
-  target_rank: "playoffs"  # or "standings" to train meta on standings-to-date
-  listmle_target: "final_rank"  # Standings default (Phase 3 combo 18). final_rank=playoff standings; for playoff_outcome use config/defaults_playoff_outcome.yaml (Phase 5 combo 2).
-  # 75/25 train-test split (script 3 writes split_info.json; 4 and 6 read it)
-  train_seasons: ["2015-16", "2016-17", "2017-18", "2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
-  test_seasons: ["2023-24", "2024-25"]
-  validation_seasons: ["2023-24"]
-  holdout_seasons: ["2024-25"]
-  train_test_cutoff: null   # optional date cutoff alternative, e.g. "2023-04-15"
-  train_frac: 0.75          # fallback if seasons/cutoff not provided
-  # Model A (script 3): subsample lists for feasible runtime (Phase 3 combo 18 used 100/100)
-  max_lists_oof: 100       # max lists for OOF; subsampled when there are more
-  max_final_batches: 100   # max lists for final Model A training (script 3)
-  # build_lists (src/training/build_lists.py) subsamples dates to 200 when there are more
-  # If true, use per-season walk-forward instead of pooled OOF (Model A only)
+  target_rank: playoffs
+  listmle_target: final_rank
+  train_seasons:
+  - 2015-16
+  - 2016-17
+  - 2017-18
+  - 2018-19
+  - 2019-20
+  - 2020-21
+  - 2021-22
+  - 2022-23
+  test_seasons:
+  - 2023-24
+  - 2024-25
+  validation_seasons:
+  - 2023-24
+  holdout_seasons:
+  - 2024-25
+  train_test_cutoff: null
+  train_frac: 0.75
+  max_lists_oof: 100
+  max_final_batches: 100
   walk_forward: false
-  # Prior season baseline: fill zero player stats with prior season averages
   use_prior_season_baseline: true
   prior_season_lookback_days: 365
-
 output:
-  true_strength_scale: "percentile"  # or softmax, platt
-  odds_temperature: 0.5  # softmax temperature for championship odds (lower = sharper)
-  championship_odds_method: "softmax"  # or "monte_carlo"
-  ig_inference_top_k: 1  # per conference; set 0 to disable IG in predictions.json
+  true_strength_scale: percentile
+  odds_temperature: 0.5
+  championship_odds_method: softmax
+  ig_inference_top_k: 1
   ig_inference_steps: 50
-
-# Elo with cold start (mandatory per plan; retrain Model B when enabled)
+uncertainty:
+  enabled: true
+  method: mc_rank_interval
+  mc_samples: 200
+  alpha: 0.1
+  score_std_floor: 1.0e-06
+  conf_to_std_scale: 0.25
 elo:
   cold_start_games: 10
   regression_to_mean: 0.25
   enabled: true
-
-# Massey ratings (mandatory per plan; solve Mr = p per season)
 massey:
   enabled: true
-
-# SOS/SRS from data/raw/Team_Records.csv (Phase II data)
 sos_srs:
-  data_path: "data/raw/Team_Records.csv"
+  data_path: data/raw/Team_Records.csv
   enabled: false
-
-# Team rolling (eFG_L10, DefRtg_L10, won_prev_game)
 team_rolling:
   enabled: false
-
-# Injury adjustments (ProjAvailableRating)
 injury:
-  data_path: "data/raw/injury_reports"
-  minutes_heuristic: "proportional"
-  enabled: false  # set true when injury JSON available
-
-# Motivation (tanking/seeding)
+  data_path: data/raw/injury_reports
+  minutes_heuristic: proportional
+  enabled: false
 motivation:
   late_season_games: 15
   playoff_wins_threshold: 42
   enabled: true
-
-# RAPTOR (FiveThirtyEight) player impact metrics
 raptor:
-  data_path: "docs/modern_RAPTOR_by_team.csv"
+  data_path: docs/modern_RAPTOR_by_team.csv
   enabled: true
-
-# Monte Carlo championship simulation
 monte_carlo:
   hca: 100.0
   rating_scale: 400.0
   n_seasons: 10000
   n_series: 1000
-
 logging:
   roster_debug: false
   playoff_debug: false
-
-# Hyperparameter sweep (scripts/sweep_hparams.py)
-# Smaller default grid for feasible full runs; use --phase phase1_xgb for phased grids. Model C is LR (fixed config).
-# model_a_attention_extra_temperatures: add 3, 6, 8 to default [1, 5, 10]. [] = default only; [3], [6], [8] = test adding one; [[3,6,8]] = test all extra.
 sweep:
-  model_a_epochs: [16, 28]
-  rolling_windows: [[10, 30]]
-  model_a_attention_extra_temperatures: [[]]  # [[]] = no sweep; [[], [3], [6], [8]] to test adding temp 3, 6, or 8
+  model_a_epochs:
+  - 16
+  - 28
+  rolling_windows:
+  - - 10
+    - 30
+  model_a_attention_extra_temperatures:
+  - []
   model_b:
-    max_depth: [3, 4]
-    learning_rate: [0.08]
-    n_estimators_xgb: [250, 300]
-    n_estimators_rf: [200]  # kept for grid compat; config uses model_b.lr
-    subsample: [0.8]
-    colsample_bytree: [0.7]
-    min_samples_leaf: [5]
-  include_clone_classifier: false  # set true to run 4c after eval; sweep runs faster without
-
-# null = auto-increment run (run_002, run_003, ... from existing run_* dirs); set e.g. "run_001" to fix
+    max_depth:
+    - 3
+    - 4
+    learning_rate:
+    - 0.08
+    n_estimators_xgb:
+    - 250
+    - 300
+    n_estimators_rf:
+    - 200
+    subsample:
+    - 0.8
+    colsample_bytree:
+    - 0.7
+    min_samples_leaf:
+    - 5
+  include_clone_classifier: false
 inference:
   run_id: null
-  # When outputs dir has no run_* subdirs, use this as first run (e.g. 25 -> run_025)
   run_id_base: 25
-  # If true, also run inference on last train date and write run_id/train_predictions.json
   also_train_predictions: false
-  # If true, inference must use eos_final_rank (playoff-based EOS). Fails if DB has no playoff data (sweep matches baseline).
+  also_validation_predictions: false  # when true, write val_predictions.json (last 20% of train dates); eval_report gets val_metrics_*
   require_eos_final_rank: false

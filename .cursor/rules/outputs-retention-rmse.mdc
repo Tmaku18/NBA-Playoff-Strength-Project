@@ -1,0 +1,27 @@
+---
+description: Retention policy for output sweep artifacts (RMSE only; top 3 + worst 1)
+alwaysApply: false
+---
+
+# Outputs retention: top 3 + worst 1 by RMSE only
+
+For **outputs directories other than outputs8** (the official best / Spearman run):
+
+1. **Retention policy**
+   - Keep only **top 3 runs** per sweep batch and **1 worst run** per sweep batch.
+   - Ranking is by **RMSE only** (lower is better). **Do not** use MAE for this policy.
+
+2. **Scope**
+   - Applies to sweep batches under `outputs*/sweeps/<batch_id>/combo_XXXX/`.
+   - **outputs8** is never modified; it is the canonical best (Spearman) and is excluded from retention cleanup.
+
+3. **How to run cleanup**
+   - Use the retention script with a dry-run first, then execute:
+     ```bash
+     python -m scripts.retain_top3_worst1_rmse --dry-run
+     python -m scripts.retain_top3_worst1_rmse
+     ```
+   - To target a single output root: `python -m scripts.retain_top3_worst1_rmse --outputs outputs4`
+
+4. **Metric**
+   - Retention uses **only RMSE** (e.g. `test_metrics_ensemble_rank_rmse_pred_vs_playoff_outcome_rank` or `test_metrics_ensemble_rank_rmse_standings`). MAE is not used for deciding which runs to keep or delete.

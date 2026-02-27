@@ -11,6 +11,48 @@ from .four_factors import four_factors_from_team_logs
 FORBIDDEN = {"net_rating", "NET_RATING", "net rating"}
 
 
+def standing_rank_as_of_date(
+    tgl: pd.DataFrame,
+    games: pd.DataFrame,
+    as_of_date: str | pd.Timestamp,
+    *,
+    date_col: str = "game_date",
+    team_id_col: str = "team_id",
+    wl_col: str = "wl",
+) -> dict[int, int]:
+    """
+    Compute regular-season standing rank (1-30, global) as of a date.
+    Uses only games with game_date < as_of_date. Rank 1 = best (highest win rate).
+    Tie-break: team_id ascending for stability. Teams with no games get rank 30.
+    """
+    ad = pd.to_datetime(as_of_date).date() if isinstance(as_of_date, str) else as_of_date
+    if tgl.empty or games.empty:
+        return {}
+    g = games[[c for c in ("game_id", date_col) if c in games.columns]].copy()
+    if date_col not in g.columns:
+        return {}
+    g[date_col] = pd.to_datetime(g[date_col]).dt.date
+    g = g[g[date_col] < ad]
+    valid_game_ids = set(g["game_id"].tolist())
+    past = tgl[tgl["game_id"].isin(valid_game_ids)].copy()
+    if past.empty:
+        return {}
+    if wl_col not in past.columns:
+        return {}
+    past["w"] = (past[wl_col].astype(str).str.upper() == "W").astype(int)
+    agg = past.groupby(team_id_col).agg({"w": "sum", "game_id": "nunique"}).rename(columns={"game_id": "g"})
+    agg["win_rate"] = agg["w"] / agg["g"].replace(0, 1)
+    agg = agg.sort_values(["win_rate", team_id_col], ascending=[False, True])
+    rank_map = {int(tid): (r + 1) for r, tid in enumerate(agg.index)}
+    return rank_map
+
+
+def standing_rank_norm(rank: int) -> float:
+    """Normalize standing rank 1-30 to [0,1] with 1 = best. (31 - rank) / 30."""
+    r = max(1, min(30, int(rank)))
+    return (31.0 - r) / 30.0
+
+
 def _as_of_to_season(as_of: str | pd.Timestamp) -> str:
     """Derive season string from as_of_date (e.g. 2024-01-15 -> 2023-24, 2024-11-01 -> 2024-25)."""
     ad = pd.to_datetime(as_of).date()
@@ -72,8 +114,8 @@ def build_team_context(
     return out
 
 
-# Model B feature column names (no net_rating)
-TEAM_CONTEXT_FEATURE_COLS: list[str] = ["eFG", "TOV_pct", "FT_rate", "ORB_pct", "pace"]
+# Model B feature column names (no net_rating). standing_rank_norm = current regular-season rank as input (1=best).
+TEAM_CONTEXT_FEATURE_COLS: list[str] = ["eFG", "TOV_pct", "FT_rate", "ORB_pct", "pace", "standing_rank_norm"]
 
 # All feature cols (base + extended when enabled). Use for Model B when building feat_cols.
 def get_team_context_feature_cols(config: dict | None = None) -> list[str]:
@@ -126,6 +168,11 @@ def build_team_context_as_of_dates(
     """
     if not team_dates:
         return pd.DataFrame(columns=[team_id_col, "as_of_date"] + TEAM_CONTEXT_FEATURE_COLS)
+    # Standing rank (current regular-season rank as of date) for each unique as_of_date
+    unique_dates = list(dict.fromkeys(as_of for _, as_of in team_dates))
+    standing_by_date: dict[str, dict[int, int]] = {}
+    for as_of in unique_dates:
+        standing_by_date[str(as_of)] = standing_rank_as_of_date(tgl, games, as_of, date_col=date_col, team_id_col=team_id_col)
     ctx = build_team_context(tgl, games)
     if "game_date" not in ctx.columns and "game_id" in games.columns and "game_date" in games.columns:
         ctx = ctx.merge(games[["game_id", "game_date"]].drop_duplicates(), on="game_id", how="left")
@@ -147,6 +194,12 @@ def build_team_context_as_of_dates(
     for c in TEAM_CONTEXT_FEATURE_COLS:
         if c not in out.columns:
             out[c] = 0.0
+    # Fill standing_rank_norm from precomputed ranks (current regular-season standing as of date)
+    def _norm_for_row(r: pd.Series) -> float:
+        ranks = standing_by_date.get(str(r["as_of_date"]), {})
+        rank = ranks.get(int(r[team_id_col]), 30)
+        return standing_rank_norm(rank)
+    out["standing_rank_norm"] = out.apply(_norm_for_row, axis=1)
 
     cfg = config or {}
     seasons_cfg = cfg.get("seasons") or {}
