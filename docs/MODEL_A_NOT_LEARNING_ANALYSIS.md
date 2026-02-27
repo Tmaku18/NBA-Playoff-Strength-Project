@@ -25,13 +25,13 @@ So: **collapsed attention → constant Z → constant scores → flat ListMLE lo
 
 ## What to do next
 
-- **Harden set_attention:** See `.cursor/plans/fix_attention_+_trustworthy_run_d52cdb1c.plan.md`. Already implemented: minutes reweighting only when minutes are meaningful; uniform fallback over valid positions when raw attention is zero so gradients can flow. If loss is still flat, the raw attention from `MultiheadAttention` may still be zero (e.g. key_padding_mask or numerical issues); consider init or architecture changes so attention does not start at zero.
+- **Harden set_attention:** See `.cursor/plans/archive/fix_attention_+_trustworthy_run_d52cdb1c.plan.md`. Already implemented: minutes reweighting only when minutes are meaningful; uniform fallback over valid positions when raw attention is zero so gradients can flow. If loss is still flat, the raw attention from `MultiheadAttention` may still be zero (e.g. key_padding_mask or numerical issues); consider init or architecture changes so attention does not start at zero.
 - **Checkpoint report:** Run_021 is the first run where Model A contributed (non-zero attention, primary_contributors). If the current data/config differ from that run, re-align (same stat columns, same roster logic) so Model A can learn again.
 - **Verify on dummy data:** `scripts/verify_model_a_training.py` trains on dummy batches; there loss decreases and attention is non-zero. So the issue is data- or config-specific (e.g. real batches yielding zero raw attention).
 
 ## References
 
 - **docs/CHECKPOINT_PROJECT_REPORT.md** — Section 7 (Issues: attention all-zero / Model A not contributing), Section 5 (run_020 vs run_021).
-- **.cursor/plans/fix_attention_+_trustworthy_run_d52cdb1c.plan.md** — Fix attention collapse and trustworthy run.
+- **.cursor/plans/archive/fix_attention_+_trustworthy_run_d52cdb1c.plan.md** — Fix attention collapse and trustworthy run.
 - **src/models/set_attention.py** — Minutes reweighting and uniform fallback when raw attention is zero.
 - **src/models/listmle_loss.py** — ListMLE loss; constant scores → constant loss.

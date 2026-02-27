@@ -39,10 +39,12 @@ def _compute_batch_cache_key(config: dict, db_path: Path) -> str:
     """Build a cache key from config + DB so we reuse batches when config/DB unchanged."""
     training = config.get("training", {})
     model_a = config.get("model_a", {})
+    rolling_windows = training.get("rolling_windows") or [10, 30]
+    train_seasons = training.get("train_seasons") or []
     key_data = {
         "listmle_target": training.get("listmle_target"),
-        "rolling_windows": tuple(training.get("rolling_windows", [10, 30])),
-        "train_seasons": tuple(sorted(training.get("train_seasons", []))),
+        "rolling_windows": tuple(rolling_windows),
+        "train_seasons": tuple(sorted(train_seasons)),
         "max_lists_oof": training.get("max_lists_oof", 30),
         "max_final_batches": training.get("max_final_batches", 50),
         "n_folds": training.get("n_folds", 5),
@@ -51,6 +53,8 @@ def _compute_batch_cache_key(config: dict, db_path: Path) -> str:
         "prior_season_lookback_days": training.get("prior_season_lookback_days", 365),
         "stat_dim": model_a.get("stat_dim"),
         "num_embeddings": model_a.get("num_embeddings", 500),
+        "use_team_stats": model_a.get("use_team_stats", False),
+        "team_stats_cols": tuple(model_a.get("team_stats_cols") or []),
         "db_path": str(db_path.resolve()),
     }
     stat = db_path.stat() if db_path.exists() else None

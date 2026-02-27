@@ -27,7 +27,7 @@ paths:
   db: "C:/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/data/processed/nba_build.duckdb"
   raw: data/raw
   processed: data/processed
-  outputs: outputs13_rmse_surrogate/combo_004_high_epochs
+  outputs: output/outputs13_rmse_surrogate/combo_004_high_epochs
   batch_cache: null
 
 build_db:

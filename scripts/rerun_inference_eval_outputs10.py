@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BATCH = ROOT / "outputs10" / "sweeps" / "standing_rank_spearman_40"
+BATCH = ROOT / "output" / "outputs10" / "sweeps" / "standing_rank_spearman_40"
 
 
 def main() -> int:

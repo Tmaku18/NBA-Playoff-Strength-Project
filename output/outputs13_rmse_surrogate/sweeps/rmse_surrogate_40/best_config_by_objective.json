@@ -1,0 +1,74 @@
+{
+  "spearman": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 4,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0004/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0004/outputs"
+  },
+  "ndcg4": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 31,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0031/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0031/outputs"
+  },
+  "ndcg16": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 35,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0035/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0035/outputs"
+  },
+  "ndcg20": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 38,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0038/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0038/outputs"
+  },
+  "ndcg30": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 22,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0022/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0022/outputs"
+  },
+  "playoff_spearman": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 4,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0004/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0004/outputs"
+  },
+  "rank_rmse": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 4,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0004/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0004/outputs"
+  },
+  "spearman_standings": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 11,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0011/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0011/outputs"
+  },
+  "ndcg4_standings": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 37,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0037/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0037/outputs"
+  },
+  "ndcg16_standings": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 34,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0034/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0034/outputs"
+  },
+  "ndcg30_standings": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 1,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0001/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0001/outputs"
+  },
+  "rank_rmse_standings": {
+    "batch_id": "rmse_surrogate_40",
+    "combo": 4,
+    "config_path": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0004/config.yaml",
+    "combo_outputs": "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/outputs13_rmse_surrogate/sweeps/rmse_surrogate_40/combo_0004/outputs"
+  }
+}

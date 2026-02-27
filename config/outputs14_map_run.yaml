@@ -8,6 +8,25 @@
 #   python -m scripts.run_pipeline_map --config config/outputs14_map_run.yaml --outputs outputs14/map_run
 #
 # Compare: baseline (outputs6), best (outputs8); run per-game evaluation as needed.
+#
+# Parallelism: 18 cores total, 3 jobs in parallel → 6 threads per job (OMP_NUM_THREADS/MKL_NUM_THREADS set by pipeline).
 
 paths:
-  outputs: "outputs14_map_run"
+  outputs: "output/outputs14_map_run"
+
+# MAP run objective setup: use Spearman-surrogate loss on playoff outcome ranking.
+training:
+  loss_type: "spearman_surrogate"
+  listmle_target: "playoff_outcome"
+  loss_tau: 1.0
+
+# Model A: team stats as input (Four Factors, pace) for MAP branch only.
+model_a:
+  use_team_stats: true
+  team_stats_cols: ["eFG", "TOV_pct", "FT_rate", "ORB_pct", "pace"]
+  stat_dim: 27  # 22 base (with standing rank) + 5 team stats
+
+# Cores and parallel jobs for MAP run (pipeline sets OMP_NUM_THREADS = total_cores // n_jobs for each step).
+run:
+  total_cores: 18
+  n_jobs: 3

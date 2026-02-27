@@ -1,0 +1,18 @@
+paths:
+  outputs: output/outputs14_map_run
+training:
+  loss_type: spearman_surrogate
+  listmle_target: playoff_outcome
+  loss_tau: 1.0
+  # Use fraction-based split instead of fixed season lists:
+  # - 90% train+val, 10% test (compute_split train_frac fallback)
+  # - inside Model A train, hold out 22.222% for early-stopping val
+  #   => overall ~70% train / 20% val / 10% test
+  train_seasons: null
+  test_seasons: null
+  train_frac: 0.9
+model_a:
+  early_stopping_val_frac: 0.2222222222
+run:
+  total_cores: 18
+  n_jobs: 3

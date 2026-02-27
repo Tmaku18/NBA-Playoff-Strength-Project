@@ -12,7 +12,7 @@
 # Compare: outputs13_rmse_surrogate (no standing), outputs8_spearman_surrogate, outputs10_spearman_surrogate_standing_rank.
 
 paths:
-  outputs: "outputs15_rmse_surrogate_standing_rank"
+  outputs: "output/outputs15_rmse_surrogate_standing_rank"
 
 training:
   listmle_target: "playoff_outcome"

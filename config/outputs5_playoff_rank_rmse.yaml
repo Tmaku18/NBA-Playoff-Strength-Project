@@ -2,7 +2,7 @@
 # Run: --config config/outputs5_playoff_rank_rmse.yaml
 
 paths:
-  outputs: "outputs5/playoff_rank_rmse"
+  outputs: "output/outputs5/playoff_rank_rmse"
 
 training:
   listmle_target: "playoff_outcome"  # Playoff Outcome Rank

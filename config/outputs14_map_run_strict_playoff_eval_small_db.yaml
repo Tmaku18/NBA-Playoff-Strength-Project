@@ -1,0 +1,36 @@
+paths:
+  outputs: output/outputs14_map_run
+  db: /mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff
+    Strentgh Project/data/processed/nba_build_small.duckdb
+training:
+  loss_type: spearman_surrogate
+  listmle_target: playoff_outcome
+  loss_tau: 1.0
+  train_seasons:
+  - 2015-16
+  - 2016-17
+  - 2017-18
+  - 2018-19
+  - 2019-20
+  - 2020-21
+  - 2021-22
+  - 2022-23
+  test_seasons:
+  - 2023-24
+  - 2024-25
+  validation_seasons:
+  - 2023-24
+  holdout_seasons:
+  - 2024-25
+model_a:
+  use_team_stats: true
+  team_stats_cols: ["eFG", "TOV_pct", "FT_rate", "ORB_pct", "pace"]
+  stat_dim: 27  # 22 base + 5 team stats
+  epochs: 80
+  early_stopping_patience: 12
+  early_stopping_min_delta: 0.0
+inference:
+  require_eos_final_rank: true
+run:
+  total_cores: 18
+  n_jobs: 3

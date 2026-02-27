@@ -2,7 +2,7 @@
 
 Usage:
   python -m scripts.retain_top3_worst1_rmse [--dry-run] [--outputs OUTPUTS]
-  --outputs: specific output root (e.g. outputs4) or "all" (default) for all outputs* except outputs8.
+  --outputs: specific output root (e.g. output/outputs4) or "all" (default) for all output/outputs* except outputs8.
   --dry-run: print what would be kept/deleted without deleting.
 
 Policy: For each sweep batch, rank combos by RMSE (lower is better). Keep top 3 and worst 1;
@@ -61,10 +61,16 @@ def get_rmse(metrics: dict) -> float | None:
     return None
 
 
+OUTPUT_PARENT = "output"
+
+
 def iter_output_roots(root: Path, exclude: set[str]) -> list[Path]:
-    """List outputs* directories under root, excluding given names."""
+    """List output/outputs* directories under root (i.e. root/output/), excluding given names."""
+    parent = root / OUTPUT_PARENT
+    if not parent.is_dir():
+        return []
     out = []
-    for d in sorted(root.iterdir()):
+    for d in sorted(parent.iterdir()):
         if not d.is_dir():
             continue
         name = d.name
@@ -127,7 +133,7 @@ def process_batch(batch_dir: Path, dry_run: bool) -> tuple[int, int]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Retain top 3 + worst 1 by RMSE per sweep batch (except outputs8)")
     parser.add_argument("--dry-run", action="store_true", help="Print actions only, do not delete")
-    parser.add_argument("--outputs", type=str, default="all", help="Output root (e.g. outputs4) or 'all'")
+    parser.add_argument("--outputs", type=str, default="all", help="Output root (e.g. output/outputs4) or 'all'")
     args = parser.parse_args()
 
     if args.outputs == "all":
@@ -137,7 +143,7 @@ def main() -> int:
         if not out_dir.is_dir():
             print(f"Not a directory: {out_dir}", file=sys.stderr)
             return 1
-        if args.outputs == "outputs8":
+        if args.outputs.endswith("outputs8") or args.outputs == "outputs8":
             print("outputs8 is excluded from retention; nothing to do.", file=sys.stderr)
             return 0
         roots = [out_dir]

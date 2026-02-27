@@ -9,8 +9,10 @@
 # Compare: outputs14_map_run (MAP, no standing), outputs6_baseline, outputs8_spearman_surrogate.
 
 paths:
-  outputs: "outputs16_map_standing_rank"
+  outputs: "output/outputs16_map_standing_rank"
 
 model_a:
-  stat_dim: 22
+  stat_dim: 27  # 22 base (with standing rank) + 5 team stats
   use_standing_rank: true
+  use_team_stats: true
+  team_stats_cols: ["eFG", "TOV_pct", "FT_rate", "ORB_pct", "pace"]

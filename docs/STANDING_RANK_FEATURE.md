@@ -1,13 +1,13 @@
 # Standing Rank as Input Feature
 
-**Implementation note:** This feature is now implemented on `main`. Model A `stat_dim` becomes 22; retrain models after pulling the update.
+**Implementation note:** Standing rank is implemented on `main` for **team-context features**. Model A no longer uses standing rank.
 
-Current regular-season standing (rank 1–30, global) is used as an **input feature** to all models.
+Current regular-season standing (rank 1–30, global) is used as an **input feature** to team-context models (Model B / Model C) and optional team-stats models.
 
 ## Implementation
 
-- **Model A (DeepSetRank):** Each team’s roster gets a scalar `standing_rank_norm` = `(31 - rank) / 30` (1 = best), appended to every player’s input vector. Rank is computed from games with `game_date < as_of_date` (no future leakage).
-- **Model B and Model C:** Team-context includes `standing_rank_norm` in the feature set (see `TEAM_CONTEXT_FEATURE_COLS` in `src/features/team_context.py`).
+- **Model A (DeepSetRank):** Standing rank is **not** used as an input feature (removed from roster-set features).
+- **Model B and Model C:** Team-context includes `standing_rank_norm` in the feature set (see `TEAM_CONTEXT_FEATURE_COLS` in `src/features/team_context.py`). Rank is computed from games with `game_date < as_of_date` (no future leakage).
 
 When predicting **playoff rank**, the same feature is used: if `as_of_date` is end of regular season, the value is the **regular season final rank**.
 
@@ -17,7 +17,7 @@ In prior comparisons (e.g. outputs5), **standings-trained** ListMLE matched or b
 
 ## Config
 
-- **model_a.stat_dim:** With standing rank enabled, use 22 (was 21). Training infers dimension from batch shape if batches are built with the new feature.
+- **model_a.stat_dim:** Model A no longer includes standing rank; current default is `model_a.stat_dim: 24`.
 - **model_b:** `standing_rank_norm` is in the default feature list; use `model_b.exclude_features: ["standing_rank_norm"]` to disable for ablation.
 
 ## Future work (not yet implemented)

@@ -41,7 +41,7 @@ paths:
     Strentgh Project/data/processed/nba_build.duckdb
   raw: data/raw
   processed: data/processed
-  outputs: outputs4
+  outputs: output/outputs4
   batch_cache: null
 build_db:
   skip_if_exists: true

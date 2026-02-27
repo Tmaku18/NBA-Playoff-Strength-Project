@@ -3,7 +3,7 @@
 # Params from 20260212 combo 18 (best NDCG@16 for outcome).
 
 paths:
-  outputs: "outputs5/playoff_ndcg30"
+  outputs: "output/outputs5/playoff_ndcg30"
 
 training:
   listmle_target: "playoff_outcome"  # Playoff Outcome Rank

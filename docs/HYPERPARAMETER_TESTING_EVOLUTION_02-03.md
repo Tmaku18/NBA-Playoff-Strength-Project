@@ -43,7 +43,7 @@ This document traces the evolution of hyperparameter testing in the NBA True Str
 
 ### 2.2 Sweep script introduction (outputs2, run_019, Update8)
 
-**Source:** `.cursor/plans/outputs2_run_019_sweeps_update8_d5fca612.plan.md`
+**Source:** `.cursor/plans/archive/outputs2_run_019_sweeps_update8_d5fca612.plan.md`
 
 **Decisions:**
 
@@ -84,7 +84,7 @@ This document traces the evolution of hyperparameter testing in the NBA True Str
 
 ### 2.4 Configurable validation fraction and batch id
 
-**Source:** `.cursor/plans/refined_sweep_rerun_bc8afb8f.plan.md`
+**Source:** `.cursor/plans/archive/refined_sweep_rerun_bc8afb8f.plan.md`
 
 **Decisions:**
 
@@ -98,7 +98,7 @@ This document traces the evolution of hyperparameter testing in the NBA True Str
 
 ### 2.5 Phased Model B grids (Phase 1 XGB, Phase 2 RF)
 
-**Source:** `.cursor/plans/refined_sweep_rerun_bc8afb8f.plan.md`, `Performance_trajectory_and_hyperparameters.md`
+**Source:** `.cursor/plans/archive/refined_sweep_rerun_bc8afb8f.plan.md`, `Performance_trajectory_and_hyperparameters.md`
 
 **Rationale:** XGBoost tuning: `learning_rate` trades off with `n_estimators`; `subsample`/`colsample_bytree` control overfitting. Random Forest: `n_estimators` and `min_samples_leaf`/`max_depth` are primary levers. Rather than one huge joint grid, use two **local** grids around sensible defaults.
 
@@ -123,7 +123,7 @@ This document traces the evolution of hyperparameter testing in the NBA True Str
 
 ### 2.6 Bayesian tuning (Optuna)
 
-**Source:** `.cursor/plans/model_a_attention_fix_and_phased_roadmap_1e5c219f.plan.md` (“Bayesian tuning (immediately after attention fix)”)
+**Source:** `.cursor/plans/archive/model_a_attention_fix_and_phased_roadmap_1e5c219f.plan.md` (“Bayesian tuning (immediately after attention fix)”)
 
 **Decisions:**
 
@@ -309,7 +309,7 @@ Outputs (per batch): `sweep_results.csv`, `sweep_results_summary.json`, `sweep_c
 
 ## 6. Document History and Related Files
 
-- **Plans:** `.cursor/plans/model_a_attention_fix_and_phased_roadmap_1e5c219f.plan.md`, `refined_sweep_rerun_bc8afb8f.plan.md`, `outputs2_run_019_sweeps_update8_d5fca612.plan.md`, `sweep_rerun_+_attention_check_7aa587c2.plan.md`, `Attention_Report.md`, `Performance_trajectory_and_hyperparameters.md`.
+- **Plans:** `.cursor/plans/archive/model_a_attention_fix_and_phased_roadmap_1e5c219f.plan.md`, `refined_sweep_rerun_bc8afb8f.plan.md`, `outputs2_run_019_sweeps_update8_d5fca612.plan.md`, `sweep_rerun_+_attention_check_7aa587c2.plan.md`, `Attention_Report.md`, `Performance_trajectory_and_hyperparameters.md`.
 - **Sweep analysis:** `outputs2/sweeps/SWEEP_ANALYSIS_REPORT.md`, `outputs4/sweeps/SWEEP_PHASE1_ANALYSIS.md` (Phase 1 + rolling).
 - **Implementation:** `scripts/sweep_hparams.py`, `config/defaults.yaml` (sweep section).
 - **README:** `README.md` (sweep usage and outputs3).
