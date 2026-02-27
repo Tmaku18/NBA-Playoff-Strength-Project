@@ -17,12 +17,14 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 |------|--------|-------------|
 | **Baseline** | **outputs6_baseline** | Phase 1 outcome runs (ListMLE, playoff_outcome, rolling [15,30]; configs from outputs4). Reference for all comparisons. |
 | **Best** | **outputs8_spearman_surrogate** | **Spearman-surrogate** loss, playoff_outcome, 40 Optuna trials. Best Spearman (0.777), playoff_spearman (0.854), rank_mae, rank_rmse, NDCG. Use for production. |
-| **MAP run** | **outputs14_map_run** | Future MAP branch model; per-game evaluation. Config: `config/outputs14_map_run.yaml`. Compare to baseline (outputs6_baseline) and best (outputs8_spearman_surrogate). See [docs/OUTPUTS14_MAP_RUN.md](docs/OUTPUTS14_MAP_RUN.md). |
+| **MAP run** | **outputs14_map_run** | MAP branch model tested (mixed): stronger top-focused NDCG/champion placement, weaker Spearman/rank error than outputs8. Config: `config/outputs14_map_run.yaml`. See [docs/OUTPUTS14_MAP_ANALYSIS.md](docs/OUTPUTS14_MAP_ANALYSIS.md), [docs/OUTPUTS14_MAP_RUN.md](docs/OUTPUTS14_MAP_RUN.md). |
 | **RMSE surrogate** | **outputs13_rmse_surrogate** | **rank_rmse_surrogate** sweep; same setup as outputs8_spearman_surrogate, different loss. Config: `config/outputs13_sweep_rmse_surrogate.yaml`; compare to outputs8_spearman_surrogate. |
 | **Baseline-style + standing rank** | **outputs12_baseline_standing_rank** | Same as baseline config (ListMLE, final_rank, [15,30]) but **standing rank as input** (stat_dim 22). Single run: `config/outputs4_baseline_standing_rank.yaml` → `outputs12_baseline_standing_rank/baseline_standing_rank`. Compare to baseline (outputs6_baseline). |
 | **ListMLE + standing (sweep)** | **outputs11_listmle_standing_rank** | ListMLE sweep with standing rank (Optuna). Compare to **baseline (outputs6_baseline)** and outputs10_spearman_surrogate_standing_rank. |
 
-Each output folder has a **`MODEL.md`** that describes the model that produced those results and the **difference from the previous output** (e.g. `outputs6_baseline/MODEL.md`, `outputs8_spearman_surrogate/MODEL.md`). Folder names use differentiators: **outputs#_&lt;impl&gt;** (e.g. `outputs8_spearman_surrogate`). See [docs/OUTPUT_FOLDER_NAMING.md](docs/OUTPUT_FOLDER_NAMING.md). Full lineup and run commands: **[docs/MODEL_LINEUP_AND_NEXT_STEPS.md](docs/MODEL_LINEUP_AND_NEXT_STEPS.md)**. Official best configs: **[docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md)** and **[docs/OUTPUTS8_SWEEP_ANALYSIS_02-17.md](docs/OUTPUTS8_SWEEP_ANALYSIS_02-17.md)**.
+Outputs retention and gitignore: disposable output roots (all except **outputs8**) have their *files* gitignored; folders are kept via `.gitkeep` so future runs can overwrite. See **[docs/OUTPUTS_RETENTION_NOTES.md](docs/OUTPUTS_RETENTION_NOTES.md)** for the retention run summary and policy.
+
+Each output folder has a **`MODEL.md`** that describes the model that produced those results and the **difference from the previous output** (e.g. `outputs6_baseline/MODEL.md`, `outputs8_spearman_surrogate/MODEL.md`). Folder names use differentiators: **outputs#_&lt;impl&gt;** (e.g. `outputs8_spearman_surrogate`). See [docs/OUTPUT_FOLDER_NAMING.md](docs/OUTPUT_FOLDER_NAMING.md). Full lineup and run commands: **[docs/MODEL_LINEUP_AND_NEXT_STEPS.md](docs/MODEL_LINEUP_AND_NEXT_STEPS.md)**. Official best configs: **[docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md)** and **[docs/OUTPUTS8_SWEEP_ANALYSIS_02-17.md](docs/OUTPUTS8_SWEEP_ANALYSIS_02-17.md)**. MAP findings: **[docs/OUTPUTS14_MAP_ANALYSIS.md](docs/OUTPUTS14_MAP_ANALYSIS.md)**.
 
 **Legacy production defaults (outputs4):** (1) **Standings** — `config/defaults.yaml` (Phase 3 fine NDCG@16 combo 18): listmle_target `final_rank` (playoff standings); combo path `outputs4/sweeps/phase3_fine_ndcg16_final_rank/combo_0018/config.yaml`. (2) **Playoff-outcome** — `config/defaults_playoff_outcome.yaml` (Phase 5 combo 2): listmle_target `playoff_outcome`; use `--config config/defaults_playoff_outcome.yaml` for pipeline or inference. **Latest production run (outputs4):** run_026 — ensemble NDCG@10 0.485, Spearman 0.477, playoff Spearman 0.467, NDCG@16 0.527 (eval: eos_final_rank; 141 train / 36 test dates). **ListMLE outcome vs standings:** In **outputs5/** we compared training Model A (ListMLE) on `playoff_outcome` vs `final_rank` (standings); when evaluated on playoff outcome, **standings-trained** ListMLE matched or beat outcome-trained (e.g. ndcg_standing: Spearman 0.529, playoff Spearman 0.531 vs ndcg_outcome 0.491 / 0.475). See **`outputs/ANALYSIS.md`** for run_026 details and **§ListMLE outcome vs standings**. **Run 021/022** are baseline full-pipeline runs (not sweep-optimized). **Sweep strategy:** Run separate Optuna sweeps with `--objective spearman`, `--objective ndcg4`, `--objective ndcg16`, `--objective ndcg20`, `--objective playoff_spearman`, or `--objective rank_rmse`, then compare best configs. **outputs4/** is the production outputs root (run_025, run_026); **outputs5/** holds outcome vs standings comparison runs. See **`outputs4/sweeps/SWEEP_PHASE1_ANALYSIS.md`**, **`docs/SWEEP_ANALYSIS.md`**, and **`outputs2/run_022/RESULTS_AND_OUTPUTS_EXPLAINED.md`** for sweep and metric definitions.
 
@@ -34,7 +36,7 @@ Each output folder has a **`MODEL.md`** that describes the model that produced t
 
 | Branch | Description |
 |--------|-------------|
-| **main** | Production baseline + standing-rank input feature: current regular-season rank (1–30) is an input feature for Model A, B, and C (`standing_rank_norm`). When predicting playoff rank at end of regular season, this becomes the regular-season final rank. Model A `stat_dim` is 22. Planned (not yet implemented): conference-specific rank 1–15, train East/West separately, then use existing finals logic. See [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md). |
+| **main** | Production baseline. **Standing rank** (`standing_rank_norm`, global 1–30) is an input feature for **Model B (XGB)** / **Model C (RF)** via team-context features; **Model A no longer uses standing rank**. Model A `stat_dim` is **24** (no standing). Planned (not yet implemented): conference-specific rank 1–15, train East/West separately, then use existing finals logic. See [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md). |
 | **feature/listmle-position-aware** | Legacy experiment branch (now archived): position-aware ListMLE (position discount in loss). Standing-rank input has been moved to `main`. See `docs/BRANCH_FEATURE_LISTMLE_POSITION_AWARE_SUMMARY.md`. |
 
 ---
@@ -43,7 +45,7 @@ Each output folder has a **`MODEL.md`** that describes the model that produced t
 - **Target:** Future W/L (next 5) or Final Playoff Seed — **never** efficiency.
 - **True Strength:** Model A produces a latent **Z** (penultimate layer); the **output** `ensemble_score` is the **ensemble** score (RidgeCV blend of A + XGB only) mapped to percentile (0–1 and 0–100). Model C (RF) is not trained in the pipeline by default; when present, it is for analytics/comparison only.
 - **No Net Rating leakage:** `net_rating` is excluded as a model input and never used as a target or evaluation metric (allowed only in baselines).
-- **Standing rank as input:** Current regular-season standing (rank 1–30) is an **input feature** to all models (`standing_rank_norm`). For playoff prediction at end of regular season, the feature is regular-season final rank. See [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md) and § Branches.
+- **Standing rank as input:** Current regular-season standing (rank 1–30) is an **input feature** for **team-context models** (Model B / Model C) via `standing_rank_norm`. Model A does **not** use standing rank. See [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md) and § Branches.
 - **Stacking:** K-fold **OOF** across **all training seasons**; level-2 **RidgeCV** on pooled OOF (2 columns: A + XGB, or **4 columns** when confidence is enabled: \( s_A, s_X, c_A, c_X \)).
 - **Per-instance confidence:** When enabled, Model A confidence comes from **attention entropy** (high entropy = diffuse = high confidence) and **max attention weight** (high max = star-dependent = high risk = low confidence). XGB confidence comes from **tree-level prediction variance** (high variance = low confidence). The meta-learner is trained on these 4 inputs so the more confident model has higher effective weight per team. See [docs/CONFIDENCE_WEIGHTED_ENSEMBLE_OPTIONS.md](docs/CONFIDENCE_WEIGHTED_ENSEMBLE_OPTIONS.md).
 - **Game-level ListMLE:** lists per conference-date/week; **torch.logsumexp** and input clamping for numerical stability; gradient clipping in Model A training; hash-trick embeddings for new players.
@@ -78,7 +80,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 - **Future outcomes:** Brier score.
 - **Sleeper detection:** ROC-AUC on upsets (sleeper = actual rank worse than predicted rank); constant-label guard returns 0.5.
 - **Playoff metrics** (when playoff data and predictions include post_playoff_rank): Spearman (predicted global rank vs playoff_final_results), NDCG@4 (final four), NDCG@10, Brier score on championship odds (one-hot champion vs predicted odds), rank_mae and rank_rmse (pred vs playoff_final_results; eos_standings vs playoff_final_results baseline). Section `playoff_metrics` in `eval_report.json`.
-- **Report:** `eval_report.json` includes `notes` and, when applicable, `playoff_metrics`.
+- **Report:** `eval_report.json` includes `notes` and, when applicable, `playoff_metrics`. **Train / validation / test accuracy** for all models (ensemble, Model A, Model B, Model C) are tracked as `train_metrics_*`, `val_metrics_*`, and `test_metrics_*` when inference is run with `inference.also_train_predictions: true` and `inference.also_validation_predictions: true` (ranking metrics: Spearman, NDCG, rank_mae, rank_rmse, playoff_metrics).
 - **Baselines:** rank-by-SRS, rank-by-Net-Rating, **Dummy** (e.g. previous-season rank or rank-by-net-rating).
 
 ---
@@ -165,7 +167,7 @@ All paths under the configured outputs dir. **outputs/** holds ANALYSIS.md (curr
 - `outputs/run_001/pred_vs_playoff_final_results.png` — predicted global rank (1–30) vs playoff_final_results (1–30).
 - `outputs/run_001/title_contender_scatter.png` — championship odds vs regular-season wins (proxy).
 - `outputs/run_001/odds_top10.png` — top-10 championship odds bar chart.
-- `outputs/shap_summary.png` — Model B (RF) SHAP summary on real team-context features (script 5b).
+- `outputs/shap_summary.png` — Model B (XGBoost) SHAP summary on real team-context features (script 5b).
 - `outputs/ig_model_a_attributions.txt` — Model A Integrated Gradients top-5 player indices by attribution L2 norm (script 5b; requires Captum).
 - `outputs/oof_pooled.parquet`, `outputs/ridgecv_meta.joblib` — stacking meta-learner and pooled OOF (script 4b).
 - `outputs/clone_classifier_report.json`, `outputs/clone_xgb_classifier.joblib` — clone classifier (script 4c).
@@ -196,9 +198,11 @@ Running in **WSL (Ubuntu)** with GPU vs **Windows** can yield different results 
 
 ---
 
-## Recent implementation (Update2 + standing rank)
+## Recent implementation (standing rank + uncertainty intervals)
 
-**Standing rank as input:** Current regular-season standing (1–30) is used as an input to Model A, B, and C. Implemented in `src/features/team_context.py` (`standing_rank_as_of_date`, `standing_rank_norm`), `build_roster_set` (optional `team_standing_rank_norm`), and `build_team_context_as_of_dates`; Model A `stat_dim` is 22. Config: `config/defaults.yaml`; doc: [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md).
+**Standing rank as input:** `standing_rank_norm` (global 1–30, normalized) is used as an input feature for **team-context models** (Model B / Model C) via `src/features/team_context.py`. **Model A does not use standing rank** (removed from roster-set features); Model A `stat_dim` is **24** in `config/defaults.yaml`. Doc: [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md).
+
+**Predicted rank intervals:** `predictions.json` now includes `predicted_strength_low/high` (and plus/minus) for the **ensemble**, and `model_*_rank_low/high` for Models A/B/C, plus any extra team-stats models when enabled. Evaluation writes interval coverage/width into `eval_report.json` under `uncertainty_metrics`. See [docs/UNCERTAINTY_INTERVALS.md](docs/UNCERTAINTY_INTERVALS.md).
 
 **Earlier (Update2):**
 
