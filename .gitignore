@@ -53,6 +53,16 @@ output/15_rmse_surrogate_standing_rank/*
 !output/15_rmse_surrogate_standing_rank/.gitkeep
 output/16_map_standing_rank/*
 !output/16_map_standing_rank/.gitkeep
+output/team_stats_linear_regression/*
+!output/team_stats_linear_regression/.gitkeep
+output/team_stats_bayesian_ridge/*
+!output/team_stats_bayesian_ridge/.gitkeep
+output/team_stats_gpr/*
+!output/team_stats_gpr/.gitkeep
+output/team_stats_gmm/*
+!output/team_stats_gmm/.gitkeep
+output/logistic_regression/*
+!output/logistic_regression/.gitkeep
 output/player_game/*
 !output/player_game/.gitkeep
 output/team_stats_spearman_surrogate/*

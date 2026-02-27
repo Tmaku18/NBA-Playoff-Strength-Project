@@ -1,0 +1,9 @@
+# Wide sweep: outputs to logistic_regression folder. Use for runs that include LR diagnostics or LR-as-model experiments.
+# Same Optuna sweep; write results under output/logistic_regression/sweeps/.
+paths:
+  outputs: "output/logistic_regression"
+
+training:
+  listmle_target: "playoff_outcome"
+  loss_type: "listmle"
+  rolling_windows: [10, 30]

@@ -1,0 +1,12 @@
+# Wide sweep: team-stats GMM enabled. Same Optuna search; also trains/saves GMM team-stats model.
+paths:
+  outputs: "output/team_stats_gmm"
+
+training:
+  train_team_stats_linear: false
+  train_team_stats_bayesian_ridge: false
+  train_team_stats_gpr: false
+  train_team_stats_gmm: true
+  listmle_target: "playoff_outcome"
+  loss_type: "listmle"
+  rolling_windows: [10, 30]

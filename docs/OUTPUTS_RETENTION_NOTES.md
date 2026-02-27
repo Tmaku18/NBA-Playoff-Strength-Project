@@ -32,7 +32,7 @@ Run: `python -m scripts.retain_top3_worst1_rmse` (dry-run then execute).
 | 4_listmle | wsl_playoff_spearman | 4 | 0 |
 | 7_listmle | 20260217_124115 | 4 | 0 |
 | 7_listmle | 20260217_235940 | 4 | 0 |
-| 9_listmle | outputs9_listmle_spearman | 4 | 0 |
+| 9_listmle | listmle_spearman_40 | 4 | 0 |
 | **Total** | 18 batches | **64** | **0** |
 
 No batch had more than four combos, so nothing was deleted; all existing combos were within the “top 3 + worst 1” allowance.

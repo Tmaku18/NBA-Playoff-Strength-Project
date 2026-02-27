@@ -1,0 +1,12 @@
+# Wide sweep: team-stats BayesianRidge enabled. Same Optuna search; also trains/saves Bayesian Ridge team-stats model.
+paths:
+  outputs: "output/team_stats_bayesian_ridge"
+
+training:
+  train_team_stats_linear: false
+  train_team_stats_bayesian_ridge: true
+  train_team_stats_gpr: false
+  train_team_stats_gmm: false
+  listmle_target: "playoff_outcome"
+  loss_type: "listmle"
+  rolling_windows: [10, 30]

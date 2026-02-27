@@ -27,5 +27,10 @@ Output folders under **`output/`** use **model-based names** so you can tell at 
 | player_game | Per-game prediction artifacts. |
 | team_stats_spearman_surrogate | Team-stats + Spearman surrogate. |
 | team_stats_listmle | Team-stats + ListMLE (branch feature/team-stats-listmle). |
+| team_stats_linear_regression | Team-stats track: Linear Regression (config: `training.train_team_stats_linear`). |
+| team_stats_bayesian_ridge | Team-stats track: BayesianRidge (config: `training.train_team_stats_bayesian_ridge`). |
+| team_stats_gpr | Team-stats track: Gaussian Process Regression, kernel sweep (config: `training.train_team_stats_gpr`). |
+| team_stats_gmm | Team-stats track: Gaussian Mixture Model (config: `training.train_team_stats_gmm`). |
+| logistic_regression | Logistic Regression (e.g. Model C–style diagnostics / binarized strength; `src/models/lr_model.py`). |
 
 Configs set `paths.outputs` to these paths (e.g. `output/8_spearman_surrogate`, `output/4_listmle`).

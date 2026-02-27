@@ -52,19 +52,19 @@ So any run that uses “defaults + overlay” without explicitly fixing these wi
 
 ## 4. Outputs and whether they match best run
 
-### 4.1 outputs8 (canonical best)
+### 4.1 8_spearman_surrogate (canonical best)
 
 | What | Config source | Comparable to best? |
 |------|----------------|---------------------|
 | **output/8_spearman_surrogate/sweeps/20260217_042955/** (combo_0032, combo_0033, combo_0038, etc.) | Sweep from **2026-02-17** (batch 20260217_042955); base config at that time matched Spearman-surrogate, playoff_outcome, rolling [10,30], 12 seasons. Optuna chose combo_0033 for Spearman. | **Yes.** This *is* the best run. |
 
-### 4.2 outputs8_spearman_surrogate (new batch)
+### 4.2 8_spearman_surrogate_sweep (new batch)
 
 | What | Config source | Comparable to best? |
 |------|----------------|---------------------|
 | **output/8_spearman_surrogate_sweep/sweeps/20260226_233831/** | Sweep run with **current** defaults + sweep overlay. Base = defaults (listmle, final_rank, rolling [15,30], stat_dim 24, epochs 27, etc.) plus **feature_subset_model_a** phase (Optuna over Model A stat columns). Configs have 50-year seasons, `player_stat_cols`, stat_dim 15, epochs 26, different XGB params. | **No.** Different experiment (Model A feature selection). Different base (current defaults), different loss/target/rolling if overlay didn’t override everything. |
 
-So the **new** outputs8_spearman_surrogate batch is **not** a replication of the best run; it’s a different sweep (feature_subset_model_a) on top of current defaults.
+So the **new** 8_spearman_surrogate_sweep batch is **not** a replication of the best run; it’s a different sweep (feature_subset_model_a) on top of current defaults.
 
 ### 4.3 outputs_team_stats_spearman_surrogate (run_001 / run_026)
 
@@ -74,16 +74,16 @@ So the **new** outputs8_spearman_surrogate batch is **not** a replication of the
 
 So the team_stats run was **not** “best run + team stats”; it was “defaults + team_stats overlay,” which is not comparable.
 
-### 4.4 outputs13_rmse_surrogate
+### 4.4 13_rmse_surrogate
 
 | What | Config source | Comparable to best? |
 |------|----------------|---------------------|
 | **output/13_rmse_surrogate/sweeps/rmse_surrogate_40/** | Sweep with **rank_rmse_surrogate** loss. Optuna chose different model_a/model_b (e.g. combo_0004: stat_dim 22, epochs 22, XGB 258/4/0.08). | **No.** Intentionally different **loss** (RMSE surrogate) and different hyperparameters. |
 
-### 4.5 outputs4, outputs7, etc.
+### 4.5 4_listmle, 7_listmle, etc.
 
-- **outputs4:** Various phases; base was older defaults (listmle, final_rank or playoff_outcome, rolling [15,30] or similar). Not the Spearman-surrogate best run.
-- **outputs7:** ListMLE sweep (same loss family as older runs), rolling [10,30]; not Spearman-surrogate. See [OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md](OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md).
+- **4_listmle:** Various phases; base was older defaults (listmle, final_rank or playoff_outcome, rolling [15,30] or similar). Not the Spearman-surrogate best run. Path: `output/4_listmle`.
+- **7_listmle:** ListMLE sweep (same loss family as older runs), rolling [10,30]; not Spearman-surrogate. Path: `output/7_listmle`. See [OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md](OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md).
 
 So: **only output/8_spearman_surrogate/sweeps/20260217_042955 (e.g. combo_0033) is the official best-run config.**
 
@@ -92,7 +92,7 @@ So: **only output/8_spearman_surrogate/sweeps/20260217_042955 (e.g. combo_0033) 
 ## 5. How many runs have different configs?
 
 - **Same as best run:** Only runs that explicitly use **`output/8_spearman_surrogate/sweeps/20260217_042955/combo_0033/config.yaml`** (or an exact copy of that config).
-- **Different by design:** All of outputs13 (RMSE surrogate), outputs_team_stats (team-stats experiment), outputs8_spearman_surrogate 20260226 (feature_subset_model_a), and other sweeps that use a different loss/phase/base.
+- **Different by design:** All of 13_rmse_surrogate (RMSE surrogate), team_stats_spearman_surrogate (team-stats experiment), 8_spearman_surrogate_sweep 20260226 (feature_subset_model_a), and other sweeps that use a different loss/phase/base.
 - **Different because base = defaults:** Any pipeline run that used only an overlay (e.g. team_stats_spearman_surrogate) got **defaults** for everything not in the overlay (epochs, model_b, etc.), so not comparable.
 
 So: **most recent runs you have are not comparable to the best run** — either they use a different loss/experiment or they use current defaults as base instead of the best-run config.
@@ -105,11 +105,11 @@ So: **most recent runs you have are not comparable to the best run** — either 
 - **How to run comparable to best:**
   1. Use the **best-run config file** as the single source of truth for training/inference:
      ```bash
-     python -m scripts.run_pipeline_from_model_a --config "outputs8/sweeps/20260217_042955/combo_0033/config.yaml" --outputs "output/8_spearman_surrogate_sweep/official_best_spearman"
+     python -m scripts.run_pipeline_from_model_a --config "output/8_spearman_surrogate/sweeps/20260217_042955/combo_0033/config.yaml" --outputs "output/8_spearman_surrogate_sweep/official_best_spearman"
      ```
      Do **not** pass an overlay that gets merged with defaults; pass the **full** combo_0033 config (and only override `paths.outputs` via `--outputs` if needed).
   2. For a **new experiment** (e.g. team stats) that you want comparable to best: start from the **best-run config**, not defaults. For example:
-     - Copy `outputs8/sweeps/20260217_042955/combo_0033/config.yaml` to something like `config/best_run_plus_team_stats.yaml`.
+     - Copy `output/8_spearman_surrogate/sweeps/20260217_042955/combo_0033/config.yaml` to something like `config/best_run_plus_team_stats.yaml`.
      - Change only what the experiment needs: e.g. `paths.outputs`, `model_a.stat_dim`, `model_a.use_team_stats: true`, `model_a.team_stats_cols`.
      - Run with `--config config/best_run_plus_team_stats.yaml` and no merge with defaults (or use a script that loads combo_0033 and then applies only the small overlay).
 
