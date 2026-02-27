@@ -36,7 +36,7 @@ Each output folder has a **`MODEL.md`** that describes the model that produced t
 
 | Branch | Description |
 |--------|-------------|
-| **main** | Production baseline + standing-rank input feature: current regular-season rank (1–30) is an input feature for Model A, B, and C (`standing_rank_norm`). When predicting playoff rank at end of regular season, this becomes the regular-season final rank. Model A `stat_dim` is 22. Planned (not yet implemented): conference-specific rank 1–15, train East/West separately, then use existing finals logic. See [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md). |
+| **main** | Production baseline. **Standing rank** (`standing_rank_norm`, global 1–30) is an input feature for **Model B (XGB)** / **Model C (RF)** via team-context features; **Model A no longer uses standing rank**. Model A `stat_dim` is **24** (no standing). Planned (not yet implemented): conference-specific rank 1–15, train East/West separately, then use existing finals logic. See [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md). |
 | **feature/listmle-position-aware** | Legacy experiment branch (now archived): position-aware ListMLE (position discount in loss). Standing-rank input has been moved to `main`. See `docs/BRANCH_FEATURE_LISTMLE_POSITION_AWARE_SUMMARY.md`. |
 
 ---
@@ -45,7 +45,7 @@ Each output folder has a **`MODEL.md`** that describes the model that produced t
 - **Target:** Future W/L (next 5) or Final Playoff Seed — **never** efficiency.
 - **True Strength:** Model A produces a latent **Z** (penultimate layer); the **output** `ensemble_score` is the **ensemble** score (RidgeCV blend of A + XGB only) mapped to percentile (0–1 and 0–100). Model C (RF) is not trained in the pipeline by default; when present, it is for analytics/comparison only.
 - **No Net Rating leakage:** `net_rating` is excluded as a model input and never used as a target or evaluation metric (allowed only in baselines).
-- **Standing rank as input:** Current regular-season standing (rank 1–30) is an **input feature** to all models (`standing_rank_norm`). For playoff prediction at end of regular season, the feature is regular-season final rank. See [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md) and § Branches.
+- **Standing rank as input:** Current regular-season standing (rank 1–30) is an **input feature** for **team-context models** (Model B / Model C) via `standing_rank_norm`. Model A does **not** use standing rank. See [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md) and § Branches.
 - **Stacking:** K-fold **OOF** across **all training seasons**; level-2 **RidgeCV** on pooled OOF (2 columns: A + XGB, or **4 columns** when confidence is enabled: \( s_A, s_X, c_A, c_X \)).
 - **Per-instance confidence:** When enabled, Model A confidence comes from **attention entropy** (high entropy = diffuse = high confidence) and **max attention weight** (high max = star-dependent = high risk = low confidence). XGB confidence comes from **tree-level prediction variance** (high variance = low confidence). The meta-learner is trained on these 4 inputs so the more confident model has higher effective weight per team. See [docs/CONFIDENCE_WEIGHTED_ENSEMBLE_OPTIONS.md](docs/CONFIDENCE_WEIGHTED_ENSEMBLE_OPTIONS.md).
 - **Game-level ListMLE:** lists per conference-date/week; **torch.logsumexp** and input clamping for numerical stability; gradient clipping in Model A training; hash-trick embeddings for new players.
@@ -80,7 +80,7 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 - **Future outcomes:** Brier score.
 - **Sleeper detection:** ROC-AUC on upsets (sleeper = actual rank worse than predicted rank); constant-label guard returns 0.5.
 - **Playoff metrics** (when playoff data and predictions include post_playoff_rank): Spearman (predicted global rank vs playoff_final_results), NDCG@4 (final four), NDCG@10, Brier score on championship odds (one-hot champion vs predicted odds), rank_mae and rank_rmse (pred vs playoff_final_results; eos_standings vs playoff_final_results baseline). Section `playoff_metrics` in `eval_report.json`.
-- **Report:** `eval_report.json` includes `notes` and, when applicable, `playoff_metrics`.
+- **Report:** `eval_report.json` includes `notes` and, when applicable, `playoff_metrics`. **Train / validation / test accuracy** for all models (ensemble, Model A, Model B, Model C) are tracked as `train_metrics_*`, `val_metrics_*`, and `test_metrics_*` when inference is run with `inference.also_train_predictions: true` and `inference.also_validation_predictions: true` (ranking metrics: Spearman, NDCG, rank_mae, rank_rmse, playoff_metrics).
 - **Baselines:** rank-by-SRS, rank-by-Net-Rating, **Dummy** (e.g. previous-season rank or rank-by-net-rating).
 
 ---
@@ -198,9 +198,11 @@ Running in **WSL (Ubuntu)** with GPU vs **Windows** can yield different results 
 
 ---
 
-## Recent implementation (Update2 + standing rank)
+## Recent implementation (standing rank + uncertainty intervals)
 
-**Standing rank as input:** Current regular-season standing (1–30) is used as an input to Model A, B, and C. Implemented in `src/features/team_context.py` (`standing_rank_as_of_date`, `standing_rank_norm`), `build_roster_set` (optional `team_standing_rank_norm`), and `build_team_context_as_of_dates`; Model A `stat_dim` is 22. Config: `config/defaults.yaml`; doc: [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md).
+**Standing rank as input:** `standing_rank_norm` (global 1–30, normalized) is used as an input feature for **team-context models** (Model B / Model C) via `src/features/team_context.py`. **Model A does not use standing rank** (removed from roster-set features); Model A `stat_dim` is **24** in `config/defaults.yaml`. Doc: [docs/STANDING_RANK_FEATURE.md](docs/STANDING_RANK_FEATURE.md).
+
+**Predicted rank intervals:** `predictions.json` now includes `predicted_strength_low/high` (and plus/minus) for the **ensemble**, and `model_*_rank_low/high` for Models A/B/C, plus any extra team-stats models when enabled. Evaluation writes interval coverage/width into `eval_report.json` under `uncertainty_metrics`. See [docs/UNCERTAINTY_INTERVALS.md](docs/UNCERTAINTY_INTERVALS.md).
 
 **Earlier (Update2):**
 
