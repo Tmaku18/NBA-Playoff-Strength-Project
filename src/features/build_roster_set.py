@@ -146,13 +146,15 @@ def build_roster_set(
     stat_cols: list[str] | None = None,
     num_embeddings: int = 500,
     team_continuity_scalar: float | None = None,
+    team_standing_rank_norm: float | None = None,
 ) -> tuple[list[int], list[list[float]], list[float], list[bool]]:
     """
     From roster_df (top-N from get_roster_as_of_date) and player_stats (rolling stats keyed by player_id),
     build:
     - embedding_indices: list of length n_pad (hash_trick for each player; 0 for padding)
     - player_stats_matrix: list of n_pad lists of stat values (0 for padding); includes team_continuity_scalar
-      as extra stat when provided (e.g. pct_min_returning).
+      as extra stat when provided (e.g. pct_min_returning), and optional team_standing_rank_norm (current
+      regular-season standing rank as input, 1=best).
     - minutes_weights: list of n_pad (e.g. total_min/max or 0 for padding)
     - key_padding_mask: list of n_pad bools, True = ignore (padded), False = valid
     """
@@ -171,6 +173,7 @@ def build_roster_set(
     key_padding_mask: list[bool] = []
 
     pct_min = float(team_continuity_scalar) if team_continuity_scalar is not None else 0.0
+    standing_norm = float(team_standing_rank_norm) if team_standing_rank_norm is not None else 0.0
     max_min = float(roster_df["total_min"].max()) if "total_min" in roster_df.columns and len(roster_df) else 1.0
     valid_count = len(order)
     rank_denom = max(valid_count - 1, 1)
@@ -179,6 +182,7 @@ def build_roster_set(
         r = player_stats[player_stats[player_id_col] == pid]
         vec = [float(r[c].iloc[0]) if c in r.columns and len(r) and pd.notna(r[c].iloc[0]) else 0.0 for c in stat_cols]
         vec.append(pct_min)  # team_continuity_scalar (e.g. pct_min_returning) per team
+        vec.append(standing_norm)  # team_standing_rank_norm (current regular-season standing as input)
         m = float(roster_df.loc[roster_df["player_id"] == pid, "total_min"].iloc[0]) if pid in roster_df["player_id"].values else 0.0
         minutes_norm = m / max_min if max_min else 0.0
         minutes_weights.append(minutes_norm)
@@ -188,7 +192,7 @@ def build_roster_set(
         rows.append(vec)
         key_padding_mask.append(False)
 
-    stat_len = len(stat_cols) + 4  # +1 team continuity + 3 usage/positional features
+    stat_len = len(stat_cols) + 5  # +1 team continuity +1 standing_rank_norm + 3 usage/positional features
     for _ in range(pad):
         embedding_indices.append(num_embeddings)  # padding index, distinct from hash range [0, num_embeddings-1]
         rows.append([0.0] * stat_len)

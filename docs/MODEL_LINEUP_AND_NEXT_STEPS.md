@@ -13,7 +13,7 @@
 | **Baseline** | **outputs6_baseline** (phase_1 outcome) | Phase 1 outcome runs: ListMLE, playoff_outcome, rolling [15,30]; configs from outputs4. Reference for all comparisons. |
 | **Best** | **outputs8_spearman_surrogate** (e.g. combo_0033 / combo_0038) | **Spearman-surrogate** loss, playoff_outcome, rolling [10,30]. Best Spearman / playoff_spearman / rank_mae / rank_rmse. See [OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md). |
 | **MAP run** | **outputs14_map_run** (`config/outputs14_map_run.yaml`) | Future MAP branch model; per-game evaluation. Compare to baseline (outputs6_baseline) and best (outputs8_spearman_surrogate). See [OUTPUTS14_MAP_RUN.md](OUTPUTS14_MAP_RUN.md). |
-| **RMSE surrogate** | **outputs13_rmse_surrogate** (`config/outputs13_sweep_rmse_surrogate.yaml`) | Same as outputs8_spearman_surrogate but **rank_rmse_surrogate** loss; Optuna minimizes rank_rmse. Compare to outputs8_spearman_surrogate. See [OUTPUTS13_RMSE_SURROGATE_SWEEP.md](OUTPUTS13_RMSE_SURROGATE_SWEEP.md). |
+| **RMSE surrogate** | **outputs13_rmse_surrogate** | **Not recommended.** Tested (sweep + 80-epoch run); underperformed Spearman surrogate. See [RMSE_SURROGATE_FINDINGS.md](RMSE_SURROGATE_FINDINGS.md), [OUTPUTS13_RMSE_SURROGATE_SWEEP.md](OUTPUTS13_RMSE_SURROGATE_SWEEP.md). |
 | **RMSE surrogate + standing rank** | **outputs15_rmse_surrogate_standing_rank** (`config/outputs15_sweep_rmse_surrogate_standing_rank.yaml`) | RMSE surrogate sweep with **standing rank as input**. Compare to outputs13_rmse_surrogate (no standing). See [OUTPUTS15_RMSE_SURROGATE_STANDING_RANK.md](OUTPUTS15_RMSE_SURROGATE_STANDING_RANK.md). |
 | **Baseline-style + standing rank** | **outputs12_baseline_standing_rank** (`config/outputs4_baseline_standing_rank.yaml`) | Same as baseline config (ListMLE, final_rank, [15,30]) but with **standing rank as input** (stat_dim 22). Single run. Compare to **baseline (outputs6_baseline)**. |
 | **ListMLE + standing (sweep)** | **outputs11_listmle_standing_rank** | ListMLE loss, playoff_outcome, standing rank; Optuna sweep. Compare to **baseline (outputs6_baseline)** and outputs10_spearman_surrogate_standing_rank. |
@@ -24,7 +24,7 @@
 ## Still to test
 
 1. **MAP branch model** — run with `config/outputs14_map_run.yaml` → **outputs14_map_run**; test and run **per-game** evaluation; compare to baseline (outputs6_baseline) and best (outputs8_spearman_surrogate).
-2. **RMSE surrogate** — run the **outputs13_rmse_surrogate** sweep: `config/outputs13_sweep_rmse_surrogate.yaml`, `--objective rank_rmse`, then compare to Spearman-surrogate best (outputs8_spearman_surrogate).
+2. **RMSE surrogate** — *Done.* Not recommended; see [RMSE_SURROGATE_FINDINGS.md](RMSE_SURROGATE_FINDINGS.md).
 3. **Baseline-style + standing rank** — single pipeline run with `config/outputs4_baseline_standing_rank.yaml` → `outputs12_baseline_standing_rank/baseline_standing_rank`; compare metrics to **baseline (outputs6_baseline)**.
 
 ---

@@ -60,7 +60,8 @@ class SetAttention(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         x: (B, P, D). key_padding_mask: (B, P) bool, True = ignore.
-        minutes: (B, P) optional weights. Returns (out, attn_weights).
+        minutes: (B, P) optional weights. temperature_override: if set, use for softmax instead of self.attention_temperature.
+        Returns (out, attn_weights).
         """
         B, P, D = x.shape
         H, d = self.num_heads, self.head_dim
@@ -89,8 +90,7 @@ class SetAttention(nn.Module):
                 key_padding_mask.unsqueeze(1).unsqueeze(2),
                 float("-inf"),
             )
-        temp = float(temperature_override) if temperature_override is not None else float(self.attention_temperature)
-        temp = max(1e-6, temp)
+        temp = temperature_override if temperature_override is not None else self.attention_temperature
         w = F.softmax(scores / temp, dim=-1)
         w = F.dropout(w, p=self.dropout_p, training=self.training)
         # out (B, H, 1, d)

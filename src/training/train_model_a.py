@@ -408,8 +408,10 @@ def train_model_a_on_batches(
     max_epochs: int | None = None,
     *,
     val_batches: list[dict] | None = None,
+    loss_log_path: Path | str | None = None,
 ) -> nn.Module:
-    """Train Model A on given batches; return the model (do not save). For OOF fold training."""
+    """Train Model A on given batches; return the model (do not save). For OOF fold training.
+    If loss_log_path is set, append epoch,loss(,val_loss) to that CSV for inspection."""
     ma = config.get("model_a", {})
     training = config.get("training", {})
     loss_type = str(training.get("loss_type", "listmle"))
@@ -440,6 +442,11 @@ def train_model_a_on_batches(
     bad_epochs = 0
     best_train_loss = float("inf")
     train_no_improve = 0
+    log_path = Path(loss_log_path) if loss_log_path else None
+    if log_path:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        if not log_path.exists():
+            log_path.write_text("epoch,train_loss,val_loss\n", encoding="utf-8")
     for epoch in range(epochs):
         loss = train_epoch(
             model,
@@ -454,6 +461,15 @@ def train_model_a_on_batches(
             loss_tau=loss_tau,
         )
         print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
+        val_loss_this = None
+        if use_early and val_batches:
+            val_loss_this = eval_epoch(model, val_batches, device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau)
+            if epoch == 0 or (epoch + 1) % 5 == 0:
+                print(f"  val_loss={val_loss_this:.4f}", flush=True)
+        if log_path:
+            val_str = f"{val_loss_this:.6f}" if val_loss_this is not None else ""
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"{epoch+1},{loss:.6f},{val_str}\n")
         if loss < best_train_loss:
             best_train_loss = loss
             train_no_improve = 0
@@ -469,7 +485,7 @@ def train_model_a_on_batches(
                     pass
             break
         if use_early:
-            val_loss = eval_epoch(model, val_batches or [], device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau)
+            val_loss = val_loss_this if val_loss_this is not None else eval_epoch(model, val_batches or [], device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau)
             if val_loss + min_delta < best_val:
                 best_val = val_loss
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
