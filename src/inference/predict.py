@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -560,7 +561,65 @@ def run_inference_from_db(
     if not test_specs:
         test_specs = [(dates_sorted[-1] if dates_sorted else None, lists[-1:] if lists else [], "predictions.json", None)]
 
-    def _run_inference_for_spec(target_date: str | None, target_lists: list, output_file: str, season: str | None, *, draw_figures: bool = True) -> Path:
+    # Collect all (team_id, as_of_date) from all specs and build features once (or load from cache)
+    def _inference_feature_cache_key(cfg: dict, path: Path, team_dates_hash: str) -> str | None:
+        cache_dir = cfg.get("paths", {}).get("feature_cache")
+        if not cache_dir or (isinstance(cache_dir, str) and cache_dir.strip().lower() in ("null", "")):
+            return None
+        model_b = cfg.get("model_b", {})
+        key_data = {
+            "include_features": tuple(model_b.get("include_features") or []),
+            "exclude_features": tuple(model_b.get("exclude_features") or []),
+            "elo": bool(cfg.get("elo", {}).get("enabled", False)),
+            "massey": bool(cfg.get("massey", {}).get("enabled", False)),
+            "team_rolling": bool(cfg.get("team_rolling", {}).get("enabled", True)),
+            "team_dates_hash": team_dates_hash,
+            "db": str(path.resolve()),
+        }
+        if path.exists():
+            st = path.stat()
+            key_data["db_mtime"], key_data["db_size"] = st.st_mtime, st.st_size
+        return hashlib.sha256(json.dumps(key_data, sort_keys=True, default=str).encode()).hexdigest()[:20]
+
+    all_specs = test_specs + train_specs + val_specs
+    team_id_to_as_of_all: dict[int, str] = {}
+    for _date, target_lists, _file, _season in all_specs:
+        for lst in target_lists:
+            for tid in lst.get("team_ids", []):
+                tid = int(tid)
+                if tid not in team_id_to_as_of_all:
+                    team_id_to_as_of_all[tid] = lst.get("as_of_date", _date or "")
+    team_dates_all = [(tid, team_id_to_as_of_all[tid]) for tid in sorted(team_id_to_as_of_all)]
+    team_dates_hash = hashlib.sha256(json.dumps(team_dates_all, sort_keys=True).encode()).hexdigest()[:16]
+
+    feat_df_all: pd.DataFrame | None = None
+    cache_dir_raw = config.get("paths", {}).get("feature_cache")
+    cache_dir = None
+    if cache_dir_raw and isinstance(cache_dir_raw, str) and cache_dir_raw.strip().lower() not in ("null", ""):
+        cache_dir = Path(cache_dir_raw)
+        if not cache_dir.is_absolute():
+            cache_dir = Path(__file__).resolve().parents[2] / cache_dir
+    cache_key = _inference_feature_cache_key(config, db_path, team_dates_hash) if cache_dir else None
+    cache_file = (cache_dir / f"inf_{cache_key}.parquet") if cache_dir and cache_key else None
+    if cache_file and cache_file.exists():
+        try:
+            feat_df_all = pd.read_parquet(cache_file)
+            feat_df_all["team_id"] = feat_df_all["team_id"].astype(int)
+            feat_df_all["as_of_date"] = feat_df_all["as_of_date"].astype(str)
+        except Exception:
+            feat_df_all = None
+    if feat_df_all is None and team_dates_all:
+        feat_df_all = build_team_context_as_of_dates(
+            tgl, games, team_dates_all, config=config, teams=teams, pgl=pgl,
+        )
+        if cache_dir and cache_key and not feat_df_all.empty:
+            try:
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                feat_df_all.to_parquet(cache_dir / f"inf_{cache_key}.parquet", index=False)
+            except Exception:
+                pass
+
+    def _run_inference_for_spec(target_date: str | None, target_lists: list, output_file: str, season: str | None, *, draw_figures: bool = True, feat_df_all: pd.DataFrame | None = None) -> Path:
         pj = out / output_file
         fig_suffix = f"_{season}" if season else ""
 
@@ -754,10 +813,16 @@ def run_inference_from_db(
         conf_xgb_arr = np.full(len(unique_team_ids), 0.5, dtype=np.float32)
         extra_scores: dict[str, np.ndarray] = {k: np.zeros(len(unique_team_ids), dtype=np.float32) for k in extra_models.keys()}
         extra_stds: dict[str, np.ndarray] = {k: np.zeros(len(unique_team_ids), dtype=np.float32) for k in extra_models.keys()}
-        feat_df = build_team_context_as_of_dates(
-            tgl, games, team_dates,
-            config=config, teams=teams, pgl=pgl,
-        )
+        if feat_df_all is not None and not feat_df_all.empty:
+            td_df = pd.DataFrame(team_dates, columns=["team_id", "as_of_date"])
+            td_df["team_id"] = td_df["team_id"].astype(int)
+            td_df["as_of_date"] = td_df["as_of_date"].astype(str)
+            feat_df = feat_df_all.merge(td_df, on=["team_id", "as_of_date"], how="inner")
+        else:
+            feat_df = build_team_context_as_of_dates(
+                tgl, games, team_dates,
+                config=config, teams=teams, pgl=pgl,
+            )
         # Optional: include Model A score as an extra feature for team-stats models.
         tsm_cfg = config.get("team_stats_models", {}) or {}
         if bool(tsm_cfg.get("include_model_a_score", False)) and not feat_df.empty:
@@ -1206,14 +1271,14 @@ def run_inference_from_db(
 
     last_pj = None
     for target_date, target_lists, output_file, season in test_specs:
-        last_pj = _run_inference_for_spec(target_date, target_lists, output_file, season, draw_figures=True)
+        last_pj = _run_inference_for_spec(target_date, target_lists, output_file, season, draw_figures=True, feat_df_all=feat_df_all)
     if last_pj is not None and last_pj.name != "predictions.json":
         import shutil
         shutil.copy(last_pj, out / "predictions.json")
     for target_date, target_lists, output_file, _ in train_specs:
-        _run_inference_for_spec(target_date, target_lists, output_file, None, draw_figures=False)
+        _run_inference_for_spec(target_date, target_lists, output_file, None, draw_figures=False, feat_df_all=feat_df_all)
     for target_date, target_lists, output_file, _ in val_specs:
-        _run_inference_for_spec(target_date, target_lists, output_file, None, draw_figures=False)
+        _run_inference_for_spec(target_date, target_lists, output_file, None, draw_figures=False, feat_df_all=feat_df_all)
 
     return last_pj if last_pj is not None else out / "predictions.json"
 

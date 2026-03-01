@@ -155,7 +155,10 @@ paths:
   raw: data/raw
   processed: data/processed
   outputs: output/4_listmle
-  batch_cache: null
+  # Batch cache (script 3): reuse built batches across combos when config/DB unchanged. Set null to disable.
+  batch_cache: data/processed/batch_cache
+  # Feature cache (script 4): reuse build_team_context_as_of_dates output. Set null to disable.
+  feature_cache: data/processed/feature_cache
 build_db:
   skip_if_exists: true
 repro:

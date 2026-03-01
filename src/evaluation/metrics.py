@@ -26,19 +26,47 @@ def ndcg_score(y_true: np.ndarray, y_score: np.ndarray, k: int | None = None) ->
     return float(dcg / idcg)
 
 
+def _check_constant_correlation_inputs(
+    y_true: np.ndarray, y_score: np.ndarray
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """Prepare arrays and return None if correlation is undefined (constant input). Else return (y_true_clean, y_score_clean)."""
+    y_true = np.asarray(y_true, dtype=float).ravel()
+    y_score = np.asarray(y_score, dtype=float).ravel()
+    mask = ~(np.isnan(y_true) | np.isnan(y_score))
+    if mask.sum() < 2:
+        return None
+    y_true = y_true[mask]
+    y_score = y_score[mask]
+    if np.std(y_true) == 0 or np.std(y_score) == 0:
+        return None
+    return (y_true, y_score)
+
+
 def spearman(y_true: np.ndarray, y_score: np.ndarray) -> float:
-    r, _ = spearmanr(y_true, y_score, nan_policy="omit")
+    cleaned = _check_constant_correlation_inputs(y_true, y_score)
+    if cleaned is None:
+        return 0.0
+    y_true, y_score = cleaned
+    r, _ = spearmanr(y_true, y_score)
     return float(r) if np.isfinite(r) else 0.0
 
 
 def kendall_tau(y_true: np.ndarray, y_score: np.ndarray) -> float:
     """Kendall rank correlation (concordant/discordant pairs). Same sign convention as Spearman."""
-    r, _ = scipy_kendalltau(y_true, y_score, nan_policy="omit")
+    cleaned = _check_constant_correlation_inputs(y_true, y_score)
+    if cleaned is None:
+        return 0.0
+    y_true, y_score = cleaned
+    r, _ = scipy_kendalltau(y_true, y_score)
     return float(r) if np.isfinite(r) else 0.0
 
 
 def pearson(y_true: np.ndarray, y_score: np.ndarray) -> float:
     """Pearson linear correlation. Complements Spearman (monotonic) when relationship is roughly linear."""
+    cleaned = _check_constant_correlation_inputs(y_true, y_score)
+    if cleaned is None:
+        return 0.0
+    y_true, y_score = cleaned
     r, _ = pearsonr(y_true, y_score)
     return float(r) if np.isfinite(r) else 0.0
 

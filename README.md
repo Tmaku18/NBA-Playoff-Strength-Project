@@ -137,9 +137,12 @@ Used for training (optional) and evaluation when playoff data exists. **Phase 1:
 | Optimization | What it does | Speed effect |
 |--------------|--------------|--------------|
 | **AMP (Model A)** | Automatic Mixed Precision: model forward runs in float16 on CUDA; loss stays float32. Config: `model_a.use_amp: true` (default). | ~20–35% faster per epoch; ~1–2.5 min saved per trial on GPU. |
-| **Batch cache (script 3)** | Caches built lists and batches (keyed by config + DB); reused when same listmle_target, rolling_windows, train_seasons, etc. Config: `paths.batch_cache` (default `data/processed/batch_cache`). | First trial builds; subsequent trials skip list/batch building → ~1–3 min saved per trial. 12-trial sweep: ~11–33 min saved. |
+| **Batch cache (script 3)** | Caches built lists and batches (keyed by config + DB); reused when same listmle_target, rolling_windows, train_seasons, etc. Config: `paths.batch_cache` (default `data/processed/batch_cache`). Set to `null` to disable. | First trial builds; subsequent trials skip list/batch building → ~1–3 min saved per trial. 12-trial sweep: ~11–33 min saved. |
+| **Feature cache (script 4)** | Caches `build_team_context_as_of_dates` output (keyed by config + DB + team_dates). Config: `paths.feature_cache` (default `data/processed/feature_cache`). Set to `null` to disable. | Second and later combos in a sweep skip re-building team-context features → ~30 s–2 min saved per trial when many combos share the same data config. |
+| **DB load (in-process)** | `load_training_data` and `load_playoff_data` are memoized by (db_path, mtime) in `src.data.db_loader`. | Repeated calls in the same process (e.g. script 3 then 4 in same run) do not re-read the DB. |
+| **Inference feature cache** | `run_inference_from_db` builds team-context features once for the union of all target specs and reuses `paths.feature_cache` (same key as script 4). Re-running script 6 with same config/DB loads from cache. | Second and later inference runs skip re-building features; multiple target dates in one run share a single feature build. |
 
-**Combined effect:** A 12-trial sweep that used to take ~3 hours may complete in ~2–2.5 hours (~15–35% faster) with AMP + batch cache enabled on CUDA.
+**Combined effect:** A 12-trial sweep that used to take ~3 hours may complete in ~2–2.5 hours (~15–35% faster) with AMP + batch cache enabled on CUDA. With feature cache enabled, script 4 is faster on combos 2–N when data config is unchanged. Inference (script 6) reuses the same cache for faster re-runs.
 
 **Perfect run checklist (workspace or worktree):**
 - **DB:** `config.paths.db` must point to an existing DuckDB with `playoff_games` and `playoff_team_game_logs` (or set `inference.require_eos_final_rank: false` to allow standings-only).
