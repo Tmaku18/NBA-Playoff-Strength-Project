@@ -1,0 +1,27 @@
+# Canonical config for branch feature/team-stats-listmle:
+# Matches outputs7 best setup (ListMLE, playoff_outcome, rolling [10,30]).
+# Model A with standing rank as team-stat input; same loss/target/rolling as outputs7 combo 17.
+#
+# For exact outputs7 best (no standing rank), use: --config config/outputs7_listmle_best.yaml
+
+paths:
+  outputs: "output/team_stats_listmle"
+
+training:
+  loss_type: "listmle"
+  listmle_target: "playoff_outcome"
+  rolling_windows: [10, 30]
+
+model_a:
+  stat_dim: 22
+  use_standing_rank: true
+  epochs: 14  # match outputs7 best (combo 17)
+
+model_b:
+  xgb:
+    n_estimators: 245
+    max_depth: 3
+    learning_rate: 0.066
+  rf:
+    n_estimators: 200
+    min_samples_leaf: 5

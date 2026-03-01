@@ -11,7 +11,7 @@
 # Compare: outputs8 (Spearman surrogate, best so far) vs outputs13 (RMSE surrogate).
 
 paths:
-  outputs: "output/outputs13_rmse_surrogate"
+  outputs: "output/13_rmse_surrogate"
 
 training:
   listmle_target: "playoff_outcome"

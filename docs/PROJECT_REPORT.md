@@ -19,7 +19,7 @@ Build a system that predicts **NBA team “true strength”** for **future outco
   - **Model B (XGBoost):** Team-context features only (rolling stats, ELO, SOS/SRS, etc.); no roster. Trained by regression on the same target (e.g. win rate or rank) as used for ListMLE.
 - **Ensemble:** Model A + Model B only. Level-2 **RidgeCV** meta-learner is fit on **out-of-fold (OOF)** predictions from both models (K-fold over time). The meta output is the **ensemble score**, which is then mapped to percentile (0–1 and 0–100) for interpretability and championship odds.
 - **Model C (Random Forest):** Trained on the same team-context features as XGB when `training.train_model_c` is true; used **only for evaluation and diagnostics** (e.g. `model_c_rank` in predictions), not in the stack.
-- **Evaluation:** NDCG (e.g. NDCG@10, NDCG@16), Spearman correlation, playoff-specific metrics (when playoff data exists), Brier score on championship odds, rank MAE/RMSE. See `eval_report.json` and sweep outputs (e.g. `outputs4/sweeps/`, `docs/SWEEP_ANALYSIS.md`).
+- **Evaluation:** NDCG (e.g. NDCG@10, NDCG@16), Spearman correlation, playoff-specific metrics (when playoff data exists), Brier score on championship odds, rank MAE/RMSE. See `eval_report.json` and sweep outputs (e.g. `output/4_listmle/sweeps/`, `docs/SWEEP_ANALYSIS.md`).
 
 ---
 
@@ -56,7 +56,7 @@ These are computed at **training time** (script 3 for \(c_A\), script 4 for \(c_
 5. **Script 5:** Evaluate on test dates/seasons (NDCG, Spearman, playoff metrics, etc.); write `eval_report.json`.
 6. **Script 6:** Run inference (load models, build lists for target date, run A/B, stack with meta, output predictions JSON and figures).
 
-Sweeps (e.g. Optuna) vary hyperparameters and objectives (spearman, ndcg4, ndcg16, playoff_spearman, rank_rmse); see `scripts/sweep_hparams.py` and `scripts/aggregate_sweep_results.py`. Analysis is in `outputs4/sweeps/`, `docs/SWEEP_ANALYSIS.md`, and run-specific `ANALYSIS.md` where present.
+Sweeps (e.g. Optuna) vary hyperparameters and objectives (spearman, ndcg4, ndcg16, playoff_spearman, rank_rmse); see `scripts/sweep_hparams.py` and `scripts/aggregate_sweep_results.py`. Analysis is in `output/4_listmle/sweeps/`, `docs/SWEEP_ANALYSIS.md`, and run-specific `ANALYSIS.md` where present.
 
 ---
 
@@ -64,7 +64,7 @@ Sweeps (e.g. Optuna) vary hyperparameters and objectives (spearman, ndcg4, ndcg1
 
 - **Attention and collapse:** `.cursor/plans/Attention_Report.md`
 - **Confidence-weighted ensemble options:** `docs/CONFIDENCE_WEIGHTED_ENSEMBLE_OPTIONS.md`
-- **Sweep and metrics:** `docs/SWEEP_ANALYSIS.md`, `outputs4/sweeps/SWEEP_PHASE1_ANALYSIS.md`
+- **Sweep and metrics:** `docs/SWEEP_ANALYSIS.md`, `output/4_listmle/sweeps/SWEEP_PHASE1_ANALYSIS.md`
 - **Attention analysis:** `docs/ANALYSIS_OF_ATTENTION_WEIGHTS.md`
 
 This report summarizes the reasoning and methodology up to the introduction of the confidence-weighted 4-input meta-learner; detailed run and sweep results live in the outputs and analysis documents above.

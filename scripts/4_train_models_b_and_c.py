@@ -10,6 +10,8 @@ What this does:
 
 Run after script 3. Required before stacking (4b) and inference (6)."""
 import argparse
+import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -26,6 +28,33 @@ from src.features.team_context import TEAM_CONTEXT_FEATURE_COLS, build_team_cont
 from src.training.build_lists import build_lists
 from src.training.train_model_b import train_model_b
 from src.utils.split import load_split_info
+
+
+def _feature_cache_key(config: dict, db_path: Path, team_dates_hash: str) -> str | None:
+    """Build a cache key for build_team_context_as_of_dates output. Returns None if feature_cache disabled."""
+    cache_dir = config.get("paths", {}).get("feature_cache")
+    if cache_dir is None or (isinstance(cache_dir, str) and cache_dir.strip().lower() in ("null", "")):
+        return None
+    # Key from config bits that affect team context features
+    model_b = config.get("model_b", {})
+    key_data = {
+        "include_features": tuple(model_b.get("include_features") or []),
+        "exclude_features": tuple(model_b.get("exclude_features") or []),
+        "elo": bool(config.get("elo", {}).get("enabled", False)),
+        "massey": bool(config.get("massey", {}).get("enabled", False)),
+        "team_rolling": bool(config.get("team_rolling", {}).get("enabled", True)),
+        "sos_srs": bool(config.get("sos_srs", {}).get("enabled", False)),
+        "motivation": bool(config.get("motivation", {}).get("enabled", False)),
+        "injury": bool(config.get("injury", {}).get("enabled", False)),
+        "team_dates_hash": team_dates_hash,
+        "db": str(db_path.resolve()),
+    }
+    if db_path.exists():
+        st = db_path.stat()
+        key_data["db_mtime"] = st.st_mtime
+        key_data["db_size"] = st.st_size
+    js = json.dumps(key_data, sort_keys=True, default=str)
+    return hashlib.sha256(js.encode()).hexdigest()[:20]
 
 from src.models.xgb_model import build_xgb, fit_xgb, predict_with_uncertainty
 from src.models.rf_model import build_rf, fit_rf
@@ -61,12 +90,42 @@ def main():
         for tid, wr in zip(lst["team_ids"], lst["win_rates"]):
             rows.append({"team_id": int(tid), "as_of_date": lst["as_of_date"], "y": float(wr), "conference": conf})
     flat = pd.DataFrame(rows)
-    # Build team-context features (rolling stats, ELO, etc.) for each (team_id, as_of_date).
     team_dates = [(int(a), str(b)) for a, b in flat[["team_id", "as_of_date"]].drop_duplicates().values.tolist()]
-    feat_df = build_team_context_as_of_dates(
-        tgl, games, team_dates,
-        config=config, teams=teams, pgl=pgl,
-    )
+    team_dates_hash = hashlib.sha256(json.dumps(sorted(team_dates), sort_keys=True).encode()).hexdigest()[:16]
+
+    # Optional feature cache: reuse build_team_context output when config/DB/team_dates unchanged
+    feat_df = None
+    cache_dir_raw = config.get("paths", {}).get("feature_cache")
+    cache_dir = None
+    if cache_dir_raw and isinstance(cache_dir_raw, str) and cache_dir_raw.strip().lower() not in ("null", ""):
+        cache_dir = Path(cache_dir_raw)
+        if not cache_dir.is_absolute():
+            cache_dir = ROOT / cache_dir
+    cache_key = _feature_cache_key(config, db_path, team_dates_hash) if cache_dir else None
+    cache_file = (cache_dir / f"{cache_key}.parquet") if cache_dir and cache_key else None
+    if cache_file and cache_file.exists():
+        try:
+            feat_df = pd.read_parquet(cache_file)
+            if "team_id" in feat_df.columns and "as_of_date" in feat_df.columns:
+                feat_df["team_id"] = feat_df["team_id"].astype(int)
+                feat_df["as_of_date"] = feat_df["as_of_date"].astype(str)
+                print(f"Feature cache hit: {cache_file.name}", flush=True)
+            else:
+                feat_df = None
+        except Exception:
+            feat_df = None
+    if feat_df is None:
+        feat_df = build_team_context_as_of_dates(
+            tgl, games, team_dates,
+            config=config, teams=teams, pgl=pgl,
+        )
+        if cache_dir and cache_key and not feat_df.empty:
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                feat_df.to_parquet(cache_dir / f"{cache_key}.parquet", index=False)
+                print(f"Feature cache saved: {cache_key}.parquet", flush=True)
+            except Exception:
+                pass
     df = flat.merge(feat_df, on=["team_id", "as_of_date"], how="inner")
 
     # Optional: add Model A OOF score as a feature for team-stats models (leak-safe via OOF join).

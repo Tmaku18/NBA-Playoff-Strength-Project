@@ -65,23 +65,17 @@ OUTPUT_PARENT = "output"
 
 
 def iter_output_roots(root: Path, exclude: set[str]) -> list[Path]:
-    """List output/outputs* directories under root (i.e. root/output/), excluding given names."""
+    """List output subdirs under root (i.e. root/output/), excluding given names (e.g. 8_spearman_surrogate)."""
     parent = root / OUTPUT_PARENT
     if not parent.is_dir():
         return []
     out = []
     for d in sorted(parent.iterdir()):
-        if not d.is_dir():
+        if not d.is_dir() or d.name.startswith("."):
             continue
-        name = d.name
-        if not name.startswith("outputs"):
+        if d.name in exclude:
             continue
-        if name in exclude:
-            continue
-        # outputs2, outputs10, outputs11_listmle_standing_rank, etc.
-        rest = name[7:]  # after "outputs"
-        if rest and (rest[0].isdigit() or rest.startswith("_")):
-            out.append(d)
+        out.append(d)
     return out
 
 
@@ -131,20 +125,20 @@ def process_batch(batch_dir: Path, dry_run: bool) -> tuple[int, int]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Retain top 3 + worst 1 by RMSE per sweep batch (except outputs8)")
+    parser = argparse.ArgumentParser(description="Retain top 3 + worst 1 by RMSE per sweep batch (except 8_spearman_surrogate)")
     parser.add_argument("--dry-run", action="store_true", help="Print actions only, do not delete")
-    parser.add_argument("--outputs", type=str, default="all", help="Output root (e.g. output/outputs4) or 'all'")
+    parser.add_argument("--outputs", type=str, default="all", help="Output root (e.g. output/4_listmle) or 'all'")
     args = parser.parse_args()
 
     if args.outputs == "all":
-        roots = iter_output_roots(ROOT, exclude={"outputs8"})
+        roots = iter_output_roots(ROOT, exclude={"8_spearman_surrogate"})
     else:
         out_dir = ROOT / args.outputs
         if not out_dir.is_dir():
             print(f"Not a directory: {out_dir}", file=sys.stderr)
             return 1
-        if args.outputs.endswith("outputs8") or args.outputs == "outputs8":
-            print("outputs8 is excluded from retention; nothing to do.", file=sys.stderr)
+        if args.outputs.endswith("8_spearman_surrogate") or args.outputs == "8_spearman_surrogate":
+            print("8_spearman_surrogate is excluded from retention; nothing to do.", file=sys.stderr)
             return 0
         roots = [out_dir]
 

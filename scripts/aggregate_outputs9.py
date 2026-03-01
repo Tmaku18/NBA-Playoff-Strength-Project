@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-batch = ROOT / "output/outputs9/sweeps/outputs9_listmle_spearman"
+batch = ROOT / "output/9_listmle/sweeps/outputs9_listmle_spearman"
 results = []
 for i in range(40):
     p = batch / f"combo_{i:04d}" / "outputs" / "eval_report.json"

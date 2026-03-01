@@ -2,7 +2,7 @@
 # Use with: --config config/outputs4_150_lists.yaml
 
 paths:
-  outputs: "output/outputs4"
+  outputs: "output/4_listmle"
 
 inference:
   run_id: null

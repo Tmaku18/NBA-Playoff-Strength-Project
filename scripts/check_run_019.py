@@ -5,8 +5,8 @@ What this does:
 - Used for debugging EOS/playoff rank changes. Not part of main pipeline."""
 import json
 
-p19 = json.load(open('output/outputs/run_019/predictions_2024-25.json'))
-p14 = json.load(open('output/outputs/run_014/predictions.json'))
+p19 = json.load(open('output/0_outputs/run_019/predictions_2024-25.json'))
+p14 = json.load(open('output/0_outputs/run_014/predictions.json'))
 
 print("=== EOS Rank Source ===")
 print(f"run_019: {p19.get('eos_rank_source')}")

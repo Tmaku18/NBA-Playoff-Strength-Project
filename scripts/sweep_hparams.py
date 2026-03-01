@@ -361,7 +361,7 @@ def main() -> int:
     args = parser.parse_args()
 
     config = _load_config(args.config)
-    out_name = config.get("paths", {}).get("outputs", "output/outputs4")
+    out_name = config.get("paths", {}).get("outputs", "output/4_listmle")
     out_dir = Path(out_name) if Path(out_name).is_absolute() else ROOT / out_name
     sweeps_dir = out_dir / "sweeps"
     sweeps_dir.mkdir(parents=True, exist_ok=True)
@@ -660,7 +660,7 @@ def main() -> int:
         }
         metric_key = _OBJECTIVE_KEYS[args.objective]
         direction = "minimize" if args.objective in ("rank_rmse", "rank_rmse_standings") else "maximize"
-        # Fixed hyperparams locked to outputs8 best run combo_0033; only Model A feature subset varies
+        # Fixed hyperparams locked to 8_spearman_surrogate best run combo_0033; only Model A feature subset varies
         fixed_rolling = [10, 30]
         fixed_epochs, fixed_md = 15, 6
         fixed_lr, fixed_xgb, fixed_rf = 0.07963763436288537, 250, 200

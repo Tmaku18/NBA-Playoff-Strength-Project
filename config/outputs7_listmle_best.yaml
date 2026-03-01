@@ -1,0 +1,27 @@
+# outputs7 ListMLE best config (combo 17 — best Spearman / rank_rmse).
+# Same setup as outputs7 sweep 20260217_235940: ListMLE, playoff_outcome, rolling [10,30].
+# Use for pipeline runs comparable to outputs7 best:
+#   python -m scripts.run_pipeline_from_model_a --config config/outputs7_listmle_best.yaml --outputs output/7_listmle_listmle_best_run
+#
+# Metrics (outputs7 combo 17): Spearman 0.765, playoff_spearman 0.736, rank_mae 5.27, rank_rmse 5.94.
+# See docs/OUTPUTS7_SWEEP_ANALYSIS_AND_COMPARISON.md.
+
+paths:
+  outputs: "output/7_listmle_listmle_best_run"
+
+training:
+  listmle_target: "playoff_outcome"
+  loss_type: "listmle"
+  rolling_windows: [10, 30]
+
+model_a:
+  epochs: 14
+
+model_b:
+  xgb:
+    n_estimators: 245
+    max_depth: 3
+    learning_rate: 0.066
+  rf:
+    n_estimators: 200
+    min_samples_leaf: 5
