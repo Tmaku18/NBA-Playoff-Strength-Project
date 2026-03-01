@@ -1,14 +1,14 @@
 # Sweep Analysis — Phase 2 & Phase 3 Results
 
 **Project:** NBA True Strength Prediction  
-**Sweep root:** outputs4 (run_024/run_025); config: `config/outputs4_phase1.yaml`  
+**Sweep root:** output/4_listmle (run_024/run_025); config: `config/outputs4_phase1.yaml`  
 **Last updated:** February 2026
 
 ---
 
 ## 1. Overview
 
-Comprehensive analysis of Phase 2 (Spearman-optimized), Phase 3 (NDCG-optimized), and Phase 4–5 sweeps. Raw results: `outputs4/sweeps/OUTPUTS4_ANALYSIS.md`. **Metric-matrix plan:** [docs/METRIC_MATRIX_EXPLORATION_PLAN.md](METRIC_MATRIX_EXPLORATION_PLAN.md).
+Comprehensive analysis of Phase 2 (Spearman-optimized), Phase 3 (NDCG-optimized), and Phase 4–5 sweeps. Raw results: `output/4_listmle/sweeps/OUTPUTS4_ANALYSIS.md`. **Metric-matrix plan:** [docs/METRIC_MATRIX_EXPLORATION_PLAN.md](METRIC_MATRIX_EXPLORATION_PLAN.md).
 
 | Sweep | Trials | Objective | listmle_target | Status | Best Spearman | Best NDCG@4 | Best NDCG@16 |
 |-------|--------|-----------|----------------|--------|---------------|------------|--------------|
@@ -30,7 +30,7 @@ Comprehensive analysis of Phase 2 (Spearman-optimized), Phase 3 (NDCG-optimized)
 
 ```
 run_022 (baseline)        → Spearman 0.430, playoff_spearman 0.461
-Phase 1 (outputs3)        → Spearman 0.499, playoff_spearman 0.518
+Phase 1 (output/3_listmle) → Spearman 0.499, playoff_spearman 0.518
 Rolling sweep             → Spearman 0.496, playoff_spearman 0.501 (rolling [15,30])
 Phase 2 coarse            → Spearman 0.535, playoff_spearman 0.547, NDCG@16 0.543
 Phase 3 fine ndcg16       → Spearman 0.557, playoff_spearman 0.568, NDCG@16 0.550 ← Best
@@ -138,16 +138,16 @@ NDCG@16 best also achieves strong Spearman and playoff_spearman among Phase 3 co
 ## 5. Recommendations
 
 1. **Production default:** Phase 3 fine NDCG@16 combo 18 (Spearman 0.557, playoff_spearman 0.568, NDCG@16 0.550). Baked into `config/defaults.yaml`.
-2. **Config path:** `outputs4/sweeps/phase3_fine_ndcg16_final_rank/combo_0018/config.yaml`
-3. **Explain on best combo:** `python -m scripts.5b_explain --config outputs4/sweeps/phase3_fine_ndcg16_final_rank/combo_0018/config.yaml`
+2. **Config path:** `output/4_listmle/sweeps/phase3_fine_ndcg16_final_rank/combo_0018/config.yaml`
+3. **Explain on best combo:** `python -m scripts.5b_explain --config output/4_listmle/sweeps/phase3_fine_ndcg16_final_rank/combo_0018/config.yaml`
 4. **NDCG@4–focused:** Use phase3_coarse_ndcg4 combo 8 or phase3_fine_ndcg4 combo 6 (both NDCG@4 0.506).
 5. **Fallback:** Phase 2 coarse combo 8 remains strong for Spearman-focused runs.
 
 ---
 
-## 6. ListMLE outcome vs standings (outputs5)
+## 6. ListMLE outcome vs standings (output/5_listmle)
 
-We compared **listmle_target: playoff_outcome** vs **final_rank** (standings) with evaluation on playoff outcome (eos_final_rank). **Result:** Training on standings matched or beat outcome-trained models. Best: **ndcg_standing** — Spearman 0.529, playoff Spearman 0.531, rank MAE 6.47. See **outputs/ANALYSIS.md** §3b and `outputs5/*/eval_report.json`.
+We compared **listmle_target: playoff_outcome** vs **final_rank** (standings) with evaluation on playoff outcome (eos_final_rank). **Result:** Training on standings matched or beat outcome-trained models. Best: **ndcg_standing** — Spearman 0.529, playoff Spearman 0.531, rank MAE 6.47. See **output/0_outputs/ANALYSIS.md** §3b and `output/5_listmle/*/eval_report.json`.
 
 ---
 
@@ -155,6 +155,6 @@ We compared **listmle_target: playoff_outcome** vs **final_rank** (standings) wi
 
 - [HYPERPARAMETER_TESTING_EVOLUTION.md](HYPERPARAMETER_TESTING_EVOLUTION.md) — Sweep methodology, Optuna, phased grids
 - [METRICS_USED.md](METRICS_USED.md) — NDCG, Spearman, rank_mae/rmse definitions
-- [METRIC_MATRIX_EXPLORATION_PLAN.md](METRIC_MATRIX_EXPLORATION_PLAN.md) — Matrix (standings vs outcome × Spearman/NDCG) and outputs5 results
+- [METRIC_MATRIX_EXPLORATION_PLAN.md](METRIC_MATRIX_EXPLORATION_PLAN.md) — Matrix (standings vs outcome × Spearman/NDCG) and 5_listmle results
 - `outputs/ANALYSIS.md` — Current results (run_026), ListMLE outcome vs standings
-- `outputs4/sweeps/OUTPUTS4_ANALYSIS.md` — Full raw sweep analysis with all combo details
+- `output/4_listmle/sweeps/OUTPUTS4_ANALYSIS.md` — Full raw sweep analysis with all combo details

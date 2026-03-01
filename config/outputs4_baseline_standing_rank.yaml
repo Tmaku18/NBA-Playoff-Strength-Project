@@ -11,7 +11,7 @@
 #   python -m scripts.run_pipeline_from_model_a --config config/outputs4_baseline_standing_rank.yaml --outputs outputs12_baseline_standing_rank/baseline_standing_rank
 
 paths:
-  outputs: "output/outputs12_baseline_standing_rank"
+  outputs: "output/12_baseline_standing_rank"
 
 # outputs4 baseline training (Phase 3 fine NDCG@16 style)
 training:

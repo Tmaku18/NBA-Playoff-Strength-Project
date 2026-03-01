@@ -1,8 +1,9 @@
 # Canonical config for branch feature/team-stats-spearman-surrogate:
-# Model A with team stats (eFG, TOV_pct, etc.); standing rank off. Spearman-surrogate loss.
+# Matches 8_spearman_surrogate best (combo_0033) then adds team stats.
+# So: same loss, target, rolling, model_a epochs, model_b as best; only stat_dim and use_team_stats differ.
 
 paths:
-  outputs: "output/outputs_team_stats_spearman_surrogate"
+  outputs: "output/team_stats_spearman_surrogate"
 
 training:
   loss_type: "spearman_surrogate"
@@ -11,7 +12,23 @@ training:
   rolling_windows: [10, 30]
 
 model_a:
-  stat_dim: 27
+  stat_dim: 27   # 21 (best) + team-stats dims; best run has no team_stats
+  epochs: 15     # match 8_spearman_surrogate combo_0033
   use_standing_rank: false
   use_team_stats: true
   team_stats_cols: [eFG, TOV_pct, FT_rate, ORB_pct, pace]
+
+model_b:
+  xgb:
+    n_estimators: 250
+    max_depth: 6
+    learning_rate: 0.07963763436288537
+    subsample: 0.8
+    colsample_bytree: 0.7
+  rf:
+    n_estimators: 200
+    max_depth: 12
+    min_samples_leaf: 5
+
+stacking:
+  use_confidence: false

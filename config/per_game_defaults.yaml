@@ -27,8 +27,8 @@ paths:
   processed: "data/processed"
   # Portable default (works in both Windows and WSL). Override via env NBA_DB_PATH if needed.
   db: "data/processed/nba_build.duckdb"
-  # Separate output root from outputs4/ to keep per-game artifacts isolated.
-  outputs_player_game: "outputs_player_game"
+  # Separate output root from 4_listmle/ to keep per-game artifacts isolated.
+  outputs_player_game: "output/player_game"
 
 build_db:
   skip_if_exists: true

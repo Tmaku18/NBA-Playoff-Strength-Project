@@ -11,9 +11,9 @@ Current regular-season standing (rank 1–30, global) is used as an **input feat
 
 When predicting **playoff rank**, the same feature is used: if `as_of_date` is end of regular season, the value is the **regular season final rank**.
 
-## Hypothesis (outputs10 sweep)
+## Hypothesis (10_spearman_surrogate_standing_rank sweep)
 
-In prior comparisons (e.g. outputs5), **standings-trained** ListMLE matched or beat **outcome-trained** when evaluated on playoff outcome. That suggests the model benefits from information that correlates with standings. We therefore **hypothesize** that giving the model **current standings explicitly as an input** (standing rank) should increase accuracy: the model can use this signal directly instead of inferring it only from roster/team stats. The **outputs10** sweep runs the same Optuna setup as outputs8 (Spearman-surrogate, playoff_outcome) but with standing rank as input; results will show whether the hypothesis holds. See [OUTPUTS10_SWEEP_STANDING_RANK.md](OUTPUTS10_SWEEP_STANDING_RANK.md).
+In prior comparisons (e.g. output/5_listmle), **standings-trained** ListMLE matched or beat **outcome-trained** when evaluated on playoff outcome. That suggests the model benefits from information that correlates with standings. We therefore **hypothesize** that giving the model **current standings explicitly as an input** (standing rank) should increase accuracy: the model can use this signal directly instead of inferring it only from roster/team stats. The **10_spearman_surrogate_standing_rank** sweep runs the same Optuna setup as 8_spearman_surrogate (Spearman-surrogate, playoff_outcome) but with standing rank as input; results will show whether the hypothesis holds. Path: `output/10_spearman_surrogate_standing_rank`. See [OUTPUTS10_SWEEP_STANDING_RANK.md](OUTPUTS10_SWEEP_STANDING_RANK.md).
 
 ## Config
 

@@ -12,7 +12,7 @@
 # Parallelism: 18 cores total, 3 jobs in parallel → 6 threads per job (OMP_NUM_THREADS/MKL_NUM_THREADS set by pipeline).
 
 paths:
-  outputs: "output/outputs14_map_run"
+  outputs: "output/14_legacy_map_run"
 
 # MAP run objective setup: use Spearman-surrogate loss on playoff outcome ranking.
 training:

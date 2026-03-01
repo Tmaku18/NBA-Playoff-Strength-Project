@@ -1,0 +1,13 @@
+# Wide sweep: team-stats Linear Regression enabled. Same Optuna search as main sweeps; also trains/saves linear team-stats model.
+# Usage: sweep_hparams --config this file --method optuna --n-trials 40 --n-jobs 1 (run 1 worker; use 6 cores via OMP_NUM_THREADS=6).
+paths:
+  outputs: "output/team_stats_linear_regression"
+
+training:
+  train_team_stats_linear: true
+  train_team_stats_bayesian_ridge: false
+  train_team_stats_gpr: false
+  train_team_stats_gmm: false
+  listmle_target: "playoff_outcome"
+  loss_type: "listmle"
+  rolling_windows: [10, 30]

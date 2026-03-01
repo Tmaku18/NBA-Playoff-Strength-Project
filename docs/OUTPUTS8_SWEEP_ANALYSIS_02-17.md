@@ -1,6 +1,6 @@
-# outputs8 Sweep Analysis vs Previous Best
+# 8_spearman_surrogate Sweep Analysis vs Previous Best
 
-**Sweep:** outputs8/sweeps/20260217_042955  
+**Sweep:** output/8_spearman_surrogate/sweeps/20260217_042955  
 **Trials:** 40 (Optuna, n_jobs=3, phase=baseline)  
 **Objective:** spearman (primary)  
 **Last updated:** 2026-02-17
@@ -9,11 +9,11 @@
 
 ## 1. Overview
 
-**These outputs8 configs are the current official best per metric.** Full cross-run comparison and official config list are in [OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md).
+**These 8_spearman_surrogate configs are the current official best per metric.** Full cross-run comparison and official config list are in [OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md).
 
-outputs8 baseline sweep improves strongly over previous best (outputs4 Phase 3 fine NDCG@16) on Spearman, playoff Spearman, and rank error metrics, with a trade-off on NDCG at low cutoffs.
+8_spearman_surrogate baseline sweep improves strongly over previous best (4_listmle Phase 3 fine NDCG@16) on Spearman, playoff Spearman, and rank error metrics, with a trade-off on NDCG at low cutoffs.
 
-| Metric | outputs8 Best | Previous Best (outputs4) | Δ |
+| Metric | 8_spearman_surrogate Best | Previous Best (4_listmle) | Δ |
 |--------|---------------|--------------------------|---|
 | **Spearman** | **0.777** (combo 33) | 0.557 | **+0.220** |
 | **playoff_spearman** | **0.854** (combo 38) | 0.568 | **+0.286** |
@@ -24,7 +24,7 @@ outputs8 baseline sweep improves strongly over previous best (outputs4 Phase 3 f
 
 ---
 
-## 2. Best Configs by Objective (outputs8)
+## 2. Best Configs by Objective (8_spearman_surrogate)
 
 | Objective | Combo | Key Metric | Config Path |
 |-----------|-------|------------|-------------|
@@ -67,11 +67,11 @@ outputs8 baseline sweep improves strongly over previous best (outputs4 Phase 3 f
 
 ---
 
-## 4. Comparison to Previous Best (outputs4 Phase 3)
+## 4. Comparison to Previous Best (4_listmle Phase 3)
 
 Previous best from [SWEEP_ANALYSIS_02-08.md](SWEEP_ANALYSIS_02-08.md): Phase 3 fine NDCG@16 combo 18.
 
-| Metric | outputs8 combo 33 | outputs8 combo 38 | outputs8 combo 32 | outputs4 phase3 (combo 18) |
+| Metric | 8_spearman_surrogate combo 33 | combo 38 | combo 32 | 4_listmle phase3 (combo 18) |
 |--------|-------------------|-------------------|-------------------|----------------------------|
 | Spearman | **0.777** | 0.766 | 0.737 | 0.557 |
 | playoff_spearman | 0.802 | **0.854** | 0.751 | 0.568 |
