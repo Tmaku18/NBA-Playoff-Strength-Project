@@ -620,14 +620,16 @@ def run_inference_from_db(
         return hashlib.sha256(json.dumps(key_data, sort_keys=True, default=str).encode()).hexdigest()[:20]
 
     all_specs = test_specs + train_specs + val_specs
-    team_id_to_as_of_all: dict[int, str] = {}
+    # Collect ALL (team_id, as_of_date) pairs across specs. Each season/spec has its own
+    # as_of_date per team; keeping only the first-seen date starved later specs of features
+    # (empty inner join -> XGB never ran -> Model B scores all zero for those seasons).
+    team_dates_all_set: set[tuple[int, str]] = set()
     for _date, target_lists, _file, _season in all_specs:
         for lst in target_lists:
+            ao = str(lst.get("as_of_date", _date or ""))
             for tid in lst.get("team_ids", []):
-                tid = int(tid)
-                if tid not in team_id_to_as_of_all:
-                    team_id_to_as_of_all[tid] = lst.get("as_of_date", _date or "")
-    team_dates_all = [(tid, team_id_to_as_of_all[tid]) for tid in sorted(team_id_to_as_of_all)]
+                team_dates_all_set.add((int(tid), ao))
+    team_dates_all = sorted(team_dates_all_set)
     team_dates_hash = hashlib.sha256(json.dumps(team_dates_all, sort_keys=True).encode()).hexdigest()[:16]
 
     feat_df_all: pd.DataFrame | None = None

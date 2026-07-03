@@ -90,7 +90,9 @@ model_a:
     max_weight_weight: 0.5
 model_b:
   include_features: null
-  exclude_features: []
+  # See 8_spearman_improved.yaml: standing_rank_norm turns Model B into a standings echo.
+  exclude_features:
+  - standing_rank_norm
   xgb:
     n_estimators: 250
     max_depth: 6

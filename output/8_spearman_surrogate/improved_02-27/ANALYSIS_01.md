@@ -50,28 +50,65 @@ standings column carries real weight — both confirm the fixes behave as intend
 **Ensemble full-ranking Spearman dropped (0.777 → 0.563) because Model B collapsed at
 inference (0.556 → 0.070 on 2024-25).** Diagnosis:
 
-- Model B's own OOF quality is *better* than before (0.985 vs 0.893 Spearman vs win rate),
-  so training is fine. The failure is train/inference feature skew:
-  - **RAPTOR features are all-zero in test seasons.** The FiveThirtyEight RAPTOR data ends
-    around 2023; `raptor_offense_sum_top5` / `raptor_defense_sum_top5` have real signal in
-    train years and are exactly 0.0 for 2024+ dates. The new XGB (14 features, trained on the
-    rebuilt `nba_build_run.duckdb` where the raptor table exists) leans on them; the old model
-    (13 features, older DB) could not.
-  - A cached inference feature snapshot (2024-04-14) shows corrupted season-to-date stats
-    (eFG 4–7 instead of ~0.5, pace ~178 vs train ~199, 19 teams instead of 30), pointing to a
-    playoff-date aggregation bug in `build_team_context_as_of_dates` for late-season snapshots.
-- The old combo's higher ensemble Spearman also benefited from the meta exploiting an
-  anti-correlated Model A with a negative coefficient — that stacking behavior was fitting a
-  bug, not signal.
+- The new XGB has **14 input features vs the old 13**: `standing_rank_norm` (rank of win
+  rate to date) was added to `TEAM_CONTEXT_FEATURE_COLS` on **2026-02-19** — two days *after*
+  the old best sweep (2026-02-17) was trained — so combo_0033's XGB never saw it.
+- In the new model that single feature takes **0.61 of total importance**. Model B's training
+  target is win rate to date, and `standing_rank_norm` is by construction the rank of that
+  same win rate — a near-tautology. OOF Spearman looks great (0.985 vs old 0.893) but the
+  model has degenerated into a **standings echo** that suppresses the real features
+  (eFG, elo, motivation, …).
+- At the run_025 early-season snapshot, current standings are a weak predictor of the final
+  playoff outcome (especially 2024-25), so the standings echo scores 0.07 while the old
+  feature-driven model scored 0.556.
+- Two secondary skews also found (small in this run, worth fixing eventually):
+  - RAPTOR features (`raptor_*_sum_top5`) are all-zero for 2024+ dates (data ends ~2023);
+    importance here is only ~0.01–0.02.
+  - A cached late-season inference snapshot (2024-04-14) has corrupted season-to-date stats
+    (eFG 4–7 instead of ~0.5, pace ~178 vs train ~199, 19 teams), pointing at a playoff-date
+    aggregation bug in `build_team_context_as_of_dates`.
+- Note the old combo's higher ensemble Spearman also benefited from the meta exploiting an
+  anti-correlated Model A with a negative coefficient — fitting a bug, not signal.
 
-## Recommended next steps
+## Fixes applied (run_026)
 
-1. **Disable RAPTOR for test-era models** (`raptor.enabled: false` or add
-   `raptor_*` to `model_b.exclude_features`) — the columns are guaranteed dead for 2024+ and
-   only add train/test skew. Re-run and re-check Model B and ensemble Spearman.
-2. Investigate the late-season inference feature snapshot (eFG/pace out of range on
-   2024-04-14) in `build_team_context_as_of_dates` — likely playoff games leaking into the
-   season-to-date aggregation or a duplicate-row sum.
-3. Run the top-weighted variant (`config/8_spearman_improved_topweighted.yaml`) once B is
-   fixed — top-of-table metrics are already the strongest axis of improvement.
+1. **`model_b.exclude_features: ["standing_rank_norm"]`** in both improved configs. The
+   standings signal still reaches the ensemble where it belongs — as an explicit meta column
+   (`stacking.use_standings: true`, improvement 2) — instead of letting it hollow out Model B.
+2. **Inference feature starvation across seasons (`src/inference/predict.py`).** The shared
+   inference feature table kept only each team's *first-seen* as-of date across all season
+   specs. For the second test season (2024-25) the per-spec inner join then matched nothing,
+   XGB never ran, and Model B's scores were **all zeros** — its "ranking" was just team-id
+   order (Spearman 0.07, and identical across retrains, which is what exposed it). Now all
+   (team_id, as_of_date) pairs from every spec are built/cached.
+
+## After the fixes (run_026 vs old combo_0033)
+
+| Metric | Old best | run_026 |
+|---|---|---|
+| Model A Spearman | -0.661 | +0.566 |
+| Model B Spearman | 0.556 | 0.522 |
+| Ensemble Spearman | 0.777 | 0.524 |
+| Model A NDCG / NDCG@4 | 0.281 / 0.000 | **0.816 / 0.683** |
+| Champion rank (ensemble) | 7 | 6 |
+| 2024-25 inference B Spearman | 0.556 | 0.522 |
+
+Model B is fully restored (0.52 vs old 0.56 without the tautological feature). Model A is
+strongly positive and has by far the best top-of-table quality of any model
+(NDCG@4 0.68). Two caveats:
+
+- **Model A run-to-run variance is high**: the first improved run's A scored 0.760 Spearman,
+  this retrain (identical config/seed) 0.566 — GPU/AMP nondeterminism over only 250 lists.
+  Averaging checkpoints or multiple seeds would stabilize it.
+- **The 5-column meta is now the weak link**: the ensemble (0.524) underperforms both of its
+  components, and old 0.777 partly reflected the meta exploiting the inverted-A bug. The
+  OOF-to-inference score-scale mismatch for Model A is the prime suspect.
+
+## Remaining next steps
+
+1. Stabilize Model A (seed averaging / more lists) and revisit meta scale handling
+   (e.g. rank-transform meta inputs before RidgeCV).
+2. Investigate the late-season snapshot bug in `build_team_context_as_of_dates`
+   (corrupted eFG/pace on a cached 2024-04-14 inference snapshot).
+3. Run the top-weighted variant (`config/8_spearman_improved_topweighted.yaml`).
 4. Run the flag-ablation sweep (`--phase flags`) to settle sos_srs / team_rolling / injury.

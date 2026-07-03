@@ -101,7 +101,11 @@ model_a:
     max_weight_weight: 0.5
 model_b:
   include_features: null
-  exclude_features: []
+  # standing_rank_norm is the rank of Model B's own training target (win rate to date);
+  # leaving it in makes XGB a standings echo (0.61 importance, OOF 0.985, test 0.07).
+  # The standings signal reaches the ensemble via the stacking column instead.
+  exclude_features:
+  - standing_rank_norm
   xgb:
     n_estimators: 250
     max_depth: 6
