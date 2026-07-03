@@ -2,14 +2,21 @@
 
 What this does:
 - Loads OOF predictions from Model A (oof_model_a.parquet) and Model B (oof_model_b.parquet).
-- Trains a RidgeCV meta-learner to blend Model A + XGBoost (2 columns) into ensemble predictions.
+- Trains a RidgeCV meta-learner to blend Model A + XGBoost into ensemble predictions.
+  Optional extra columns: confidence (stacking.use_confidence) and standings win rate
+  to date (stacking.use_standings) so the meta can anchor on the standings baseline.
+- Fits per-conference metas (ridgecv_meta_E/W.joblib) on conference-only OOF rows.
 - Saves ridgecv_meta.joblib for use during inference (script 6).
+
+Target convention: y is always "higher = better" (playoff target uses 31 - playoff rank),
+matching inference, which ranks teams by descending meta output.
 
 Run after scripts 3 and 4. Required before inference (6)."""
 import argparse
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -58,15 +65,16 @@ def main():
         sys.exit(1)
     df_a = pd.read_parquet(path_a)
     df_b = pd.read_parquet(path_b)
-    # Align Model A and Model B OOF by (team_id, as_of_date); drop duplicate y column from B.
+    # Align Model A and Model B OOF by (team_id, as_of_date).
     merged = df_a.merge(
         df_b,
         on=["team_id", "as_of_date"],
         how="inner",
         suffixes=("", "_b"),
     )
+    # Model B's y is win rate to date = standings signal; keep it as an optional stacking column.
     if "y_b" in merged.columns:
-        merged = merged.drop(columns=["y_b"])
+        merged = merged.rename(columns={"y_b": "standings_wr"})
     if merged.empty:
         print("No overlapping (team_id, as_of_date) between OOF files.", file=sys.stderr)
         sys.exit(1)
@@ -99,28 +107,63 @@ def main():
                     )
                     if rank_map:
                         playoff_rank_by_season[season] = rank_map
+                # y convention: higher = better (matches inference, which ranks by descending
+                # meta output, and matches Model A's rel target 31 - rank). Rows without a
+                # playoff rank get NaN and are mean-imputed below, so we never mix scales.
                 y_list = []
+                n_missing = 0
                 for _, row in merged.iterrows():
                     tid = int(row["team_id"])
                     season = _season_from_date(str(row["as_of_date"]), seasons_cfg)
                     if season and season in playoff_rank_by_season and tid in playoff_rank_by_season[season]:
-                        y_list.append(float(playoff_rank_by_season[season][tid]))
+                        y_list.append(31.0 - float(playoff_rank_by_season[season][tid]))
                     else:
-                        y_list.append(float(row["y"]) if "y" in row and pd.notna(row["y"]) else 15.0)
+                        y_list.append(np.nan)
+                        n_missing += 1
                 merged["y"] = y_list
+                if n_missing:
+                    print(
+                        f"Playoff target: {n_missing}/{len(merged)} rows without playoff rank "
+                        "(mean-imputed).",
+                        flush=True,
+                    )
             except Exception as e:
                 print(f"Playoff target failed, using standings y: {e}", file=sys.stderr)
 
     # Impute any NaN in OOF or target so Ridge regression gets finite inputs.
-    for col in ["oof_a", "oof_xgb", "y"]:
+    for col in ["oof_a", "oof_xgb", "y", "standings_wr"]:
         if col in merged.columns and merged[col].isna().any():
             merged[col] = merged[col].fillna(merged[col].mean())
+    stacking_cfg = config.get("stacking", {}) or {}
+    use_confidence = bool(stacking_cfg.get("use_confidence", False))
+    use_standings = bool(stacking_cfg.get("use_standings", True))
     oof_a = merged["oof_a"].values.astype("float32")
     oof_xgb = merged["oof_xgb"].values.astype("float32")
     y = merged["y"].values.astype("float32")
-    conf_a = merged["conf_a"].values.astype("float32") if "conf_a" in merged.columns and "conf_xgb" in merged.columns else None
-    conf_xgb = merged["conf_xgb"].values.astype("float32") if "conf_a" in merged.columns and "conf_xgb" in merged.columns else None
-    path = train_stacking(oof_a, oof_xgb, y, config, out, conf_a=conf_a, conf_xgb=conf_xgb)
+    has_conf = use_confidence and "conf_a" in merged.columns and "conf_xgb" in merged.columns
+    conf_a = merged["conf_a"].values.astype("float32") if has_conf else None
+    conf_xgb = merged["conf_xgb"].values.astype("float32") if has_conf else None
+    standings = (
+        merged["standings_wr"].values.astype("float32")
+        if use_standings and "standings_wr" in merged.columns
+        else None
+    )
+    # Conference for per-conference metas: prefer a column with both E and W present
+    # (older oof_model_a files carried a stale constant conference; Model B's is from build_lists).
+    conference = None
+    for col in ("conference", "conference_b"):
+        if col in merged.columns:
+            vals = merged[col].astype(str)
+            if {"E", "W"} <= set(vals.unique()):
+                conference = vals.values
+                break
+    path = train_stacking(
+        oof_a, oof_xgb, y, config, out,
+        conf_a=conf_a, conf_xgb=conf_xgb,
+        standings=standings, conference=conference,
+    )
+    n_cols = 2 + (2 if has_conf else 0) + (1 if standings is not None else 0)
+    print(f"Meta columns: {n_cols} (confidence={'on' if has_conf else 'off'}, standings={'on' if standings is not None else 'off'})")
     print(f"Saved {path}, {out / 'oof_pooled.parquet'}")
 
 

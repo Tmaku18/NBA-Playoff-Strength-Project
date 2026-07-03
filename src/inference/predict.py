@@ -114,6 +114,7 @@ def predict_teams(
     meta_model: Any = None,
     conf_a: np.ndarray | None = None,
     conf_xgb: np.ndarray | None = None,
+    standings_win_rate: np.ndarray | None = None,
     actual_ranks: dict[int, int] | None = None,
     actual_global_ranks: dict[int, int] | None = None,
     attention_by_team: dict[int, list[tuple[str, float]]] | None = None,
@@ -165,45 +166,52 @@ def predict_teams(
     has_both_ab = (pm.get("a", True) and pm.get("xgb", True)) and (len(sa) == n and len(sx) == n)
     has_extra = bool(extra_model_scores and any(np.any(np.asarray(v) != 0) for v in extra_model_scores.values() if v is not None and len(v) == n))
 
+    # Shared meta-input columns (must match build_oof in src/models/stacking.py):
+    # 2 cols [a, x]; 3 cols [a, x, standings]; 4 cols [a, x, conf_a, conf_xgb];
+    # 5 cols [a, x, conf_a, conf_xgb, standings].
+    _c_a = np.asarray(conf_a).ravel() if conf_a is not None and len(conf_a) == n else np.full(n, 0.5, dtype=np.float64)
+    _c_x = np.asarray(conf_xgb).ravel() if conf_xgb is not None and len(conf_xgb) == n else np.full(n, 0.5, dtype=np.float64)
+    _c_a = np.nan_to_num(_c_a, nan=0.5, posinf=0.5, neginf=0.5)
+    _c_x = np.nan_to_num(_c_x, nan=0.5, posinf=0.5, neginf=0.5)
+    _st = (
+        np.asarray(standings_win_rate, dtype=np.float64).ravel()
+        if standings_win_rate is not None and len(standings_win_rate) == n
+        else np.full(n, 0.5, dtype=np.float64)
+    )
+    _st = np.nan_to_num(_st, nan=0.5, posinf=0.5, neginf=0.5)
+
+    def _meta_n_cols(m: Any) -> int:
+        coefs = getattr(m, "coef_", None)
+        return len(np.asarray(coefs).ravel()) if coefs is not None else 2
+
+    def _meta_X(m: Any, a_col: np.ndarray, x_col: np.ndarray) -> np.ndarray:
+        n_cols = _meta_n_cols(m)
+        if n_cols == 3:
+            return np.column_stack([a_col, x_col, _st])
+        if n_cols == 4:
+            return np.column_stack([a_col, x_col, _c_a, _c_x])
+        if n_cols == 5:
+            return np.column_stack([a_col, x_col, _c_a, _c_x, _st])
+        return np.column_stack([a_col, x_col])
+
     if xgb_weight is not None and 0.0 < xgb_weight < 1.0 and has_both_ab:
         ens = (1.0 - float(xgb_weight)) * sa + float(xgb_weight) * sx
     elif meta_by_conference and team_id_to_conf and has_both_ab:
         # Option 3A: per-conference meta (E/W) when we have A and/or B
         ens = np.zeros(n, dtype=np.float64)
+        X_by_meta_cols: dict[int, np.ndarray] = {}
         for i in range(n):
             tid = team_ids[i]
             conf = team_id_to_conf.get(tid, "E")
             meta_c = meta_by_conference.get(conf) or meta_by_conference.get("E") or meta_model
             if meta_c is not None and not isinstance(meta_c, dict) and callable(getattr(meta_c, "predict", None)):
-                use_4col = (
-                    hasattr(meta_c, "coef_")
-                    and getattr(meta_c, "coef_", None) is not None
-                    and len(np.asarray(meta_c.coef_).ravel()) == 4
-                )
-                if use_4col and conf_a is not None and conf_xgb is not None and len(conf_a) == n and len(conf_xgb) == n:
-                    c_a_i = float(np.asarray(conf_a).ravel()[i])
-                    c_x_i = float(np.asarray(conf_xgb).ravel()[i])
-                    X_i = np.array([[sa[i], sx[i], c_a_i, c_x_i]], dtype=np.float64)
-                else:
-                    X_i = np.array([[sa[i], sx[i]]], dtype=np.float64)
-                ens[i] = float(meta_c.predict(X_i).ravel()[0])
+                X_all = X_by_meta_cols.setdefault(_meta_n_cols(meta_c), _meta_X(meta_c, sa, sx))
+                ens[i] = float(meta_c.predict(X_all[i : i + 1]).ravel()[0])
             else:
                 ens[i] = (sa[i] + sx[i]) / 2.0
     elif meta_model is not None and not isinstance(meta_model, dict) and callable(getattr(meta_model, "predict", None)) and has_both_ab:
-        # Ensemble: meta (2 or 4 cols) when A and/or B present
-        use_4col = (
-            hasattr(meta_model, "coef_")
-            and (getattr(meta_model, "coef_", None) is not None and len(np.asarray(meta_model.coef_).ravel()) == 4)
-        )
-        if use_4col:
-            c_a = np.asarray(conf_a).ravel() if conf_a is not None and len(conf_a) == n else np.full(n, 0.5, dtype=np.float64)
-            c_x = np.asarray(conf_xgb).ravel() if conf_xgb is not None and len(conf_xgb) == n else np.full(n, 0.5, dtype=np.float64)
-            c_a = np.nan_to_num(c_a, nan=0.5, posinf=0.5, neginf=0.5)
-            c_x = np.nan_to_num(c_x, nan=0.5, posinf=0.5, neginf=0.5)
-            X_meta = np.column_stack([sa, sx, c_a, c_x])
-        else:
-            X_meta = np.column_stack([sa, sx])
-        ens = meta_model.predict(X_meta).ravel()
+        # Ensemble: meta (2-5 cols) when A and/or B present
+        ens = meta_model.predict(_meta_X(meta_model, sa, sx)).ravel()
     else:
         # Run on any model(s): use mean of available scores (A, B, C, extra), each normalized to [0,1]
         parts: list[np.ndarray] = []
@@ -325,28 +333,11 @@ def predict_teams(
         if xgb_weight is not None and 0.0 < float(xgb_weight) < 1.0:
             ens_s = (1.0 - float(xgb_weight)) * sa_s + float(xgb_weight) * sx_s
         else:
-            # Use the same meta (2-col or 4-col) as deterministic path (conf treated as fixed).
-            use_4col_s = (
-                meta_model is not None
-                and not isinstance(meta_model, dict)
-                and hasattr(meta_model, "coef_")
-                and (getattr(meta_model, "coef_", None) is not None and len(np.asarray(meta_model.coef_).ravel()) == 4)
-            )
+            # Use the same meta (2-5 cols) as deterministic path (conf/standings treated as fixed).
             if meta_model is not None and not isinstance(meta_model, dict) and callable(getattr(meta_model, "predict", None)):
-                if use_4col_s:
-                    c_a = np.asarray(conf_a).ravel() if conf_a is not None and len(conf_a) == n else np.full(n, 0.5, dtype=np.float64)
-                    c_x = np.asarray(conf_xgb).ravel() if conf_xgb is not None and len(conf_xgb) == n else np.full(n, 0.5, dtype=np.float64)
-                    c_a = np.nan_to_num(c_a, nan=0.5, posinf=0.5, neginf=0.5)
-                    c_x = np.nan_to_num(c_x, nan=0.5, posinf=0.5, neginf=0.5)
-                    ens_s = np.zeros((mc_n, n), dtype=np.float64)
-                    for t in range(mc_n):
-                        X_meta_s = np.column_stack([sa_s[t], sx_s[t], c_a, c_x])
-                        ens_s[t] = np.asarray(meta_model.predict(X_meta_s)).ravel()
-                else:
-                    ens_s = np.zeros((mc_n, n), dtype=np.float64)
-                    for t in range(mc_n):
-                        X_meta_s = np.column_stack([sa_s[t], sx_s[t]])
-                        ens_s[t] = np.asarray(meta_model.predict(X_meta_s)).ravel()
+                ens_s = np.zeros((mc_n, n), dtype=np.float64)
+                for t in range(mc_n):
+                    ens_s[t] = np.asarray(meta_model.predict(_meta_X(meta_model, sa_s[t], sx_s[t]))).ravel()
             else:
                 ens_s = (sa_s + sx_s) / 2.0
         ens_ranks = np.argsort(np.argsort(-ens_s, axis=1), axis=1) + 1
@@ -1072,6 +1063,7 @@ def run_inference_from_db(
             meta_model=meta,
             conf_a=conf_a_arr,
             conf_xgb=conf_xgb_arr,
+            standings_win_rate=np.array([win_rate_map.get(tid, 0.0) for tid in unique_team_ids], dtype=np.float64),
             actual_ranks=actual_ranks,
             actual_global_ranks=actual_global_rank,
             attention_by_team=attention_by_team if attention_by_team else None,

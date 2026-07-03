@@ -206,6 +206,7 @@ def build_batches_from_lists(
         list_metas.append({
             "team_ids": list(team_ids),
             "as_of_date": as_of_date,
+            "conference": lst.get("conference", ""),
             "win_rates": list(win_rates),
             "rel_values": rel_values,
             "player_ids_per_team": player_ids_per_team,

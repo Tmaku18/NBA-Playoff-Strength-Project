@@ -20,6 +20,13 @@ output/7_listmle/*
 output/8_spearman_surrogate/*
 !output/8_spearman_surrogate/MODEL.md
 !output/8_spearman_surrogate/**/ANALYSIS*.md
+# Improved runs (Feb 27, 2026): keep analysis docs only
+!output/8_spearman_surrogate/improved_02-27/
+output/8_spearman_surrogate/improved_02-27/*
+!output/8_spearman_surrogate/improved_02-27/ANALYSIS*.md
+!output/8_spearman_surrogate/improved_topweighted_02-27/
+output/8_spearman_surrogate/improved_topweighted_02-27/*
+!output/8_spearman_surrogate/improved_topweighted_02-27/ANALYSIS*.md
 !output/8_spearman_surrogate/sweeps/
 output/8_spearman_surrogate/sweeps/*
 !output/8_spearman_surrogate/sweeps/20260217_042955/
@@ -53,6 +60,24 @@ output/15_rmse_surrogate_standing_rank/*
 !output/15_rmse_surrogate_standing_rank/.gitkeep
 output/16_map_standing_rank/*
 !output/16_map_standing_rank/.gitkeep
+# 17_player_props: player per-game stats model (distributional, joint via XGBoostLSS MVN/MVT)
+# Ignore everything by default, then selectively un-ignore docs. The nested
+# pattern sequence below is necessary because a parent directory ignored by
+# the '*' pattern can't have descendants re-included without first re-exposing
+# the directory at each level.
+output/17_player_props/*
+!output/17_player_props/MODEL.md
+!output/17_player_props/.gitkeep
+# Bake-off COMPARISON docs (MVN vs MVT, future ablations).
+!output/17_player_props/bakeoff_*/
+output/17_player_props/bakeoff_*/*
+!output/17_player_props/bakeoff_*/COMPARISON.md
+# Sweep ANALYSIS docs.
+!output/17_player_props/sweeps/
+output/17_player_props/sweeps/*
+!output/17_player_props/sweeps/*/
+output/17_player_props/sweeps/*/*
+!output/17_player_props/sweeps/*/ANALYSIS*.md
 output/team_stats_linear_regression/*
 !output/team_stats_linear_regression/.gitkeep
 output/team_stats_bayesian_ridge/*

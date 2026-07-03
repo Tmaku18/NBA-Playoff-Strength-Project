@@ -268,7 +268,7 @@ def _run_one_combo(
     if phase in ("phase1", "phase1_xgb", "rolling"):
         cfg.setdefault("inference", {})["run_id"] = "run_024"
         cfg.setdefault("inference", {})["run_id_base"] = 24
-    elif phase in ("phase2", "phase2_fine", "phase2_playoff_broad", "phase2_playoff_narrow", "feature_subset", "feature_subset_model_a"):
+    elif phase in ("phase2", "phase2_fine", "phase2_playoff_broad", "phase2_playoff_narrow", "feature_subset", "feature_subset_model_a", "flags"):
         cfg.setdefault("inference", {})["run_id"] = "run_025"
         cfg.setdefault("inference", {})["run_id_base"] = 25
     cfg["training"] = cfg.get("training", {})
@@ -332,8 +332,8 @@ def main() -> int:
         "--phase",
         type=str,
         default="full",
-        choices=("full", "phase1", "phase1_xgb", "phase2", "phase2_fine", "phase2_playoff_broad", "phase2_playoff_narrow", "phase2_rf", "baseline", "rolling", "feature_subset", "feature_subset_model_a"),
-        help="full=config grid; phase1=narrowed Optuna ranges; phase2=coarse refinement; phase2_fine=fine refinement; phase1_xgb/phase2_rf=phased Model B; baseline=wide ranges; rolling=test rolling_windows; feature_subset=Model B features; feature_subset_model_a=Model A features",
+        choices=("full", "phase1", "phase1_xgb", "phase2", "phase2_fine", "phase2_playoff_broad", "phase2_playoff_narrow", "phase2_rf", "baseline", "rolling", "feature_subset", "feature_subset_model_a", "flags"),
+        help="full=config grid; phase1=narrowed Optuna ranges; phase2=coarse refinement; phase2_fine=fine refinement; phase1_xgb/phase2_rf=phased Model B; baseline=wide ranges; rolling=test rolling_windows; feature_subset=Model B features; feature_subset_model_a=Model A features; flags=ablation grid over sos_srs/team_rolling/injury toggles (8 combos, HPs fixed)",
     )
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML (default: config/defaults.yaml)")
     parser.add_argument(
@@ -526,6 +526,104 @@ def main() -> int:
         n_rf_list = list(range(165, 191))   # 165-190
 
     listmle_target = getattr(args, "listmle_target", None)
+
+    # Flag-ablation grid: toggle sos_srs / team_rolling / injury (2^3 = 8 combos) with
+    # Model A/B hyperparameters fixed to the 8_spearman_surrogate best run (combo_0033).
+    # These flags were disabled in the best config but never swept as toggles.
+    if phase == "flags":
+        fixed_rolling = [10, 30]
+        fixed_epochs, fixed_md = 15, 6
+        fixed_lr, fixed_xgb, fixed_rf = 0.07963763436288537, 250, 200
+        fixed_sub, fixed_col, fixed_leaf = 0.8, 0.7, 5
+        flag_names = ("sos_srs", "team_rolling", "injury")
+        flag_combos = list(itertools.product([False, True], repeat=len(flag_names)))
+        if args.max_combos:
+            flag_combos = flag_combos[: args.max_combos]
+        if args.dry_run:
+            for i, fc in enumerate(flag_combos):
+                print(f"combo_{i:04d}: " + ", ".join(f"{n}={v}" for n, v in zip(flag_names, fc)))
+            print(f"{len(flag_combos)} combos (flag ablation)")
+            return 0
+
+        def _cfg_for_flags(fc: tuple) -> dict:
+            cfg_trial = copy.deepcopy(config)
+            for name, enabled in zip(flag_names, fc):
+                cfg_trial.setdefault(name, {})["enabled"] = bool(enabled)
+            return cfg_trial
+
+        def _flags_row(i: int, fc: tuple, metrics: dict) -> dict:
+            row = {"combo": i, **{f"flag_{n}": v for n, v in zip(flag_names, fc)}}
+            if "error" in metrics:
+                row["error"] = metrics["error"]
+            else:
+                row.update({k: v for k, v in metrics.items() if isinstance(v, (int, float))})
+            return row
+
+        results = []
+        if n_jobs > 1:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=n_jobs) as executor:
+                futures = {}
+                for i, fc in enumerate(flag_combos):
+                    fut = executor.submit(
+                        _run_one_combo_worker,
+                        batch_dir, i, _cfg_for_flags(fc), list(fixed_rolling), fixed_epochs,
+                        fixed_md, fixed_lr, fixed_xgb, fixed_rf, fixed_sub, fixed_col, fixed_leaf,
+                        include_clone, val_frac, listmle_target, "flags",
+                    )
+                    futures[fut] = (i, fc)
+                for fut in concurrent.futures.as_completed(futures):
+                    i, fc = futures[fut]
+                    try:
+                        metrics = fut.result()
+                    except Exception as e:
+                        metrics = {"error": str(e)}
+                    status = "FAILED: " + str(metrics.get("error")) if "error" in metrics else "done"
+                    print(
+                        f"[flags combo {i}] " + ", ".join(f"{n}={v}" for n, v in zip(flag_names, fc)) + f" -> {status}",
+                        flush=True,
+                    )
+                    results.append(_flags_row(i, fc, metrics))
+        else:
+            for i, fc in enumerate(flag_combos):
+                print(
+                    f"[flags combo {i+1}/{len(flag_combos)}] " + ", ".join(f"{n}={v}" for n, v in zip(flag_names, fc)),
+                    flush=True,
+                )
+                metrics = _run_one_combo(
+                    batch_dir, i, _cfg_for_flags(fc), list(fixed_rolling), fixed_epochs,
+                    fixed_md, fixed_lr, fixed_xgb, fixed_rf, fixed_sub, fixed_col, fixed_leaf,
+                    include_clone, val_frac=val_frac, listmle_target=listmle_target, phase="flags",
+                )
+                results.append(_flags_row(i, fc, metrics))
+
+        results.sort(key=lambda r: r["combo"])
+        import csv
+        all_keys = set()
+        for r in results:
+            all_keys.update(r.keys())
+        with open(batch_dir / "sweep_results.csv", "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=sorted(all_keys), extrasaction="ignore")
+            w.writeheader()
+            w.writerows(results)
+        sp_key = "test_metrics_ensemble_spearman"
+        valid = [r for r in results if isinstance(r.get(sp_key), (int, float))]
+        summary: dict = {"phase": "flags", "flag_names": list(flag_names)}
+        if valid:
+            summary["best_by_spearman"] = max(valid, key=lambda r: float(r[sp_key]))
+        by_conf = _build_by_conference_summary(results)
+        if by_conf:
+            summary["by_conference_summary"] = by_conf
+        summary["metrics_mean_std_across_trials"] = _metrics_mean_std_across_trials(results)
+        with open(batch_dir / "sweep_results_summary.json", "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2)
+        print(f"Flag-ablation sweep done: {len(results)} combos. Results in {batch_dir}", flush=True)
+        if not args.no_run_explain and valid:
+            best_combo = int(max(valid, key=lambda r: float(r[sp_key]))["combo"])
+            best_cfg = batch_dir / f"combo_{best_combo:04d}" / "config.yaml"
+            if best_cfg.exists():
+                print(f"Running explain on best combo {best_combo}...", flush=True)
+                _run_cmd("scripts/5b_explain.py", ["--config", str(best_cfg)])
+        return 0
 
     # Optional: Optuna over feature subset (each trial = which Model B features to include)
     if phase == "feature_subset" and args.method == "optuna":

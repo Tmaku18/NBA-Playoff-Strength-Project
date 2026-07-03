@@ -21,7 +21,11 @@ def _configure_torch_performance() -> None:
     if hasattr(torch, "set_float32_matmul_precision"):
         torch.set_float32_matmul_precision("medium")
 from src.models.listmle_loss import listmle_loss
-from src.models.ranking_surrogate_losses import rank_rmse_surrogate_loss, spearman_surrogate_loss
+from src.models.ranking_surrogate_losses import (
+    rank_rmse_surrogate_loss,
+    spearman_surrogate_loss,
+    weighted_spearman_surrogate_loss,
+)
 from src.utils.repro import set_seeds
 
 
@@ -157,10 +161,15 @@ def _ranking_loss(
     rel: torch.Tensor,
     loss_type: str,
     loss_tau: float,
+    loss_top_weight_power: float = 1.0,
 ) -> torch.Tensor:
-    """Dispatch to listmle, spearman_surrogate, or rank_rmse_surrogate."""
+    """Dispatch to listmle, spearman_surrogate, weighted_spearman_surrogate, or rank_rmse_surrogate."""
     if loss_type == "spearman_surrogate":
         return spearman_surrogate_loss(score, rel, tau=loss_tau)
+    if loss_type == "weighted_spearman_surrogate":
+        return weighted_spearman_surrogate_loss(
+            score, rel, tau=loss_tau, top_weight_power=loss_top_weight_power
+        )
     if loss_type == "rank_rmse_surrogate":
         return rank_rmse_surrogate_loss(score, rel, tau=loss_tau)
     return listmle_loss(score, rel)
@@ -178,6 +187,7 @@ def train_epoch(
     scaler: "torch.cuda.amp.GradScaler | None" = None,
     loss_type: str = "listmle",
     loss_tau: float = 1.0,
+    loss_top_weight_power: float = 1.0,
 ) -> float:
     model.train()
     total = 0.0
@@ -230,7 +240,7 @@ def train_epoch(
             score, _, _ = model(embs, stats, minutes, mask)
             score = score.reshape(B, K)
         score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
-        loss = _ranking_loss(score, rel, loss_type, loss_tau)
+        loss = _ranking_loss(score, rel, loss_type, loss_tau, loss_top_weight_power)
         if not torch.isfinite(loss).all():
             continue
         if use_scaler:
@@ -272,6 +282,7 @@ def eval_epoch(
     use_amp: bool = False,
     loss_type: str = "listmle",
     loss_tau: float = 1.0,
+    loss_top_weight_power: float = 1.0,
 ) -> float:
     model.eval()
     total = 0.0
@@ -294,7 +305,7 @@ def eval_epoch(
                 score, _, _ = model(embs, stats, minutes, mask)
                 score = score.reshape(B, K)
             score = torch.nan_to_num(score, nan=0.0, posinf=10.0, neginf=-10.0)
-            loss = _ranking_loss(score, rel, loss_type, loss_tau)
+            loss = _ranking_loss(score, rel, loss_type, loss_tau, loss_top_weight_power)
             if torch.isfinite(loss).all():
                 total += loss.item()
                 n += 1
@@ -416,6 +427,7 @@ def train_model_a_on_batches(
     training = config.get("training", {})
     loss_type = str(training.get("loss_type", "listmle"))
     loss_tau = float(training.get("loss_tau", 1.0))
+    loss_top_weight_power = float(training.get("loss_top_weight_power", 1.0))
     num_emb = ma.get("num_embeddings", 500)
     stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
     if not batches:
@@ -458,11 +470,12 @@ def train_model_a_on_batches(
             scaler=scaler,
             loss_type=loss_type,
             loss_tau=loss_tau,
+            loss_top_weight_power=loss_top_weight_power,
         )
         print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
         val_loss_this = None
         if use_early and val_batches:
-            val_loss_this = eval_epoch(model, val_batches, device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau)
+            val_loss_this = eval_epoch(model, val_batches, device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau, loss_top_weight_power=loss_top_weight_power)
             if epoch == 0 or (epoch + 1) % 5 == 0:
                 print(f"  val_loss={val_loss_this:.4f}", flush=True)
         if log_path:
@@ -484,7 +497,7 @@ def train_model_a_on_batches(
                     pass
             break
         if use_early:
-            val_loss = val_loss_this if val_loss_this is not None else eval_epoch(model, val_batches or [], device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau)
+            val_loss = val_loss_this if val_loss_this is not None else eval_epoch(model, val_batches or [], device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau, loss_top_weight_power=loss_top_weight_power)
             if val_loss + min_delta < best_val:
                 best_val = val_loss
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
@@ -517,6 +530,7 @@ def train_model_a(
     training = config.get("training", {})
     loss_type = str(training.get("loss_type", "listmle"))
     loss_tau = float(training.get("loss_tau", 1.0))
+    loss_top_weight_power = float(training.get("loss_top_weight_power", 1.0))
     stat_dim = int(ma.get("stat_dim", 14))
     num_emb = ma.get("num_embeddings", 500)
     stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
@@ -557,6 +571,7 @@ def train_model_a(
             attention_debug=attention_debug,
             loss_type=loss_type,
             loss_tau=loss_tau,
+            loss_top_weight_power=loss_top_weight_power,
         )
         print(f"epoch {epoch+1} loss={loss:.4f}", flush=True)
         if loss < best_train_loss:
@@ -574,7 +589,7 @@ def train_model_a(
                     pass
             break
         if use_early:
-            val_loss = eval_epoch(model, val_batches, device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau)
+            val_loss = eval_epoch(model, val_batches, device, use_amp=use_amp, loss_type=loss_type, loss_tau=loss_tau, loss_top_weight_power=loss_top_weight_power)
             print(f"val_loss {epoch+1}: {val_loss:.4f}", flush=True)
             if val_loss + min_delta < best_val:
                 best_val = val_loss

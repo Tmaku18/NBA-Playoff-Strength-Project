@@ -19,6 +19,7 @@ if "MKL_NUM_THREADS" not in os.environ:
 import argparse
 import hashlib
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -42,6 +43,7 @@ def _compute_batch_cache_key(config: dict, db_path: Path) -> str:
     rolling_windows = training.get("rolling_windows") or [10, 30]
     train_seasons = training.get("train_seasons") or []
     key_data = {
+        "sampler": "stratified_v2",  # bumped when list subsampling changed (E/W-balanced); invalidates pre-fix caches
         "listmle_target": training.get("listmle_target"),
         "rolling_windows": tuple(rolling_windows),
         "train_seasons": tuple(sorted(train_seasons)),
@@ -63,6 +65,42 @@ def _compute_batch_cache_key(config: dict, db_path: Path) -> str:
         key_data["db_size"] = stat.st_size
     js = json.dumps(key_data, sort_keys=True, default=str)
     return hashlib.sha256(js.encode()).hexdigest()[:16]
+
+
+def _subsample_lists_stratified(lists: list[dict], max_n: int) -> list[dict]:
+    """Evenly subsample lists by date while keeping every conference for each kept date.
+
+    The old `sorted[::step]` walk over lists sorted by (date, conference) picked a single
+    conference whenever step was even (lists alternate E/W per date), so OOF and the
+    final model trained on East-only lists. Stratifying by date keeps E/W balanced.
+    """
+    if len(lists) <= max_n:
+        return lists
+    order = sorted(range(len(lists)), key=lambda i: (lists[i]["as_of_date"], lists[i].get("conference", "")))
+    by_date: dict[str, list[int]] = {}
+    for i in order:
+        by_date.setdefault(str(lists[i]["as_of_date"]), []).append(i)
+    dates = sorted(by_date.keys())
+    per_date = max(1, round(len(lists) / len(dates)))
+    n_dates = max(1, max_n // per_date)
+    step = max(1, math.ceil(len(dates) / n_dates))
+    picked: list[int] = []
+    picked_dates = set()
+    for d in dates[::step]:
+        if len(picked) + len(by_date[d]) > max_n:
+            break
+        picked.extend(by_date[d])
+        picked_dates.add(d)
+    # Fill remaining budget with evenly spread unpicked dates (whole dates only, keeps E/W together)
+    remaining = [d for d in dates if d not in picked_dates]
+    for d in remaining[:: max(1, step)] + remaining:
+        if d in picked_dates:
+            continue
+        if len(picked) + len(by_date[d]) > max_n:
+            continue
+        picked.extend(by_date[d])
+        picked_dates.add(d)
+    return [lists[i] for i in sorted(picked)]
 
 
 def _resolve_batch_cache_dir(config: dict) -> Path | None:
@@ -168,13 +206,9 @@ def _run_walk_forward(config, train_lists, games, tgl, teams, pgl, out, root, pl
             print(f"Walk-forward step {step}/{n_steps}: no train lists, skip", flush=True)
             continue
 
-        # Subsample if needed
+        # Subsample if needed (date-stratified so both conferences are kept)
         if len(step_train_lists) > max_final:
-            step_idx = sorted(
-                range(len(step_train_lists)),
-                key=lambda i: (step_train_lists[i]["as_of_date"], step_train_lists[i].get("conference", "")),
-            )[:: max(1, len(step_train_lists) // max_final)][:max_final]
-            step_train_lists = [step_train_lists[i] for i in sorted(step_idx)]
+            step_train_lists = _subsample_lists_stratified(step_train_lists, max_final)
 
         train_batches, _ = build_batches_from_lists(
             step_train_lists, games, tgl, teams, pgl, config, device=device,
@@ -210,6 +244,7 @@ def _run_walk_forward(config, train_lists, games, tgl, teams, pgl, out, root, pl
                     oof_rows.append({
                         "team_id": meta["team_ids"][ki],
                         "as_of_date": meta["as_of_date"],
+                        "conference": meta.get("conference", ""),
                         "oof_a": float(score_tensor[0, ki].item()),
                         "conf_a": float(conf_a),
                         "y": meta["win_rates"][ki],
@@ -333,11 +368,9 @@ def main():
     max_lists_oof = config.get("training", {}).get("max_lists_oof", 30)
     oof_lists = train_lists
     if len(train_lists) > max_lists_oof:
-        step = max(1, len(train_lists) // max_lists_oof)
-        sorted_by_date = sorted(range(len(train_lists)), key=lambda i: (train_lists[i]["as_of_date"], train_lists[i].get("conference", "")))
-        oof_indices = sorted_by_date[::step][:max_lists_oof]
-        oof_lists = [train_lists[i] for i in sorted(oof_indices)]
-        print(f"OOF: using {len(oof_lists)} lists (subsampled from {len(train_lists)} train)", flush=True)
+        oof_lists = _subsample_lists_stratified(train_lists, max_lists_oof)
+        confs = {lst.get("conference", "") for lst in oof_lists}
+        print(f"OOF: using {len(oof_lists)} lists (subsampled from {len(train_lists)} train, conferences={sorted(confs)})", flush=True)
     n_folds = min(n_folds, len(oof_lists))
     if n_folds < 2:
         batches, _ = build_batches_from_lists(oof_lists, games, tgl, teams, pgl, config)
@@ -386,12 +419,7 @@ def main():
         all_lists_for_cache = train_lists
         max_final = config.get("training", {}).get("max_final_batches", 50)
         if len(all_lists_for_cache) > max_final:
-            step = max(1, len(all_lists_for_cache) // max_final)
-            idx = sorted(
-                range(len(all_lists_for_cache)),
-                key=lambda i: (all_lists_for_cache[i]["as_of_date"], all_lists_for_cache[i].get("conference", "")),
-            )[::step][:max_final]
-            all_lists_for_cache = [all_lists_for_cache[i] for i in sorted(idx)]
+            all_lists_for_cache = _subsample_lists_stratified(all_lists_for_cache, max_final)
         all_batches, _ = build_batches_from_lists(
             all_lists_for_cache, games, tgl, teams, pgl, config, device=device
         )
@@ -450,6 +478,7 @@ def main():
                 oof_rows.append({
                     "team_id": meta["team_ids"][k],
                     "as_of_date": meta["as_of_date"],
+                    "conference": meta.get("conference", ""),
                     "oof_a": float(score_tensor[0, k].item()),
                     "conf_a": float(conf_a),
                     "y": y_val,
@@ -469,9 +498,7 @@ def main():
         all_lists = train_lists
         max_final = config.get("training", {}).get("max_final_batches", 50)
         if len(all_lists) > max_final:
-            step = max(1, len(all_lists) // max_final)
-            idx = sorted(range(len(all_lists)), key=lambda i: (all_lists[i]["as_of_date"], all_lists[i].get("conference", "")))[::step][:max_final]
-            all_lists = [all_lists[i] for i in sorted(idx)]
+            all_lists = _subsample_lists_stratified(all_lists, max_final)
             print(f"Final model: training on {len(all_lists)} lists (subsampled from {len(train_lists)} train)", flush=True)
         print("Building final batches...", flush=True)
         all_batches, _ = build_batches_from_lists(all_lists, games, tgl, teams, pgl, config, device=device)

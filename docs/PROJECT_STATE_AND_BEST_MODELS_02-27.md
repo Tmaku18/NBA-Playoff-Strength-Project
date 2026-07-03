@@ -120,3 +120,34 @@ Based on the combo_0033 config (`output/8_spearman_surrogate/sweeps/20260217_042
 ### Suggested order of execution
 
 Steps 1 and 2 first (both cheap, both target the two biggest weaknesses: A's inversion and MAE vs standings), then 5 and 6 as single pipeline re-runs, then the ablation sweep (4), then the top-end loss work (3) as the larger research item.
+
+---
+
+## Implementation status (all 7 improvements implemented — Feb 27, 2026)
+
+1. **Sign inversion — root cause found and fixed.** The bug was in `_soft_ranks` in `src/models/ranking_surrogate_losses.py`: `scores.unsqueeze(2) - scores.unsqueeze(1)` computes `s_i - s_j`, not `s_j - s_i` as the comment claimed, so soft ranks were inverted (highest score got rank L instead of rank 1). Training therefore drove the *best* team to the *lowest* score — confirmed empirically by optimizing free scores against a fixed relevance vector (best team converged to the lowest score before the fix, highest after). This affected both `spearman_surrogate` and `rank_rmse_surrogate` (which explains `13_rmse_surrogate`'s Spearman of −0.164). Fixed to `scores.unsqueeze(1) - scores.unsqueeze(2)`.
+   A second inconsistency was fixed in script 4b: with `target_rank: playoffs` it wrote playoff rank (1 = best) into a `y` column whose non-replaced rows held relevance (30 = best), so the meta target mixed two opposite conventions. Now y is always **higher = better** (`31 - playoff_rank`), matching inference, and rows without a playoff rank are NaN → mean-imputed instead of scale-mixed.
+2. **Standings as stacking column.** Script 4b keeps Model B's win-rate-to-date as a `standings_wr` column and (with `stacking.use_standings: true`, on in the improved config) passes it as an extra meta column. Column order convention lives in `src/models/stacking.py`; inference (`src/inference/predict.py`) detects meta width (2/3/4/5 cols) and feeds win rate to date accordingly.
+3. **Top-weighted Spearman surrogate.** New `weighted_spearman_surrogate` loss (weights ∝ 1/actual_rank^`training.loss_top_weight_power`) in `src/models/ranking_surrogate_losses.py`, wired through `training.loss_type`. Config: `config/8_spearman_improved_topweighted.yaml`.
+4. **Flag-ablation sweep.** New `--phase flags` in `scripts/sweep_hparams.py`: 8-combo grid over `sos_srs`/`team_rolling`/`injury` toggles with combo_0033 HPs fixed. Run: `python -m scripts.sweep_hparams --phase flags --config config/8_spearman_improved.yaml --n-jobs 3`.
+5. **Confidence-weighted stacking.** `stacking.use_confidence: true` in the improved config; script 4b now respects this flag (before it silently used confidence whenever columns existed).
+6. **Caps + early stopping.** Improved config: `max_lists_oof`/`max_final_batches` 100 → 250, `epochs` 15 → 20 with `early_stopping_patience: 4`, `val_frac 0.25`.
+7. **Per-conference metas.** Script 4b / `src/training/train_stacking.py` now fit `ridgecv_meta_E.joblib` / `ridgecv_meta_W.joblib` on conference-only OOF rows (min 50 rows), replacing the previous copy of the global meta.
+
+**Configs:** `config/8_spearman_improved.yaml` (improvements 1, 2, 5, 6, 7 in one run; outputs → `output/8_spearman_surrogate/improved_02-27/`) and `config/8_spearman_improved_topweighted.yaml` (adds improvement 3; outputs → `output/8_spearman_surrogate/improved_topweighted_02-27/`).
+
+**Note on old artifacts:** models/metas trained before the sign fix (including combo_0033 artifacts) keep their inverted-A convention internally; retrain with the improved configs before comparing raw Model A scores across runs.
+
+**Bonus bug found while implementing improvement 7 (East-only training).** Script 3's list subsampling (`sorted_by_date[::step]`) walked lists sorted by (date, conference); since lists alternate E/W per date, any even step picked a **single conference**. With 282 train lists and `max_lists_oof: 100` (step = 2), combo_0033's Model A OOF is 1500 rows **all East**, and the RidgeCV meta was fit on those East-only rows (Model B OOF has 2115 E + 2115 W rows; the inner join leaves only E). The final Model A was also trained on a single-conference list subset. This plausibly contributes to both the East/West asymmetry and Model A's weak solo performance. Fixed with date-stratified subsampling (`_subsample_lists_stratified` keeps every conference for each kept date); script 3 also now writes a correct `conference` column into `oof_model_a.parquet`, and script 4b picks whichever conference column actually contains both E and W.
+
+---
+
+## Results of the improved run (Jul 2026 re-run, `improved_02-27`)
+
+Full pipeline with `config/8_spearman_improved.yaml` completed; detailed comparison vs combo_0033 in
+`output/8_spearman_surrogate/improved_02-27/ANALYSIS_01.md`. Summary:
+
+- **Model A is fixed and now the strongest single model**: test Spearman −0.661 → **+0.760**, NDCG@4 0.00 → 0.53, and the actual champion is ranked **2nd** (old: 7th, outside top 4). Meta coefficients on Model A flipped to strongly positive (E: 19.0, W: 17.8), and the standings column earns real weight (≈12–14).
+- **Top-of-table ensemble metrics improved a lot**: final-four NDCG@4 0.04 → 0.46, champion-in-top-4 now true, championship-odds Brier slightly better.
+- **Ensemble full-ranking Spearman regressed** (0.777 → 0.563) because **Model B collapsed at inference** (test Spearman 0.556 → 0.070) despite better OOF (0.985): the retrained XGB (on the rebuilt DB, 14 features) leans on RAPTOR features that are **all-zero for 2024+ dates** (RAPTOR data ends ~2023), and a late-season inference snapshot showed corrupted season-to-date stats (eFG 4–7, pace ~178) suggesting a playoff-date aggregation bug. Note the old ensemble number also partly reflected the meta exploiting the *inverted* Model A — fitting a bug, not signal.
+- **Next**: disable RAPTOR for test-era Model B, fix the late-season feature snapshot, then re-run; afterwards run the top-weighted variant and the `--phase flags` ablation.

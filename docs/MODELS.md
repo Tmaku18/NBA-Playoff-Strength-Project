@@ -11,7 +11,7 @@ This document lists **every model** used in the pipeline: core ensemble (A, B, C
 | **Model A** | Deep Set (roster-aware); `src.models.deep_set_rank`, `set_attention`, `listmle_loss` or `ranking_surrogate_losses` | `model_a.*`, `training.listmle_target`, `training.loss_type` | Roster-based strength; trained with ListMLE or Spearman/RMSE surrogate. Checkpoint: `best_deep_set.pt`. **In ensemble.** |
 | **Model B** | XGBoost on team-context features | `model_b.xgb.*` | Team-level ranking; OOF in stacking. Artifact: `xgb_model.joblib`. **In ensemble.** |
 | **Model C** | Random Forest on team-context features | `model_b.rf.*`, `training.train_model_c` | Same features as B; analytics/comparison only when enabled. Artifact: `rf_model.joblib`. **Not in default ensemble.** |
-| **Stacking / meta** | RidgeCV on OOF (A + B, or A + B + confidence) | `stacking.*`, `model_a.attention` (confidence) | Level-2 blend (not a base model; blends A + B). Artifact: `ridgecv_meta.joblib` (or per-conference `ridgecv_meta_E.joblib`, `ridgecv_meta_W.joblib`). |
+| **Stacking / meta** | RidgeCV on OOF (A + B, plus optional confidence and standings-win-rate columns) | `stacking.use_confidence`, `stacking.use_standings`, `model_a.attention` (confidence) | Level-2 blend (not a base model; blends A + B, optionally anchored on standings win rate to date). Artifact: `ridgecv_meta.joblib`; per-conference `ridgecv_meta_E.joblib` / `ridgecv_meta_W.joblib` are fit on conference-only OOF rows. Meta input is 2-5 columns; inference detects the width. |
 
 ---
 
@@ -46,10 +46,13 @@ Model A is always the same **architecture** (Deep Set + set attention); only the
 |----------------|--------------|-------------------------|
 | ListMLE | `listmle_loss`; target: standings or playoff outcome | `2_listmle`, `4_listmle`, `6_baseline`, `7_listmle`, `11_listmle_standing_rank` |
 | Spearman surrogate | `ranking_surrogate_losses` (Spearman) | `8_spearman_surrogate`, `10_spearman_surrogate_standing_rank` |
+| Top-weighted Spearman surrogate | `ranking_surrogate_losses` (weights ∝ 1/rank^`training.loss_top_weight_power`; up-weights ranks 1-4) | `8_spearman_surrogate/improved_topweighted_02-27` |
 | RMSE surrogate | `ranking_surrogate_losses` (rank RMSE) | `13_rmse_surrogate`, `15_rmse_surrogate_standing_rank` |
 | MAP | MAP estimator variant | `14_map_run`, `16_map_standing_rank` |
 
-Config: `training.loss_type` (e.g. `listmle`, `spearman_surrogate`, `rank_rmse_surrogate`), `training.listmle_target` (e.g. `final_rank`, `playoff_outcome`).
+Config: `training.loss_type` (e.g. `listmle`, `spearman_surrogate`, `weighted_spearman_surrogate`, `rank_rmse_surrogate`), `training.listmle_target` (e.g. `final_rank`, `playoff_outcome`).
+
+**Note (Feb 27, 2026):** the surrogate losses had an inverted soft-rank sign (best team got the lowest score; the meta had to flip Model A). Fixed in `src/models/ranking_surrogate_losses.py`; models trained before the fix keep the old inverted convention internally. See [PROJECT_STATE_AND_BEST_MODELS_02-27.md](PROJECT_STATE_AND_BEST_MODELS_02-27.md) → Implementation status.
 
 ---
 
