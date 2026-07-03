@@ -2,6 +2,8 @@
 
 **Baseline vs best vs experiments.** This doc summarizes the canonical roles of each output set and what still needs to be tested.
 
+**Current-state analysis (Feb 27, 2026):** [PROJECT_STATE_AND_BEST_MODELS_02-27.md](PROJECT_STATE_AND_BEST_MODELS_02-27.md) — full ranking of all models (A–H) with sweep numbers and improvement opportunities.
+
 **Per-folder docs:** Each output folder has a **`MODEL.md`** that describes the model that produced those results. All output roots live under **`output/`** with **model-based names** (e.g. **8_spearman_surrogate**, **6_baseline**). See [OUTPUT_FOLDER_NAMING.md](OUTPUT_FOLDER_NAMING.md).
 
 ---
@@ -48,6 +50,12 @@ Results under `output/12_baseline_standing_rank/baseline_standing_rank/` (e.g. `
 
 ---
 
+## All models
+
+For a **canonical list of every model** (Model A, B, C, stacking, team-stats, logistic regression, etc.) with config flags and artifacts, see **[MODELS.md](MODELS.md)**.
+
+---
+
 ## Output folders and MODEL.md
 
 All live under **`output/`**. See [OUTPUT_FOLDER_NAMING.md](OUTPUT_FOLDER_NAMING.md) for the full mapping.
@@ -72,3 +80,8 @@ All live under **`output/`**. See [OUTPUT_FOLDER_NAMING.md](OUTPUT_FOLDER_NAMING
 | output/16_map_standing_rank/ | MAP + standing rank; compare to 14_map_run. |
 | output/team_stats_listmle/ | Team-stats/standing + ListMLE (branch feature/team-stats-listmle). |
 | output/team_stats_spearman_surrogate/ | Team-stats + Spearman surrogate (branch feature/team-stats-spearman-surrogate). |
+| output/team_stats_linear_regression/ | Team-stats: Linear Regression (`training.train_team_stats_linear`). See [MODELS.md](MODELS.md). |
+| output/team_stats_bayesian_ridge/ | Team-stats: Bayesian Ridge (`training.train_team_stats_bayesian_ridge`). |
+| output/team_stats_gpr/ | Team-stats: GPR (`training.train_team_stats_gpr`). |
+| output/team_stats_gmm/ | Team-stats: GMM (`training.train_team_stats_gmm`). |
+| output/logistic_regression/ | Logistic Regression clone classifier (script 4c). |

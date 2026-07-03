@@ -1,6 +1,6 @@
 # Output folder naming (model-based)
 
-Output folders under **`output/`** use **model-based names** so you can tell at a glance which model/run produced the results.
+Output folders under **`output/`** use **model-based names** so you can tell at a glance which model/run produced the results. For a **full list of all models** (A, B, C, stacking, team-stats, logistic regression) and their config/artifacts, see **[MODELS.md](MODELS.md)**.
 
 | Folder | Model / meaning |
 |--------|-----------------|

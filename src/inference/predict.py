@@ -1,4 +1,7 @@
-"""Inference: load A/B/stacker, produce per-team JSON (predicted_strength, ensemble_score, delta, contributors)."""
+"""Inference: load whichever models are present (A, B, C, meta, extra), produce per-team JSON.
+
+Runs on any subset of models: Model A only, XGB only, RF only, team-stats (linreg, bayesian_ridge, gpr, gmm),
+or any combination. Ensemble is meta when both A and B exist; otherwise mean of available scores (normalized)."""
 
 from __future__ import annotations
 
@@ -13,6 +16,14 @@ import pandas as pd
 import torch
 
 from src.models.confidence import confidence_from_attention
+
+# Letter labels for extra (team-stats) models; matches docs/MODELS.md (Model D–G).
+EXTRA_MODEL_LETTER: dict[str, str] = {
+    "linreg": "d",
+    "bayesian_ridge": "e",
+    "gpr": "f",
+    "gmm": "g",
+}
 
 
 def _state_dict_for_load(state: dict | None) -> dict:
@@ -145,12 +156,19 @@ def predict_teams(
     extra_model_scores = extra_model_scores or {}
     extra_model_score_std = extra_model_score_std or {}
 
-    # Option 2: fixed blend toward XGB when xgb_weight is set in (0, 1)
+    # Build ensemble from whatever models are available (A, B, C, extra). Run on any subset.
+    # Use meta / xgb_weight only when both A and B are present (model_presence); else use mean of available scores.
     team_id_to_conf = team_id_to_conference or {}
-    if xgb_weight is not None and 0.0 < xgb_weight < 1.0:
+    pm = model_presence or {}
+    has_a = pm.get("a", True) and len(sa) == n and np.any(sa != 0)
+    has_xgb = pm.get("xgb", True) and len(sx) == n and np.any(sx != 0)
+    has_both_ab = (pm.get("a", True) and pm.get("xgb", True)) and (len(sa) == n and len(sx) == n)
+    has_extra = bool(extra_model_scores and any(np.any(np.asarray(v) != 0) for v in extra_model_scores.values() if v is not None and len(v) == n))
+
+    if xgb_weight is not None and 0.0 < xgb_weight < 1.0 and has_both_ab:
         ens = (1.0 - float(xgb_weight)) * sa + float(xgb_weight) * sx
-    elif meta_by_conference and team_id_to_conf:
-        # Option 3A: per-conference meta (E/W)
+    elif meta_by_conference and team_id_to_conf and has_both_ab:
+        # Option 3A: per-conference meta (E/W) when we have A and/or B
         ens = np.zeros(n, dtype=np.float64)
         for i in range(n):
             tid = team_ids[i]
@@ -171,12 +189,10 @@ def predict_teams(
                 ens[i] = float(meta_c.predict(X_i).ravel()[0])
             else:
                 ens[i] = (sa[i] + sx[i]) / 2.0
-    else:
-        # Ensemble: 2 or 4 columns for meta (4 when meta has confidence and we pass conf_a, conf_xgb)
+    elif meta_model is not None and not isinstance(meta_model, dict) and callable(getattr(meta_model, "predict", None)) and has_both_ab:
+        # Ensemble: meta (2 or 4 cols) when A and/or B present
         use_4col = (
-            meta_model is not None
-            and not isinstance(meta_model, dict)
-            and hasattr(meta_model, "coef_")
+            hasattr(meta_model, "coef_")
             and (getattr(meta_model, "coef_", None) is not None and len(np.asarray(meta_model.coef_).ravel()) == 4)
         )
         if use_4col:
@@ -187,10 +203,28 @@ def predict_teams(
             X_meta = np.column_stack([sa, sx, c_a, c_x])
         else:
             X_meta = np.column_stack([sa, sx])
-        if meta_model is not None and not isinstance(meta_model, dict) and callable(getattr(meta_model, "predict", None)):
-            ens = meta_model.predict(X_meta).ravel()
+        ens = meta_model.predict(X_meta).ravel()
+    else:
+        # Run on any model(s): use mean of available scores (A, B, C, extra), each normalized to [0,1]
+        parts: list[np.ndarray] = []
+        def _norm(s: np.ndarray) -> np.ndarray:
+            s = np.asarray(s, dtype=np.float64).ravel()
+            if len(s) == n and (np.ptp(s) > 1e-12):
+                s = (s - s.min()) / (s.max() - s.min() + 1e-12)
+            return s
+        if len(sa) == n and np.any(sa != 0):
+            parts.append(_norm(sa))
+        if len(sx) == n and np.any(sx != 0):
+            parts.append(_norm(sx))
+        if len(sr) == n and np.any(sr != 0):
+            parts.append(_norm(sr))
+        for _name, arr in (extra_model_scores or {}).items():
+            if arr is not None and len(arr) == n and np.any(np.asarray(arr) != 0):
+                parts.append(_norm(arr))
+        if parts:
+            ens = np.mean(parts, axis=0)
         else:
-            ens = (sa + sx) / 2.0
+            ens = (sa + sx) / 2.0  # fallback (all zeros → tied rank)
     ens = np.nan_to_num(ens, nan=0.0, posinf=0.0, neginf=0.0)
 
     pred_rank = np.argsort(np.argsort(-ens)) + 1  # global rank 1-30
@@ -272,12 +306,14 @@ def predict_teams(
     r_lo, r_hi = _mc_rank_bounds(sr, std_r)
 
     extra_rank_bounds: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+    extra_point_ranks: dict[str, np.ndarray] = {}
     for name, mean_arr in extra_model_scores.items():
         std_arr = extra_model_score_std.get(name)
         if std_arr is None or len(std_arr) != n:
             continue
         lo, hi = _mc_rank_bounds(mean_arr, np.asarray(std_arr))
         extra_rank_bounds[str(name)] = (lo, hi)
+        extra_point_ranks[str(name)] = np.argsort(np.argsort(-np.asarray(mean_arr).ravel())) + 1
 
     # Ensemble global rank interval: sample (sa, sx) then recompute ensemble each draw
     ens_lo = pred_rank.astype(int)
@@ -380,31 +416,36 @@ def predict_teams(
         }
 
         conf = team_id_to_conference.get(tid) if team_id_to_conference else None
+        diag: dict[str, Any] = {
+            "model_agreement": agreement,
+            "model_a_rank": int(r_a) if r_a is not None else None,
+            "model_a_rank_low": int(a_lo[i]) if a_lo is not None else None,
+            "model_a_rank_high": int(a_hi[i]) if a_hi is not None else None,
+            "model_b_rank": int(r_x) if r_x is not None else None,
+            "model_b_rank_low": int(x_lo[i]) if x_lo is not None else None,
+            "model_b_rank_high": int(x_hi[i]) if x_hi is not None else None,
+            "model_c_rank": int(r_r) if r_r is not None else None,
+            "model_c_rank_low": int(r_lo[i]) if r_lo is not None else None,
+            "model_c_rank_high": int(r_hi[i]) if r_hi is not None else None,
+        }
+        for name, bounds in extra_rank_bounds.items():
+            letter = EXTRA_MODEL_LETTER.get(name)
+            if letter:
+                r_point = int(extra_point_ranks[name][i]) if name in extra_point_ranks else None
+                diag[f"model_{letter}_rank"] = r_point
+                diag[f"model_{letter}_rank_low"] = int(bounds[0][i])
+                diag[f"model_{letter}_rank_high"] = int(bounds[1][i])
+        diag["extra_model_ranks"] = {
+            name: {"rank_low": int(bounds[0][i]), "rank_high": int(bounds[1][i])}
+            for name, bounds in extra_rank_bounds.items()
+        } if extra_rank_bounds else None
         out.append({
             "team_id": int(tid),
             "team_name": tname,
             "conference": conf,
             "prediction": pred_dict,
             "analysis": analysis_dict,
-            "ensemble_diagnostics": {
-                "model_agreement": agreement,
-                "model_a_rank": int(r_a) if r_a is not None else None,
-                "model_a_rank_low": int(a_lo[i]) if a_lo is not None else None,
-                "model_a_rank_high": int(a_hi[i]) if a_hi is not None else None,
-                "model_b_rank": int(r_x) if r_x is not None else None,
-                "model_b_rank_low": int(x_lo[i]) if x_lo is not None else None,
-                "model_b_rank_high": int(x_hi[i]) if x_hi is not None else None,
-                "model_c_rank": int(r_r) if r_r is not None else None,
-                "model_c_rank_low": int(r_lo[i]) if r_lo is not None else None,
-                "model_c_rank_high": int(r_hi[i]) if r_hi is not None else None,
-                "extra_model_ranks": {
-                    name: {
-                        "rank_low": int(bounds[0][i]),
-                        "rank_high": int(bounds[1][i]),
-                    }
-                    for name, bounds in extra_rank_bounds.items()
-                } if extra_rank_bounds else None,
-            },
+            "ensemble_diagnostics": diag,
             "roster_dependence": {
                 "primary_contributors": [
                     {"player": str(p), "attention_weight": float(w)}
@@ -483,6 +524,12 @@ def run_inference_from_db(
                 meta_by_conference[conf] = m
     if not meta_by_conference:
         meta_by_conference = None
+    if model_a is None and xgb is None and rf is None and not extra_models:
+        print(
+            "Warning: No models loaded (no best_deep_set.pt, xgb_model.joblib, rf_model.joblib, or team-stats artifacts). "
+            "Predictions will be tied. Point config paths.outputs to a directory that has at least one model.",
+            file=sys.stderr,
+        )
     xgb_weight = config.get("stacking", {}).get("xgb_weight")
     if xgb_weight is not None and (not isinstance(xgb_weight, (int, float)) or xgb_weight <= 0 or xgb_weight >= 1):
         xgb_weight = None

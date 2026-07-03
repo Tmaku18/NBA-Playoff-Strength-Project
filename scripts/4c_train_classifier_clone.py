@@ -4,8 +4,10 @@ What this does:
 - Trains XGBoost to classify teams as playoff (top-15) vs non-playoff.
 - Uses train 2015-22, val 2023, holdout 2024.
 - Evaluates with AUC-ROC and Brier score.
-- Optional; not part of main ranking pipeline. Use clone_classifier config."""
+- Optional; not part of main ranking pipeline. Use clone_classifier config.
+- Uses feature cache (paths.feature_cache) when set for build_team_context_as_of_dates."""
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -43,6 +45,12 @@ def main():
 
     from src.data.db_loader import load_training_data
     from src.evaluation.playoffs import compute_eos_playoff_standings
+    from src.features.feature_cache import (
+        compute_feature_cache_key,
+        get_feature_cache_dir,
+        load_feature_cache,
+        save_feature_cache,
+    )
     from src.features.team_context import build_team_context_as_of_dates, get_team_context_feature_cols
     from src.training.build_lists import build_lists
     from src.utils.split import date_to_season
@@ -84,7 +92,16 @@ def main():
         sys.exit(1)
 
     team_dates = [(int(a), str(b)) for a, b in flat[["team_id", "as_of_date"]].drop_duplicates().values.tolist()]
-    feat_df = build_team_context_as_of_dates(tgl, games, team_dates, config=config, teams=teams, pgl=pgl)
+    team_dates_hash = hashlib.sha256(json.dumps(sorted(team_dates), sort_keys=True).encode()).hexdigest()[:16]
+    cache_dir = get_feature_cache_dir(config, ROOT)
+    cache_key = compute_feature_cache_key(config, db_path, team_dates_hash) if cache_dir else None
+    feat_df = load_feature_cache(cache_dir, cache_key) if cache_dir and cache_key else None
+    if feat_df is not None:
+        print("Feature cache hit (4c).", flush=True)
+    if feat_df is None:
+        feat_df = build_team_context_as_of_dates(tgl, games, team_dates, config=config, teams=teams, pgl=pgl)
+        if cache_dir and cache_key:
+            save_feature_cache(cache_dir, cache_key, feat_df)
     df = flat.merge(feat_df, on=["team_id", "as_of_date"], how="inner")
     feat_cols = [c for c in get_team_context_feature_cols(config) if c in df.columns]
     if not feat_cols:

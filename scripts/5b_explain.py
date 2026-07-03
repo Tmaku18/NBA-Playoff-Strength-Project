@@ -1,5 +1,7 @@
 """Script 5b: Explain model predictions (SHAP + attention/IG).
 
+Uses feature cache (paths.feature_cache) when set for build_team_context_as_of_dates.
+
 What this does:
 - Runs SHAP on Model B (XGBoost) to show feature importance for team strength.
 - Runs attention/Integrated Gradients on Model A (DeepSet) for player-level explanations.
@@ -8,6 +10,8 @@ What this does:
 
 Run after inference (script 6). Optional; useful for interpreting which features/players matter."""
 import argparse
+import hashlib
+import json
 import math
 import sys
 from pathlib import Path
@@ -42,15 +46,19 @@ def _copy_to_run_dir(out: Path, src: Path, name: str, config: dict) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Explain Model B (SHAP) and Model A (attention/IG)")
     parser.add_argument("--config", type=str, default=None, help="Path to config YAML; default: config/defaults.yaml")
+    parser.add_argument("--outputs", type=str, default=None, help="Override paths.outputs (e.g. output/11_listmle_standing_rank/listmle_standing_rank_single)")
+    parser.add_argument("--run-id", type=str, default=None, help="Override inference.run_id (e.g. run_025)")
     args = parser.parse_args()
     config_path = Path(args.config) if args.config else ROOT / "config" / "defaults.yaml"
     if not config_path.is_absolute():
         config_path = ROOT / config_path
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
-    out = Path(config["paths"]["outputs"])
+    out = Path(args.outputs or config["paths"]["outputs"])
     if not out.is_absolute():
         out = ROOT / out
+    if args.run_id is not None:
+        config.setdefault("inference", {})["run_id"] = args.run_id
     db_path = Path(config["paths"]["db"])
     if not db_path.is_absolute():
         db_path = ROOT / db_path
@@ -59,6 +67,12 @@ def main():
         sys.exit(1)
 
     from src.data.db_loader import load_training_data
+    from src.features.feature_cache import (
+        compute_feature_cache_key,
+        get_feature_cache_dir,
+        load_feature_cache,
+        save_feature_cache,
+    )
     from src.features.team_context import build_team_context_as_of_dates, get_team_context_feature_cols
     from src.training.build_lists import build_lists
     from src.training.data_model_a import build_batches_from_lists
@@ -78,10 +92,19 @@ def main():
             rows.append({"team_id": int(tid), "as_of_date": lst["as_of_date"]})
     flat = pd.DataFrame(rows)
     team_dates = [(int(a), str(b)) for a, b in flat[["team_id", "as_of_date"]].drop_duplicates().values.tolist()]
-    feat_df = build_team_context_as_of_dates(
-        tgl, games, team_dates,
-        config=config, teams=teams, pgl=pgl,
-    )
+    team_dates_hash = hashlib.sha256(json.dumps(sorted(team_dates), sort_keys=True).encode()).hexdigest()[:16]
+    cache_dir = get_feature_cache_dir(config, ROOT)
+    cache_key = compute_feature_cache_key(config, db_path, team_dates_hash) if cache_dir else None
+    feat_df = load_feature_cache(cache_dir, cache_key) if cache_dir and cache_key else None
+    if feat_df is not None:
+        print("Feature cache hit (5b).", flush=True)
+    if feat_df is None:
+        feat_df = build_team_context_as_of_dates(
+            tgl, games, team_dates,
+            config=config, teams=teams, pgl=pgl,
+        )
+        if cache_dir and cache_key:
+            save_feature_cache(cache_dir, cache_key, feat_df)
     feat_cols = [c for c in get_team_context_feature_cols(config) if c in feat_df.columns]
     if not feat_cols:
         print("No feature columns for SHAP.", file=sys.stderr)
@@ -214,7 +237,6 @@ def main():
         run_dir = out / run_id
         pred_files = list(run_dir.glob("predictions_*.json")) or ([run_dir / "predictions.json"] if (run_dir / "predictions.json").exists() else [])
         if pred_files:
-            import json
             all_teams = []
             for pf in sorted(pred_files)[:3]:  # cap to avoid huge load
                 with open(pf, "r", encoding="utf-8") as f:
