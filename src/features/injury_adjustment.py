@@ -120,9 +120,17 @@ def _project_minutes(
     active_roster: pd.DataFrame,
     injured_minutes: float,
     *,
+    minutes_heuristic: str = "proportional",
     total_min: float = 1.0,
 ) -> dict[int, float]:
-    """Project minutes for active players. Proportional: redistribute 240 by minute share."""
+    """Project minutes for active players.
+
+    proportional (default): redistribute 240 by each active player's season minute share.
+    equal: split 240 evenly across active players.
+    """
+    if minutes_heuristic == "equal":
+        n = max(len(active_roster), 1)
+        return {int(pid): TOTAL_TEAM_MINUTES / n for pid in active_roster["player_id"]}
     active_min = active_roster["total_min"].sum()
     if active_min <= 0:
         n = max(len(active_roster), 1)

@@ -604,20 +604,10 @@ def run_inference_from_db(
         cache_dir = cfg.get("paths", {}).get("feature_cache")
         if not cache_dir or (isinstance(cache_dir, str) and cache_dir.strip().lower() in ("null", "")):
             return None
-        model_b = cfg.get("model_b", {})
-        key_data = {
-            "include_features": tuple(model_b.get("include_features") or []),
-            "exclude_features": tuple(model_b.get("exclude_features") or []),
-            "elo": bool(cfg.get("elo", {}).get("enabled", False)),
-            "massey": bool(cfg.get("massey", {}).get("enabled", False)),
-            "team_rolling": bool(cfg.get("team_rolling", {}).get("enabled", True)),
-            "team_dates_hash": team_dates_hash,
-            "db": str(path.resolve()),
-        }
-        if path.exists():
-            st = path.stat()
-            key_data["db_mtime"], key_data["db_size"] = st.st_mtime, st.st_size
-        return hashlib.sha256(json.dumps(key_data, sort_keys=True, default=str).encode()).hexdigest()[:20]
+        # Reuse the full training-side key (all feature flags) so a config change can never
+        # serve a stale cached table with a different column set.
+        from src.features.feature_cache import compute_feature_cache_key
+        return compute_feature_cache_key(cfg, path, team_dates_hash)
 
     all_specs = test_specs + train_specs + val_specs
     # Collect ALL (team_id, as_of_date) pairs across specs. Each season/spec has its own

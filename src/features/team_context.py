@@ -261,7 +261,6 @@ def build_team_context_as_of_dates(
                     out[c] = out[c].fillna(0)
 
     if cfg.get("injury", {}).get("enabled", False) and pgl is not None:
-        from pathlib import Path
         from ..data.injury_loader import load_injury_reports
         from .injury_adjustment import proj_available_rating_per_team
         paths_cfg = cfg.get("paths", {})
@@ -279,7 +278,6 @@ def build_team_context_as_of_dates(
 
     if cfg.get("raptor", {}).get("enabled", False) and pgl is not None:
         from datetime import timedelta
-        from pathlib import Path
         from ..data.raptor_loader import load_raptor_by_player
         from .build_roster_set import get_roster_as_of_date, latest_team_map_as_of
         paths_cfg = cfg.get("paths", {})
@@ -340,7 +338,6 @@ def build_team_context_as_of_dates(
 
     if cfg.get("sos_srs", {}).get("enabled", False):
         from datetime import timedelta
-        from pathlib import Path
         from ..data.kaggle_loader import load_team_records_srs
         paths_cfg = cfg.get("paths", {})
         raw_base = Path(paths_cfg.get("raw", "data/raw")).resolve()

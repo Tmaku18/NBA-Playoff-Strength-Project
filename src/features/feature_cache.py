@@ -36,6 +36,7 @@ def compute_feature_cache_key(config: dict, db_path: Path, team_dates_hash: str)
         "sos_srs": bool(config.get("sos_srs", {}).get("enabled", False)),
         "motivation": bool(config.get("motivation", {}).get("enabled", False)),
         "injury": bool(config.get("injury", {}).get("enabled", False)),
+        "raptor": bool(config.get("raptor", {}).get("enabled", False)),
         "team_dates_hash": team_dates_hash,
         "db": str(db_path.resolve()),
     }
