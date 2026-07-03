@@ -80,4 +80,43 @@ These models remain useful as inference extras/diagnostics (inference now runs o
 
 ## Improvement opportunities for the best model (8_spearman_surrogate)
 
-*(Filled in below after switching to `main` and analyzing best-combo configs, Optuna importances, and per-conference evals — see § Improvements.)*
+Based on the combo_0033 config (`output/8_spearman_surrogate/sweeps/20260217_042955/combo_0033/config.yaml`), its eval report (`.../outputs/run_025_02-17/eval_report.json`), and the sweep analysis ([OUTPUTS8_SWEEP_ANALYSIS_02-17.md](OUTPUTS8_SWEEP_ANALYSIS_02-17.md)).
+
+### Key observations from the best run
+
+| Observation | Evidence |
+|-------------|----------|
+| **Model A's raw score is inverted** | Model A test Spearman is **−0.661** on its own; the RidgeCV meta learned coef ≈ **[−37.2 (A), +43.2 (B)]**, i.e. it flips A's sign. The ensemble (0.777) works *because* the meta negates A. |
+| **Standings still beat the ensemble on rank MAE** | Standings MAE **3.13** vs ensemble **4.80** (E: 2.93 vs 5.33; W: 3.33 vs 4.27). The model wins on correlation, loses on absolute rank error. |
+| **Top-end is weak in the Spearman-best combo** | ndcg@4 **0.042**, precision@4 **0.0**, champion_rank 7, champion_in_top_4 0. Combo_0032 trades a little Spearman (0.737) for far better top-end (ndcg@4 0.349, champion_rank **3**, champion_in_top_4 **1.0**). |
+| **East is weaker than West** | E Spearman 0.729 / MAE 5.33 vs W 0.793 / 4.27. Also `ridgecv_meta_E.joblib` has coefficients identical to the global meta — the per-conference meta isn't adding anything. |
+| **Season variance** | 2023-24 Spearman 0.675 vs 2024-25 0.777 — one full season gap in generalization. |
+| **Features off in the best config** | `sos_srs.enabled: false`, `team_rolling.enabled: false`, `injury.enabled: false`, `stacking.use_confidence: false`. Elo, Massey, motivation, RAPTOR are on. |
+| **Training caps** | `early_stopping_patience: 0` (no early stopping), epochs 15, `max_lists_oof: 100`, `max_final_batches: 100` (heavy subsampling of training lists). |
+
+### Ranked improvements
+
+1. **Fix / exploit the Model A sign inversion (highest value, low effort).**
+   Model A trained with the Spearman surrogate produces scores *negatively* correlated with strength; the stacker rescues it. Verify the surrogate loss sign convention (higher score should mean better rank). If A's score were correctly oriented and individually strong (target: Spearman > 0.6 alone instead of −0.66), the meta could blend two strong models instead of subtracting a noisy one — likely raising both Spearman and MAE.
+
+2. **Blend standings into the stacker (not into Model A).**
+   Standings-as-input hurt Model A (outputs 10/11), but standings as a **third stacking column** is different: the meta could anchor on standings (MAE 3.13) and use A+B for the correlation signal. Concretely: add `wl_record` rank to the OOF table in script 4b and let RidgeCV weight it. This directly attacks the MAE gap vs baseline.
+
+3. **Top-end objective for production use.**
+   For championship questions, use combo_0032 (or re-sweep with a top-weighted Spearman surrogate that up-weights ranks 1–4). Candidate: weighted Spearman surrogate with weights ∝ 1/rank, or a two-head loss (Spearman + NDCG@4 surrogate). The current best-Spearman combo is effectively unusable for champion prediction (precision@4 = 0).
+
+4. **Feature ablation sweep on the flags that are off.**
+   `sos_srs`, `team_rolling`, and `injury` are disabled in the best config, but were never swept as toggles in outputs8 (the sweep varied epochs/XGB HPs only). A small 8–12 trial sweep toggling these three (with combo_0033 HPs fixed) is cheap thanks to the batch/feature caches and could lift Model B especially in the East, where MAE is worst.
+
+5. **Confidence-weighted stacking (4-column) on the best config.**
+   `stacking.use_confidence: false` in combo_0033; the code supports attention-entropy confidence for A and tree-variance for B. Given the meta currently has to fully invert A, per-team confidence could down-weight A where its attention is diffuse. One pipeline re-run with `use_confidence: true` answers this.
+
+6. **Lift training caps + early stopping.**
+   `max_lists_oof: 100` / `max_final_batches: 100` subsample the training lists, and early stopping is off (fixed 15 epochs). Raising caps to 200–300 and enabling `early_stopping_patience: 3–5` with `val_frac 0.25` is a low-risk change that uses more data without overfitting; caches keep the cost manageable.
+
+7. **East-specific investigation.**
+   E is consistently worse across all runs (also seen in team-stats sweeps). Check East roster churn / play-in volatility in the feature plots (`docs/feature_rank_vs_playoff_outcome_pdf/`); consider conference-specific `odds_temperature` or a true per-conference meta (the current `ridgecv_meta_E` is a copy of the global one — fit it on East-only OOF rows).
+
+### Suggested order of execution
+
+Steps 1 and 2 first (both cheap, both target the two biggest weaknesses: A's inversion and MAE vs standings), then 5 and 6 as single pipeline re-runs, then the ablation sweep (4), then the top-end loss work (3) as the larger research item.
