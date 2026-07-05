@@ -12,6 +12,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import yaml
@@ -362,19 +363,26 @@ def _compute_metrics_from_arrays(
     return m
 
 
-def _compute_metrics(teams: list, *, k: int = 30) -> dict:
-    """Compute ndcg, spearman, mrr, roc_auc_upset and optionally playoff_metrics from teams list."""
+def _compute_metrics(teams: list, *, k: int = 30, eos_rank_source: str = "standings") -> dict:
+    """Compute ndcg, spearman, mrr, roc_auc_upset and optionally playoff_metrics from teams list.
+
+    eos_rank_source: when "eos_final_rank", playoff_metrics use the same EOS_global_rank
+    outcome as the main metrics (previously they used post_playoff_rank, a different
+    1-30 scheme, so 'playoff' and 'main' metrics disagreed on the ground truth)."""
     y_actual, y_score, pred_ranks_arr, _, _ = _teams_to_arrays(teams)
     m = _compute_metrics_from_arrays(y_actual, y_score, pred_ranks_arr, k=k)
     # Rank-distance metrics: predicted rank vs Playoff Outcome Rank (lower is better)
     m["rank_mae_pred_vs_playoff_outcome_rank"] = float(rank_mae(pred_ranks_arr, y_actual))
     m["rank_rmse_pred_vs_playoff_outcome_rank"] = float(rank_rmse(pred_ranks_arr, y_actual))
-    # W/L record standings vs Playoff Outcome Rank (baseline: how far reg-season rank was from playoff outcome)
+    # W/L record standings vs Playoff Outcome Rank (baseline). Prefer standings at the
+    # model's as-of date (fair: same information cutoff); fall back to EOS standings.
     standings_list = []
     actual_list = []
     for t in teams:
         act = t.get("analysis", {}).get("EOS_global_rank")
-        stand = t.get("analysis", {}).get("EOS_playoff_standings")
+        stand = t.get("analysis", {}).get("standings_to_date_rank")
+        if stand is None:
+            stand = t.get("analysis", {}).get("EOS_playoff_standings")
         if act is not None and stand is not None:
             actual_list.append(float(act))
             standings_list.append(float(stand))
@@ -411,6 +419,12 @@ def _compute_metrics(teams: list, *, k: int = 30) -> dict:
         p_rank = t.get("analysis", {}).get("post_playoff_rank")
         if p_rank is None:
             continue
+        # Unify rank convention: when the payload's EOS rank is playoff-based, use it as
+        # the outcome so playoff_metrics and main metrics share the same ground truth.
+        if eos_rank_source == "eos_final_rank":
+            eos = t.get("analysis", {}).get("EOS_global_rank")
+            if eos is not None:
+                p_rank = eos
         g_rank = t.get("prediction", {}).get("global_rank") or t.get("prediction", {}).get("predicted_strength") or 0
         odds_str = t.get("prediction", {}).get("championship_odds", "0%")
         playoff_rows.append((float(p_rank), float(g_rank), odds_str))
@@ -508,14 +522,25 @@ def _model_vs_standings_comparison(
     B: int = 2000,
     seed: int = 42,
 ) -> dict:
-    """Compare each model to regular-season W/L standings vs same outcome ranks. Includes MAE/RMSE per model,
-    improvement over standings, and paired bootstrap significance (model better than standings?)."""
+    """Compare each model to the W/L standings baseline vs the same outcome ranks. Includes MAE/RMSE per model,
+    improvement over standings, and paired bootstrap significance (model better than standings?).
+
+    Baseline: standings_to_date_rank (standings at the model's as-of date) when available —
+    the fair comparison, since EOS_playoff_standings sees the full season the model has not.
+    Falls back to EOS_playoff_standings for old prediction files."""
     y_actual_list = []
     standings_list = []
+    baseline_source = None
     pred_by_model: dict[str, list[float]] = {"ensemble": [], "model_a": [], "xgb": [], "rf": []}
     for t in teams:
         act = t.get("analysis", {}).get("EOS_global_rank")
-        stand = t.get("analysis", {}).get("EOS_playoff_standings")
+        stand = t.get("analysis", {}).get("standings_to_date_rank")
+        if stand is not None:
+            baseline_source = baseline_source or "standings_to_date_rank"
+        else:
+            stand = t.get("analysis", {}).get("EOS_playoff_standings")
+            if stand is not None:
+                baseline_source = baseline_source or "EOS_playoff_standings"
         if act is None or stand is None:
             continue
         y_actual_list.append(float(act))
@@ -537,6 +562,7 @@ def _model_vs_standings_comparison(
     standings = np.array(standings_list, dtype=np.float64)
     out: dict = {
         "n_teams": n,
+        "baseline_source": baseline_source,
         "standings_vs_outcome": {
             "rank_mae": float(rank_mae(standings, y_actual)),
             "rank_rmse": float(rank_rmse(standings, y_actual)),
@@ -673,7 +699,9 @@ def _metrics_by_conference(
         pred_rf = []
         for t in conf_teams:
             act = t.get("analysis", {}).get("EOS_global_rank")
-            stand = t.get("analysis", {}).get("EOS_playoff_standings")
+            stand = t.get("analysis", {}).get("standings_to_date_rank")
+            if stand is None:
+                stand = t.get("analysis", {}).get("EOS_playoff_standings")
             diag = t.get("ensemble_diagnostics", {})
             pred = t.get("prediction", {})
             if act is not None and stand is not None:
@@ -768,8 +796,11 @@ def main():
         report["notes"]["eval_on"] = "test"
 
     by_season: dict[str, dict] = {}
+    pooled_teams: list = []
+    pooled_eos_sources: set[str] = set()
 
     # Evaluate per-season files (e.g. predictions_2024-25.json) and write eval_report_<season>.json.
+    # Multi-checkpoint runs also produce predictions_<season>@<date>.json, evaluated the same way.
     for pred_file in sorted(per_season_preds):
         season = pred_file.stem.replace("predictions_", "")
         with open(pred_file, "r", encoding="utf-8") as f:
@@ -781,7 +812,9 @@ def main():
         missing_actual = sum(1 for t in teams if t.get("analysis", {}).get("EOS_global_rank") is None)
         if missing_actual > 0:
             print(f"Warning: {season}: {missing_actual} teams missing EOS_global_rank; skipped in evaluation.")
-        metrics_ensemble = _compute_metrics(teams)
+        pooled_teams.extend(teams)
+        pooled_eos_sources.add(eos_source)
+        metrics_ensemble = _compute_metrics(teams, eos_rank_source=eos_source)
         by_model, _, _ = _teams_to_arrays_by_model(teams)
         metrics_model_a = _compute_metrics_from_arrays(by_model["model_a"][0], by_model["model_a"][1], by_model["model_a"][2]) if "model_a" in by_model else {}
         metrics_xgb = _compute_metrics_from_arrays(by_model["xgb"][0], by_model["xgb"][1], by_model["xgb"][2]) if "xgb" in by_model else {}
@@ -815,7 +848,7 @@ def main():
         primary_teams = data.get("teams", [])
         if primary_teams:
             report["notes"]["eos_rank_source"] = data.get("eos_rank_source", "standings")
-            metrics_ens = _compute_metrics(primary_teams)
+            metrics_ens = _compute_metrics(primary_teams, eos_rank_source=data.get("eos_rank_source", "standings"))
             by_model, _, _ = _teams_to_arrays_by_model(primary_teams)
             report["test_metrics_ensemble"] = metrics_ens
             report["test_metrics_model_a"] = _compute_metrics_from_arrays(by_model["model_a"][0], by_model["model_a"][1], by_model["model_a"][2]) if "model_a" in by_model else {}
@@ -833,13 +866,21 @@ def main():
     elif by_season:
         last_season = sorted(by_season.keys())[-1]
         last_report = by_season[last_season]
-        report["test_metrics_ensemble"] = last_report["test_metrics_ensemble"].copy()
-        report["test_metrics_model_a"] = last_report["test_metrics_model_a"]
-        report["test_metrics_model_b"] = last_report.get("test_metrics_model_b") or last_report.get("test_metrics_xgb", {})
-        report["test_metrics_model_c"] = last_report.get("test_metrics_model_c") or last_report.get("test_metrics_rf", {})
-        report["test_metrics_by_conference"] = last_report["test_metrics_by_conference"]
+        # Pool top-level test metrics across all test seasons/checkpoints (previously
+        # they reflected only the last season). Per-season metrics remain in by_season.
+        pooled_source = "eos_final_rank" if "eos_final_rank" in pooled_eos_sources else "standings"
+        report["test_metrics_ensemble"] = _compute_metrics(pooled_teams, eos_rank_source=pooled_source)
+        by_model_p, _, _ = _teams_to_arrays_by_model(pooled_teams)
+        report["test_metrics_model_a"] = _compute_metrics_from_arrays(by_model_p["model_a"][0], by_model_p["model_a"][1], by_model_p["model_a"][2]) if "model_a" in by_model_p else {}
+        report["test_metrics_model_b"] = _compute_metrics_from_arrays(by_model_p["xgb"][0], by_model_p["xgb"][1], by_model_p["xgb"][2]) if "xgb" in by_model_p else {}
+        report["test_metrics_model_c"] = _compute_metrics_from_arrays(by_model_p["rf"][0], by_model_p["rf"][1], by_model_p["rf"][2]) if "rf" in by_model_p else {}
+        report["test_metrics_by_conference"] = _metrics_by_conference(pooled_teams)
         report["confusion_matrices_ranking_top16"] = last_report.get("confusion_matrices_ranking_top16", {})
-        report["notes"]["eos_rank_source"] = last_report["notes"].get("eos_rank_source", "standings")
+        report["notes"]["eos_rank_source"] = pooled_source if len(pooled_eos_sources) == 1 else "mixed"
+        report["notes"]["test_metrics_scope"] = (
+            f"pooled across {len(by_season)} test season(s)/checkpoint(s): {sorted(by_season.keys())}; "
+            "per-season metrics are in by_season"
+        )
         report["by_season"] = by_season
         # Mean and std of metrics across seasons (bias/variance: std = variance of metric across seasons)
         metrics_across = _metrics_mean_std_across_seasons(by_season)
@@ -852,22 +893,14 @@ def main():
                 if isinstance(pm, dict) and pm:
                     report["test_metrics_ensemble"]["playoff_metrics"] = pm
                     break
-        # Model vs standings comparison and significance (from last season's teams)
-        last_season = sorted(by_season.keys())[-1]
-        last_pred_file = run_dir / f"predictions_{last_season}.json"
-        if last_pred_file.exists():
-            with open(last_pred_file, "r", encoding="utf-8") as f:
-                last_teams = json.load(f).get("teams", [])
-            if last_teams:
-                report["model_vs_standings_comparison"] = _model_vs_standings_comparison(last_teams)
-                report["model_vs_standings_comparison"]["season"] = last_season
-                by_model_last, _, _ = _teams_to_arrays_by_model(last_teams)
-                report["standings_vs_outcome_metrics"] = _build_standings_vs_outcome_metrics(last_teams, by_model_last)
-                report["confusion_matrices"] = _confusion_matrices_by_model(last_teams)
-                report["confusion_matrices_ranking_top16"] = _ranking_confusion_matrices_by_model(last_teams, k=16)
-                report["uncertainty_metrics"] = _uncertainty_metrics_from_teams(last_teams)
+        # Model vs standings comparison and significance, pooled across all test teams
+        report["model_vs_standings_comparison"] = _model_vs_standings_comparison(pooled_teams)
+        report["model_vs_standings_comparison"]["scope"] = f"pooled: {sorted(by_season.keys())}"
+        report["standings_vs_outcome_metrics"] = _build_standings_vs_outcome_metrics(pooled_teams, by_model_p)
+        report["confusion_matrices"] = _confusion_matrices_by_model(pooled_teams)
+        report["uncertainty_metrics"] = _uncertainty_metrics_from_teams(pooled_teams)
         # Rank residual bias and variance (mean/std of pred_rank - actual_rank across teams)
-        rank_bv = _rank_residual_bias_variance(last_teams)
+        rank_bv = _rank_residual_bias_variance(pooled_teams)
         if rank_bv is not None:
             report["rank_residual_bias_variance"] = rank_bv
 

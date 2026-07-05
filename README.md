@@ -16,7 +16,8 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 | Role | Output | Description |
 |------|--------|-------------|
 | **Baseline** | **6_baseline** | Phase 1 outcome runs (ListMLE, playoff_outcome, rolling [15,30]; configs from 4_listmle). Reference for all comparisons. |
-| **Best** | **8_spearman_surrogate** | **Spearman-surrogate** loss, playoff_outcome, 40 Optuna trials. Best Spearman (0.777), playoff_spearman (0.854), rank_mae, rank_rmse, NDCG. Use for production. |
+| **Best (fair eval)** | **8_spearman_surrogate / improved_07-03** | **Pipeline deep-dive retrain** (Jul 2026): season-scoped features, causal OOF, seed averaging, rank-transform meta, fair eval (6 checkpoints). **Pooled ensemble Spearman 0.750**, Model B 0.760. See **`output/8_spearman_surrogate/improved_07-03/ANALYSIS_02.md`**. |
+| **Best (legacy sweep)** | **8_spearman_surrogate / combo_0033** | Spearman-surrogate loss, playoff_outcome, 40 Optuna trials. Best on **old** eval (single snapshot, corrupted features, unfair standings baseline). Superseded for production conclusions by **improved_07-03** under fair eval. |
 | **MAP run** | **14_map_run** | MAP branch model tested (mixed): stronger top-focused NDCG/champion placement, weaker Spearman/rank error than 8_spearman_surrogate. Config: `config/outputs14_map_run.yaml`. See [docs/OUTPUTS14_MAP_ANALYSIS.md](docs/OUTPUTS14_MAP_ANALYSIS.md), [docs/OUTPUTS14_MAP_RUN.md](docs/OUTPUTS14_MAP_RUN.md). |
 | **RMSE surrogate** | **13_rmse_surrogate** | **rank_rmse_surrogate** sweep; same setup as 8_spearman_surrogate, different loss. Config: `config/outputs13_sweep_rmse_surrogate.yaml`; compare to 8_spearman_surrogate. |
 | **Baseline-style + standing rank** | **12_baseline_standing_rank** | Same as baseline config (ListMLE, final_rank, [15,30]) but **standing rank as input** (stat_dim 22). Single run: `config/outputs4_baseline_standing_rank.yaml` → `output/12_baseline_standing_rank/baseline_standing_rank`. Compare to baseline (6_baseline). |
@@ -30,7 +31,19 @@ Each output folder has a **`MODEL.md`** that describes the model that produced t
 
 **All models (canonical list):** **[docs/MODELS.md](docs/MODELS.md)** — Model A (Deep Set), B (XGBoost), C (RF), RidgeCV meta, D (Linear Regression), E (Bayesian Ridge), F (GPR), G (GMM), H (Logistic Regression clone), calibration/confidence.
 
-Full lineup and run commands: **[docs/MODEL_LINEUP_AND_NEXT_STEPS.md](docs/MODEL_LINEUP_AND_NEXT_STEPS.md)**. Official best configs: **[docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md)** and **[docs/OUTPUTS8_SWEEP_ANALYSIS_02-17.md](docs/OUTPUTS8_SWEEP_ANALYSIS_02-17.md)**. MAP findings: **[docs/OUTPUTS14_MAP_ANALYSIS.md](docs/OUTPUTS14_MAP_ANALYSIS.md)**. **Current-state analysis and best-model ranking (Feb 27, 2026):** **[docs/PROJECT_STATE_AND_BEST_MODELS_02-27.md](docs/PROJECT_STATE_AND_BEST_MODELS_02-27.md)** — includes the implemented best-model improvements (surrogate-loss sign fix, standings stacking column, top-weighted Spearman loss, flag-ablation sweep phase, confidence stacking, lifted caps + early stopping, true per-conference metas; configs `config/8_spearman_improved.yaml` and `config/8_spearman_improved_topweighted.yaml`).
+Full lineup and run commands: **[docs/MODEL_LINEUP_AND_NEXT_STEPS.md](docs/MODEL_LINEUP_AND_NEXT_STEPS.md)**. Official best configs: **[docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md)** and **[docs/OUTPUTS8_SWEEP_ANALYSIS_02-17.md](docs/OUTPUTS8_SWEEP_ANALYSIS_02-17.md)**. MAP findings: **[docs/OUTPUTS14_MAP_ANALYSIS.md](docs/OUTPUTS14_MAP_ANALYSIS.md)**. **Current-state analysis and best-model ranking (Feb 27, 2026):** **[docs/PROJECT_STATE_AND_BEST_MODELS_02-27.md](docs/PROJECT_STATE_AND_BEST_MODELS_02-27.md)**.
+
+**Pipeline deep-dive (Jul 2026):** Fixed feature corruption, leakage, OOF validity, and evaluation fairness. First validated retrain: **`output/8_spearman_surrogate/improved_07-03/`** — pooled Spearman **0.750** (6 checkpoints, fair standings baseline). Full write-up: **[output/8_spearman_surrogate/improved_07-03/ANALYSIS_02.md](output/8_spearman_surrogate/improved_07-03/ANALYSIS_02.md)**. Config: **`config/8_spearman_improved.yaml`** (`team_rolling` + `injury` enabled for next run → `improved_07-05`).
+
+```bash
+# WSL — full retrain (RTX 4060; torch.compile auto-skipped when path has spaces)
+cd "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project"
+export PYTHONPATH="$PWD"
+export OMP_NUM_THREADS=18
+export MKL_NUM_THREADS=18
+python -m scripts.run_pipeline_from_model_a --config config/8_spearman_improved.yaml \
+  --outputs output/8_spearman_surrogate/improved_07-05/outputs
+```
 
 **Legacy production defaults (4_listmle):** (1) **Standings** — `config/defaults.yaml` (Phase 3 fine NDCG@16 combo 18): listmle_target `final_rank` (playoff standings); combo path `output/4_listmle/sweeps/phase3_fine_ndcg16_final_rank/combo_0018/config.yaml`. (2) **Playoff-outcome** — `config/defaults_playoff_outcome.yaml` (Phase 5 combo 2): listmle_target `playoff_outcome`; use `--config config/defaults_playoff_outcome.yaml` for pipeline or inference. **Latest production run (4_listmle):** run_026 — ensemble NDCG@10 0.485, Spearman 0.477, playoff Spearman 0.467, NDCG@16 0.527 (eval: eos_final_rank; 141 train / 36 test dates). **ListMLE outcome vs standings:** In **output/5_listmle/** we compared training Model A (ListMLE) on `playoff_outcome` vs `final_rank` (standings); when evaluated on playoff outcome, **standings-trained** ListMLE matched or beat outcome-trained (e.g. ndcg_standing: Spearman 0.529, playoff Spearman 0.531 vs ndcg_outcome 0.491 / 0.475). See **`output/0_outputs/ANALYSIS.md`** for run_026 details. **Run 021/022** are baseline full-pipeline runs (output/2_listmle). **Sweep strategy:** Run separate Optuna sweeps with `--objective spearman`, `--objective ndcg4`, `--objective ndcg16`, `--objective playoff_spearman`, or `--objective rank_rmse`, then compare best configs. **output/4_listmle/** is the default production root (run_025, run_026); **output/5_listmle/** holds outcome vs standings comparison. See **`output/4_listmle/sweeps/SWEEP_PHASE1_ANALYSIS.md`**, **`docs/SWEEP_ANALYSIS.md`**, and **`output/2_listmle/run_022/RESULTS_AND_OUTPUTS_EXPLAINED.md`** for sweep and metric definitions.
 
@@ -199,7 +212,7 @@ All paths under the configured outputs dir. **output/0_outputs/** holds ANALYSIS
 
 ### WSL / GPU and reproducibility
 
-**Triton (torch.compile) is enabled** for Model A training; run sweeps and pipelines in **WSL** (Triton does not support Windows).
+Run training and sweeps in **WSL** for CUDA. **`torch.compile` is skipped automatically** when the project or venv path contains spaces (inductor linker limitation on this OneDrive path); training still uses the GPU with AMP.
 
 Running in **WSL (Ubuntu)** with GPU vs **Windows** can yield different results due to CUDA/cuDNN versions, RNG, or numerical precision. To compare:
 

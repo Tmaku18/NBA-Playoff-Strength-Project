@@ -49,6 +49,8 @@ def load_models(
     ma = cfg.get("model_a", {})
 
     if model_a_path and Path(model_a_path).exists():
+        from src.models.deep_set_rank import DeepSetRankEnsemble
+
         ck = torch.load(model_a_path, map_location="cpu", weights_only=False)
         attn_cfg = ma.get("attention", {})
         embed_dim = int(ma.get("embedding_dim", 32))
@@ -59,23 +61,37 @@ def load_models(
             stat_dim = int(enc_in) - embed_dim
         else:
             stat_dim = int(ma.get("stat_dim", ma.get("expected_stat_dim", 14)))
-        model_a = DeepSetRank(
-            ma.get("num_embeddings", 500),
-            ma.get("embedding_dim", 32),
-            stat_dim,
-            ma.get("encoder_hidden", [128, 64]),
-            ma.get("attention_heads", 4),
-            ma.get("dropout", 0.2),
-            minutes_bias_weight=float(ma.get("minutes_bias_weight", 0.3)),
-            minutes_sum_min=float(ma.get("minutes_sum_min", 1e-6)),
-            fallback_strategy=str(ma.get("attention_fallback_strategy", "minutes")),
-            attention_temperature=float(attn_cfg.get("temperature", 1.0)),
-            attention_input_dropout=float(attn_cfg.get("input_dropout", 0.0)),
-            attention_use_pre_norm=bool(attn_cfg.get("use_pre_norm", True)),
-            attention_use_residual=bool(attn_cfg.get("use_residual", True)),
-        )
-        if "model_state" in ck:
-            model_a.load_state_dict(_state_dict_for_load(ck["model_state"]), strict=True)
+
+        def _build_model_a() -> DeepSetRank:
+            return DeepSetRank(
+                ma.get("num_embeddings", 500),
+                ma.get("embedding_dim", 32),
+                stat_dim,
+                ma.get("encoder_hidden", [128, 64]),
+                ma.get("attention_heads", 4),
+                ma.get("dropout", 0.2),
+                minutes_bias_weight=float(ma.get("minutes_bias_weight", 0.3)),
+                minutes_sum_min=float(ma.get("minutes_sum_min", 1e-6)),
+                fallback_strategy=str(ma.get("attention_fallback_strategy", "minutes")),
+                attention_temperature=float(attn_cfg.get("temperature", 1.0)),
+                attention_input_dropout=float(attn_cfg.get("input_dropout", 0.0)),
+                attention_use_pre_norm=bool(attn_cfg.get("use_pre_norm", True)),
+                attention_use_residual=bool(attn_cfg.get("use_residual", True)),
+            )
+
+        states = ck.get("model_states") if isinstance(ck, dict) else None
+        if states and len(states) > 1:
+            # Seed-averaging checkpoint: average scores across per-seed models
+            members = []
+            for sd in states:
+                m = _build_model_a()
+                m.load_state_dict(_state_dict_for_load(sd), strict=True)
+                members.append(m)
+            model_a = DeepSetRankEnsemble(members)
+        else:
+            model_a = _build_model_a()
+            if "model_state" in ck:
+                model_a.load_state_dict(_state_dict_for_load(ck["model_state"]), strict=True)
         model_a.eval()
 
     if xgb_path and Path(xgb_path).exists():
@@ -123,6 +139,7 @@ def predict_teams(
     team_id_to_conference: dict[int, str] | None = None,
     playoff_rank: dict[int, int] | None = None,
     eos_playoff_standings: dict[int, int] | None = None,
+    standings_to_date_rank: dict[int, int] | None = None,
     model_presence: dict[str, bool] | None = None,
     *,
     true_strength_scale: str = "percentile",
@@ -131,6 +148,7 @@ def predict_teams(
     monte_carlo_config: dict | None = None,
     xgb_weight: float | None = None,
     meta_by_conference: dict[str, Any] | None = None,
+    meta_rank_transform: bool = True,
 ) -> list[dict]:
     """
     Combine base scores, run meta if present. For each team output:
@@ -184,34 +202,57 @@ def predict_teams(
         coefs = getattr(m, "coef_", None)
         return len(np.asarray(coefs).ravel()) if coefs is not None else 2
 
+    def _pct_rank(v: np.ndarray) -> np.ndarray:
+        """Percentile rank across the team set = per-date rank (one as-of date per call).
+        Matches the per-date rank transform applied to meta inputs in scripts/4b."""
+        s = pd.Series(np.asarray(v, dtype=np.float64).ravel())
+        return s.rank(pct=True, method="average").fillna(0.5).to_numpy()
+
     def _meta_X(m: Any, a_col: np.ndarray, x_col: np.ndarray) -> np.ndarray:
         n_cols = _meta_n_cols(m)
+        if meta_rank_transform:
+            a_col = _pct_rank(a_col)
+            x_col = _pct_rank(x_col)
+            st_col = _pct_rank(_st)
+        else:
+            st_col = _st
         if n_cols == 3:
-            return np.column_stack([a_col, x_col, _st])
+            return np.column_stack([a_col, x_col, st_col])
         if n_cols == 4:
             return np.column_stack([a_col, x_col, _c_a, _c_x])
         if n_cols == 5:
-            return np.column_stack([a_col, x_col, _c_a, _c_x, _st])
+            return np.column_stack([a_col, x_col, _c_a, _c_x, st_col])
         return np.column_stack([a_col, x_col])
 
-    if xgb_weight is not None and 0.0 < xgb_weight < 1.0 and has_both_ab:
-        ens = (1.0 - float(xgb_weight)) * sa + float(xgb_weight) * sx
-    elif meta_by_conference and team_id_to_conf and has_both_ab:
-        # Option 3A: per-conference meta (E/W) when we have A and/or B
-        ens = np.zeros(n, dtype=np.float64)
-        X_by_meta_cols: dict[int, np.ndarray] = {}
-        for i in range(n):
-            tid = team_ids[i]
-            conf = team_id_to_conf.get(tid, "E")
-            meta_c = meta_by_conference.get(conf) or meta_by_conference.get("E") or meta_model
-            if meta_c is not None and not isinstance(meta_c, dict) and callable(getattr(meta_c, "predict", None)):
-                X_all = X_by_meta_cols.setdefault(_meta_n_cols(meta_c), _meta_X(meta_c, sa, sx))
-                ens[i] = float(meta_c.predict(X_all[i : i + 1]).ravel()[0])
-            else:
-                ens[i] = (sa[i] + sx[i]) / 2.0
-    elif meta_model is not None and not isinstance(meta_model, dict) and callable(getattr(meta_model, "predict", None)) and has_both_ab:
-        # Ensemble: meta (2-5 cols) when A and/or B present
-        ens = meta_model.predict(_meta_X(meta_model, sa, sx)).ravel()
+    def _ensemble_from(sa_in: np.ndarray, sx_in: np.ndarray) -> np.ndarray | None:
+        """Combine (A, B) scores via xgb_weight / per-conference metas / global meta.
+        Shared by the deterministic path and MC sampling so intervals reflect the same
+        ensemble (including per-conference metas). Returns None when no meta-style
+        combination applies (caller falls back to mean-of-available)."""
+        if xgb_weight is not None and 0.0 < float(xgb_weight) < 1.0 and has_both_ab:
+            return (1.0 - float(xgb_weight)) * sa_in + float(xgb_weight) * sx_in
+        if meta_by_conference and team_id_to_conf and has_both_ab:
+            # Option 3A: per-conference meta (E/W) when we have A and/or B
+            e = np.zeros(n, dtype=np.float64)
+            X_by_meta_cols: dict[int, np.ndarray] = {}
+            for i in range(n):
+                tid = team_ids[i]
+                conf = team_id_to_conf.get(tid, "E")
+                meta_c = meta_by_conference.get(conf) or meta_by_conference.get("E") or meta_model
+                if meta_c is not None and not isinstance(meta_c, dict) and callable(getattr(meta_c, "predict", None)):
+                    X_all = X_by_meta_cols.setdefault(_meta_n_cols(meta_c), _meta_X(meta_c, sa_in, sx_in))
+                    e[i] = float(meta_c.predict(X_all[i : i + 1]).ravel()[0])
+                else:
+                    e[i] = (sa_in[i] + sx_in[i]) / 2.0
+            return e
+        if meta_model is not None and not isinstance(meta_model, dict) and callable(getattr(meta_model, "predict", None)) and has_both_ab:
+            # Ensemble: meta (2-5 cols) when A and/or B present
+            return meta_model.predict(_meta_X(meta_model, sa_in, sx_in)).ravel()
+        return None
+
+    ens_maybe = _ensemble_from(sa, sx)
+    if ens_maybe is not None:
+        ens = ens_maybe
     else:
         # Run on any model(s): use mean of available scores (A, B, C, extra), each normalized to [0,1]
         parts: list[np.ndarray] = []
@@ -324,25 +365,30 @@ def predict_teams(
         extra_point_ranks[str(name)] = np.argsort(np.argsort(-np.asarray(mean_arr).ravel())) + 1
 
     # Ensemble global rank interval: sample (sa, sx) then recompute ensemble each draw
+    # using the same combination logic as the deterministic path (_ensemble_from),
+    # so per-conference metas are honored in the intervals too.
     ens_lo = pred_rank.astype(int)
     ens_hi = pred_rank.astype(int)
+    ens_ranks: np.ndarray | None = None
     if unc_enabled and mc_n >= 50:
         rng = np.random.default_rng(42)
         sa_s = rng.normal(loc=np.asarray(sa, dtype=np.float64), scale=std_a, size=(mc_n, n))
         sx_s = rng.normal(loc=np.asarray(sx, dtype=np.float64), scale=std_x, size=(mc_n, n))
-        if xgb_weight is not None and 0.0 < float(xgb_weight) < 1.0:
-            ens_s = (1.0 - float(xgb_weight)) * sa_s + float(xgb_weight) * sx_s
-        else:
-            # Use the same meta (2-5 cols) as deterministic path (conf/standings treated as fixed).
-            if meta_model is not None and not isinstance(meta_model, dict) and callable(getattr(meta_model, "predict", None)):
-                ens_s = np.zeros((mc_n, n), dtype=np.float64)
-                for t in range(mc_n):
-                    ens_s[t] = np.asarray(meta_model.predict(_meta_X(meta_model, sa_s[t], sx_s[t]))).ravel()
-            else:
-                ens_s = (sa_s + sx_s) / 2.0
+        ens_s = np.zeros((mc_n, n), dtype=np.float64)
+        for t in range(mc_n):
+            e_t = _ensemble_from(sa_s[t], sx_s[t])
+            ens_s[t] = np.asarray(e_t).ravel() if e_t is not None else (sa_s[t] + sx_s[t]) / 2.0
         ens_ranks = np.argsort(np.argsort(-ens_s, axis=1), axis=1) + 1
         ens_lo = np.quantile(ens_ranks, alpha / 2.0, axis=0, method="nearest").astype(int)
         ens_hi = np.quantile(ens_ranks, 1.0 - alpha / 2.0, axis=0, method="nearest").astype(int)
+
+    # Championship odds method: "softmax" (default, computed above) or "mc_rank1" —
+    # smoothed P(team is rank 1) across the ensemble MC draws (previously the
+    # championship_odds_method parameter was accepted but never used).
+    if championship_odds_method in ("mc", "mc_rank1") and ens_ranks is not None:
+        rank1_counts = (ens_ranks == 1).sum(axis=0).astype(np.float64)
+        odds = (rank1_counts + 1.0) / (float(ens_ranks.shape[0]) + float(n))
+        odds = odds / odds.sum()
 
     out = []
     for i, (tid, tname) in enumerate(zip(team_ids, team_names)):
@@ -397,10 +443,14 @@ def predict_teams(
             "championship_odds": f"{float(odds[i]) * 100:.1f}%",
         }
         eos_standings = eos_playoff_standings.get(tid) if eos_playoff_standings else None
+        std_to_date = standings_to_date_rank.get(tid) if standings_to_date_rank else None
         analysis_dict: dict[str, Any] = {
             "historic_conference_rank": int(act) if act is not None else None,
             "EOS_global_rank": int(act_global) if act_global is not None else None,
             "EOS_playoff_standings": int(eos_standings) if eos_standings is not None else None,
+            # Standings rank at the model's as-of date: the fair baseline predictor
+            # (EOS_playoff_standings sees the full season the model has not seen yet).
+            "standings_to_date_rank": int(std_to_date) if std_to_date is not None else None,
             "classification": classification,
             "post_playoff_rank": int(p_rank) if p_rank is not None else None,
             "rank_delta_playoffs": int(rank_delta_playoffs) if rank_delta_playoffs is not None else None,
@@ -560,17 +610,30 @@ def run_inference_from_db(
     seasons_cfg = config.get("seasons") or {}
 
     run_specs: list[tuple[str | None, list, str, str | None]] = []
+    # Multi-checkpoint eval: evaluate at N as-of dates per test season (spread over the
+    # second half of the season) instead of a single end-of-season snapshot, so metrics
+    # reflect mid-season predictive power, not just the final standings echo.
+    n_checkpoints = int((config.get("inference") or {}).get("eval_checkpoints_per_season", 1) or 1)
     if test_seasons and seasons_cfg and test_dates:
         for season in test_seasons:
-            season_dates = [d for d in test_dates if date_to_season(d, seasons_cfg) == season]
+            season_dates = sorted(d for d in test_dates if date_to_season(d, seasons_cfg) == season)
             if not season_dates:
                 continue
-            target_date = sorted(season_dates)[-1]
-            target_lists = [lst for lst in lists if lst["as_of_date"] == target_date]
-            if not target_lists:
-                target_lists = [lst for lst in lists if lst["as_of_date"] == season_dates[-1]]
-            if target_lists:
-                run_specs.append((target_date, target_lists, f"predictions_{season}.json", season))
+            if n_checkpoints <= 1 or len(season_dates) < 2:
+                chosen_dates = [season_dates[-1]]
+            else:
+                pool = season_dates[len(season_dates) // 2:] or season_dates
+                idxs = np.linspace(0, len(pool) - 1, num=min(n_checkpoints, len(pool)))
+                chosen_dates = sorted({pool[int(round(i))] for i in idxs})
+            for target_date in chosen_dates:
+                target_lists = [lst for lst in lists if lst["as_of_date"] == target_date]
+                if not target_lists:
+                    continue
+                if target_date == chosen_dates[-1]:
+                    run_specs.append((target_date, target_lists, f"predictions_{season}.json", season))
+                else:
+                    ckpt_label = f"{season}@{target_date}"
+                    run_specs.append((target_date, target_lists, f"predictions_{ckpt_label}.json", ckpt_label))
     if not run_specs:
         target_date = test_dates[-1] if test_dates else (dates_sorted[-1] if dates_sorted else None)
         target_lists = [lst for lst in lists if lst["as_of_date"] == target_date]
@@ -649,6 +712,11 @@ def run_inference_from_db(
             except Exception:
                 pass
 
+    # Odds temperature: optionally calibrated on the earliest test season with playoff
+    # outcomes (minimize Brier of champion odds), then reused for later seasons.
+    odds_T_holder: dict[str, float | None] = {"T": None}
+    calibrate_odds = bool((config.get("output") or {}).get("calibrate_odds_temperature", True))
+
     def _run_inference_for_spec(target_date: str | None, target_lists: list, output_file: str, season: str | None, *, draw_figures: bool = True, feat_df_all: pd.DataFrame | None = None) -> Path:
         pj = out / output_file
         fig_suffix = f"_{season}" if season else ""
@@ -676,6 +744,9 @@ def run_inference_from_db(
         win_rate_map = {tid: float(team_id_to_win_rate.get(tid, 0.0)) for tid in unique_team_ids}
         sorted_global = sorted(win_rate_map.items(), key=lambda x: (-x[1], x[0]))
         actual_global_rank = {tid: i + 1 for i, (tid, _) in enumerate(sorted_global)}
+        # Snapshot of the standings rank at the as-of date (actual_global_rank is later
+        # replaced by the playoff-based EOS rank); this is the fair standings baseline.
+        standings_to_date_global = dict(actual_global_rank)
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         tid_to_score_a: dict[int, float] = {}
@@ -1064,14 +1135,34 @@ def run_inference_from_db(
             team_id_to_conference=team_id_to_conf,
             playoff_rank=playoff_rank_map if playoff_rank_map else None,
             eos_playoff_standings=eos_playoff_standings_map if eos_playoff_standings_map else None,
+            standings_to_date_rank=standings_to_date_global,
             model_presence={"a": model_a is not None, "xgb": xgb is not None, "rf": rf is not None},
             true_strength_scale=config.get("output", {}).get("true_strength_scale", "percentile"),
-            odds_temperature=float(config.get("output", {}).get("odds_temperature", 1.0)),
+            odds_temperature=float(odds_T_holder.get("T") or config.get("output", {}).get("odds_temperature", 1.0)),
             championship_odds_method=config.get("output", {}).get("championship_odds_method", "softmax"),
             monte_carlo_config=config.get("uncertainty"),
             xgb_weight=xgb_weight,
             meta_by_conference=meta_by_conference,
+            meta_rank_transform=bool((config.get("stacking") or {}).get("rank_transform", True)),
         )
+
+        # Calibrate odds temperature on the first season that has a known champion
+        # (e.g. 2023-24); later seasons then use the calibrated value out-of-sample.
+        if calibrate_odds and odds_T_holder.get("T") is None and playoff_rank_map:
+            champ_ids = {tid for tid, r in playoff_rank_map.items() if int(r) == 1}
+            if champ_ids:
+                tss_arr = np.array([float(t["prediction"]["ensemble_score"]) for t in preds], dtype=np.float64)
+                y_champ = np.array([1.0 if int(t["team_id"]) in champ_ids else 0.0 for t in preds], dtype=np.float64)
+                best_T, best_brier = None, float("inf")
+                for T_c in np.geomspace(0.02, 2.0, 60):
+                    e = np.exp(np.clip(tss_arr / float(T_c), -50, 50))
+                    p = e / e.sum()
+                    brier = float(np.mean((p - y_champ) ** 2))
+                    if brier < best_brier:
+                        best_brier, best_T = brier, float(T_c)
+                if best_T is not None:
+                    odds_T_holder["T"] = best_T
+                    print(f"Calibrated odds temperature on {target_season}: T={best_T:.4f} (Brier={best_brier:.5f})")
 
         # Integrated Gradients summary in predictions.json (optional, top-K per conference)
         ig_by_team: dict[int, list[dict[str, Any]]] = {}
@@ -1302,7 +1393,9 @@ def run_inference_from_db(
 
     last_pj = None
     for target_date, target_lists, output_file, season in test_specs:
-        last_pj = _run_inference_for_spec(target_date, target_lists, output_file, season, draw_figures=True, feat_df_all=feat_df_all)
+        # Skip figures for intermediate checkpoints (season label contains '@date')
+        draw = "@" not in (season or "")
+        last_pj = _run_inference_for_spec(target_date, target_lists, output_file, season, draw_figures=draw, feat_df_all=feat_df_all)
     if last_pj is not None and last_pj.name != "predictions.json":
         import shutil
         shutil.copy(last_pj, out / "predictions.json")

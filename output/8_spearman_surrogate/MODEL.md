@@ -27,3 +27,24 @@ The 7 ranked improvements from [docs/PROJECT_STATE_AND_BEST_MODELS_02-27.md](../
 - **Flag ablation:** `python -m scripts.sweep_hparams --phase flags --config config/8_spearman_improved.yaml --n-jobs 3` (8 combos toggling sos_srs / team_rolling / injury).
 
 **Caution:** pre-fix checkpoints (including combo_0033's `best_deep_set.pt` and metas) keep the inverted Model A convention internally; do not mix pre-fix models with post-fix metas.
+
+---
+
+## Pipeline deep-dive retrain (`improved_07-03`, Jul 2026)
+
+First full retrain after correcting feature corruption, leakage, OOF/stacking validity, and evaluation fairness. Config: `config/8_spearman_improved.yaml`.
+
+**Key code changes:** season-scoped aggregations; causal Massey/SRS; RAPTOR carry-forward; deterministic training + 3-seed Model A averaging; causal expanding-window OOF; multi-temp OOF/inference parity; 3-column rank-transform meta (no confidence cols); fair eval (`standings_to_date_rank`, 3 checkpoints/season).
+
+**Results (pooled 6 checkpoints):**
+
+| Metric | improved_07-03 | improved_02-27 run_026 |
+|--------|------------------|-------------------------|
+| Ensemble Spearman | **0.750** | 0.524 |
+| Model B Spearman | **0.760** | 0.522 |
+| Model A Spearman | 0.547 | 0.566 |
+| Standings MAE (fair) | 3.97 | 3.13 (unfair EOS baseline) |
+
+**Analysis:** [improved_07-03/ANALYSIS_02.md](improved_07-03/ANALYSIS_02.md)
+
+**Next run:** `team_rolling` + `injury` enabled in config (flag-ablation winners) → `output/8_spearman_surrogate/improved_07-05/outputs`. See README for WSL command.

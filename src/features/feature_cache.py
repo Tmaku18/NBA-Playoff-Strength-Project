@@ -37,6 +37,11 @@ def compute_feature_cache_key(config: dict, db_path: Path, team_dates_hash: str)
         "motivation": bool(config.get("motivation", {}).get("enabled", False)),
         "injury": bool(config.get("injury", {}).get("enabled", False)),
         "raptor": bool(config.get("raptor", {}).get("enabled", False)),
+        # Season ranges affect season-scoped aggregations; changing them must invalidate.
+        "seasons": {str(k): {"start": str((v or {}).get("start")), "end": str((v or {}).get("end"))}
+                    for k, v in (config.get("seasons") or {}).items()},
+        # Bumped when feature semantics change (season scoping + ratio-of-sums + causal massey/sos).
+        "feature_version": 2,
         "team_dates_hash": team_dates_hash,
         "db": str(db_path.resolve()),
     }

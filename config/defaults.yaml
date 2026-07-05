@@ -149,6 +149,9 @@ seasons:
   2024-25:
     start: '2024-10-01'
     end: '2025-04-15'
+  2025-26:
+    start: '2025-10-01'
+    end: '2026-04-15'
 paths:
   db: C:/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff
     Strentgh Project/data/processed/nba_build.duckdb
@@ -163,6 +166,7 @@ build_db:
   skip_if_exists: true
 repro:
   seed: 42
+  deterministic: true  # bit-reproducible torch (cudnn deterministic, no TF32, CUBLAS workspace)
 model_a:
   stat_dim: 24  # no standing_rank in Model A (removed); 20 player stats (L10+L30+on_off) + 1 continuity + 3 usage/positional
   top_n_player_stats: null  # optional: use first N columns from PLAYER_STAT_COLS_WITH_ON_OFF (e.g. 10)
@@ -198,6 +202,9 @@ model_a:
     use_availability_in_aggregation: true
     use_availability_in_attention: false
   use_amp: true
+  seed_averaging:
+    enabled: false  # train n_seeds models (seed, seed+1, ...) and average scores in OOF + inference
+    n_seeds: 1
   confidence:
     entropy_weight: 0.5
     max_weight_weight: 0.5
@@ -245,7 +252,8 @@ team_stats_models:
     covariance_type_grid: [full, diag]
     random_state: 42
 stacking:
-  use_confidence: false
+  use_standings: true
+  rank_transform: true  # per-date percentile-rank meta inputs (must match inference)
   xgb_weight: null
 training:
   train_model_c: false
@@ -288,7 +296,8 @@ training:
 output:
   true_strength_scale: percentile
   odds_temperature: 0.5
-  championship_odds_method: softmax
+  championship_odds_method: softmax  # softmax | mc_rank1 (P(rank 1) from MC ensemble draws)
+  calibrate_odds_temperature: true   # calibrate T on earliest test season with a known champion (min Brier)
   ig_inference_top_k: 1
   ig_inference_steps: 50
 uncertainty:
@@ -358,6 +367,7 @@ sweep:
 inference:
   run_id: null
   run_id_base: 25
+  eval_checkpoints_per_season: 3  # evaluate at N as-of dates per test season (spread over 2nd half); 1 = final snapshot only
   also_train_predictions: false
   also_validation_predictions: false  # when true, write val_predictions.json (last 20% of train dates); eval_report gets val_metrics_*
   require_eos_final_rank: false

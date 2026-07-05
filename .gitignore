@@ -27,6 +27,12 @@ output/8_spearman_surrogate/improved_02-27/*
 !output/8_spearman_surrogate/improved_topweighted_02-27/
 output/8_spearman_surrogate/improved_topweighted_02-27/*
 !output/8_spearman_surrogate/improved_topweighted_02-27/ANALYSIS*.md
+!output/8_spearman_surrogate/improved_07-03/
+output/8_spearman_surrogate/improved_07-03/*
+!output/8_spearman_surrogate/improved_07-03/ANALYSIS*.md
+!output/8_spearman_surrogate/improved_07-05/
+output/8_spearman_surrogate/improved_07-05/*
+!output/8_spearman_surrogate/improved_07-05/ANALYSIS*.md
 !output/8_spearman_surrogate/sweeps/
 output/8_spearman_surrogate/sweeps/*
 !output/8_spearman_surrogate/sweeps/20260217_042955/

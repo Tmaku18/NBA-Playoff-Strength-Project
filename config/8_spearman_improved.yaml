@@ -12,7 +12,11 @@
 # Improvement 3 (top-weighted loss) is the separate config 8_spearman_improved_topweighted.yaml.
 # Improvement 4 (flag ablation) is: python -m scripts.sweep_hparams --phase flags --config config/8_spearman_improved.yaml --n-jobs 3
 #
-# Run: python -m scripts.run_pipeline_from_model_a --config config/8_spearman_improved.yaml
+# Run (WSL, GPU):
+#   cd "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project"
+#   export PYTHONPATH="$PWD" OMP_NUM_THREADS=18 MKL_NUM_THREADS=18
+#   python -m scripts.run_pipeline_from_model_a --config config/8_spearman_improved.yaml \
+#     --outputs output/8_spearman_surrogate/improved_07-05/outputs
 
 seasons:
   2014-15:
@@ -62,6 +66,7 @@ build_db:
   skip_if_exists: true
 repro:
   seed: 42
+  deterministic: true
 model_a:
   stat_dim: 21
   num_embeddings: 500
@@ -96,6 +101,11 @@ model_a:
     use_availability_in_aggregation: true
     use_availability_in_attention: false
   use_amp: true
+  # Seed averaging: train 3 seeds and average scores (OOF and inference) to remove
+  # single-seed variance (the 0.55-0.76 Spearman swing across reruns).
+  seed_averaging:
+    enabled: true
+    n_seeds: 3
   confidence:
     entropy_weight: 0.5
     max_weight_weight: 0.5
@@ -121,10 +131,12 @@ model_b:
     C: 1.0
     max_iter: 1000
 stacking:
-  # Improvement 5: confidence-weighted stacking (4/5-col meta).
-  use_confidence: true
+  # Confidence columns dropped from the meta (OOF vs inference confidence measured
+  # different things; coefficients were near zero anyway).
   # Improvement 2: standings win rate to date as extra stacking column.
   use_standings: true
+  # Per-date percentile-rank transform of meta inputs (scale-invariant, Spearman-aligned).
+  rank_transform: true
   xgb_weight: null
 training:
   train_model_c: false
@@ -164,7 +176,8 @@ training:
 output:
   true_strength_scale: percentile
   odds_temperature: 0.5
-  championship_odds_method: softmax
+  championship_odds_method: softmax  # softmax | mc_rank1 (P(rank 1) from MC ensemble draws)
+  calibrate_odds_temperature: true   # calibrate T on earliest test season with a known champion (min Brier)
   ig_inference_top_k: 1
   ig_inference_steps: 50
 uncertainty:
@@ -184,11 +197,11 @@ sos_srs:
   data_path: data/raw/Team_Records.csv
   enabled: false
 team_rolling:
-  enabled: false
+  enabled: true  # flag ablation winner (sweep 20260703_151849 combo_0003)
 injury:
   data_path: data/raw/injury_reports
   minutes_heuristic: proportional
-  enabled: false
+  enabled: true  # flag ablation winner (sweep 20260703_151849 combo_0003)
 motivation:
   late_season_games: 15
   playoff_wins_threshold: 42
@@ -234,5 +247,6 @@ sweep:
 inference:
   run_id: null
   run_id_base: 25
+  eval_checkpoints_per_season: 3  # evaluate at N as-of dates per test season (spread over 2nd half); 1 = final snapshot only
   also_train_predictions: false
   require_eos_final_rank: false

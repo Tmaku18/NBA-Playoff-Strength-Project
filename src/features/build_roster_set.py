@@ -1,6 +1,7 @@
 """Roster set builder: top-N by minutes as-of date, pad to 15, key_padding_mask. Hash-trick for unseen players."""
 from __future__ import annotations
 
+import zlib
 from typing import Any
 
 import pandas as pd
@@ -9,7 +10,9 @@ from src.features.rolling import PLAYER_STAT_COLS_L10_L30, PLAYER_STAT_COLS_WITH
 
 
 def hash_trick_index(player_id: int | str, num_embeddings: int) -> int:
-    return hash(str(player_id)) % num_embeddings
+    # zlib.adler32 is stable across processes; Python's hash() is salted per process
+    # (PYTHONHASHSEED), which silently remapped player embeddings on every run.
+    return zlib.adler32(str(player_id).encode("utf-8")) % num_embeddings
 
 
 def get_roster_as_of_date(

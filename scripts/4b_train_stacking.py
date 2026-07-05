@@ -3,8 +3,9 @@
 What this does:
 - Loads OOF predictions from Model A (oof_model_a.parquet) and Model B (oof_model_b.parquet).
 - Trains a RidgeCV meta-learner to blend Model A + XGBoost into ensemble predictions.
-  Optional extra columns: confidence (stacking.use_confidence) and standings win rate
-  to date (stacking.use_standings) so the meta can anchor on the standings baseline.
+  Optional extra column: standings win rate to date (stacking.use_standings) so the
+  meta can anchor on the standings baseline. Inputs are per-date rank-transformed
+  when stacking.rank_transform is on (must match inference).
 - Fits per-conference metas (ridgecv_meta_E/W.joblib) on conference-only OOF rows.
 - Saves ridgecv_meta.joblib for use during inference (script 6).
 
@@ -124,25 +125,42 @@ def main():
                 if n_missing:
                     print(
                         f"Playoff target: {n_missing}/{len(merged)} rows without playoff rank "
-                        "(mean-imputed).",
+                        "(dropped below).",
                         flush=True,
                     )
             except Exception as e:
                 print(f"Playoff target failed, using standings y: {e}", file=sys.stderr)
 
-    # Impute any NaN in OOF or target so Ridge regression gets finite inputs.
-    for col in ["oof_a", "oof_xgb", "y", "standings_wr"]:
+    # Drop rows without a target. Mean-imputing y=15.5 taught the meta that a
+    # league-average finish is the default outcome regardless of the inputs.
+    if merged["y"].isna().any():
+        n_before = len(merged)
+        merged = merged[merged["y"].notna()].reset_index(drop=True)
+        print(f"Dropped {n_before - len(merged)}/{n_before} rows with missing target y.", flush=True)
+    if merged.empty:
+        print("No rows with a valid target after dropping missing y.", file=sys.stderr)
+        sys.exit(1)
+
+    # Impute any NaN in OOF feature columns so Ridge regression gets finite inputs.
+    for col in ["oof_a", "oof_xgb", "standings_wr"]:
         if col in merged.columns and merged[col].isna().any():
             merged[col] = merged[col].fillna(merged[col].mean())
     stacking_cfg = config.get("stacking", {}) or {}
-    use_confidence = bool(stacking_cfg.get("use_confidence", False))
     use_standings = bool(stacking_cfg.get("use_standings", True))
+    # Per-date percentile-rank transform: makes the meta scale-invariant (OOF fold-model
+    # scores and final-model inference scores have different scales) and Spearman-aligned.
+    # Must match _meta_X in src/inference/predict.py (stacking.rank_transform).
+    rank_transform = bool(stacking_cfg.get("rank_transform", True))
+    if rank_transform:
+        for col in ["oof_a", "oof_xgb", "standings_wr"]:
+            if col in merged.columns:
+                merged[col] = merged.groupby("as_of_date")[col].rank(pct=True)
     oof_a = merged["oof_a"].values.astype("float32")
     oof_xgb = merged["oof_xgb"].values.astype("float32")
     y = merged["y"].values.astype("float32")
-    has_conf = use_confidence and "conf_a" in merged.columns and "conf_xgb" in merged.columns
-    conf_a = merged["conf_a"].values.astype("float32") if has_conf else None
-    conf_xgb = merged["conf_xgb"].values.astype("float32") if has_conf else None
+    # Confidence columns are deliberately excluded from the meta: conf_a means different
+    # things in OOF (attention entropy) vs inference (cross-temp agreement) and got
+    # near-zero/negative coefficients.
     standings = (
         merged["standings_wr"].values.astype("float32")
         if use_standings and "standings_wr" in merged.columns
@@ -159,11 +177,10 @@ def main():
                 break
     path = train_stacking(
         oof_a, oof_xgb, y, config, out,
-        conf_a=conf_a, conf_xgb=conf_xgb,
         standings=standings, conference=conference,
     )
-    n_cols = 2 + (2 if has_conf else 0) + (1 if standings is not None else 0)
-    print(f"Meta columns: {n_cols} (confidence={'on' if has_conf else 'off'}, standings={'on' if standings is not None else 'off'})")
+    n_cols = 2 + (1 if standings is not None else 0)
+    print(f"Meta columns: {n_cols} (rank_transform={'on' if rank_transform else 'off'}, standings={'on' if standings is not None else 'off'})")
     print(f"Saved {path}, {out / 'oof_pooled.parquet'}")
 
 

@@ -12,8 +12,13 @@ import torch.nn as nn
 from src.models.deep_set_rank import DeepSetRank
 
 
-def _configure_torch_performance() -> None:
-    """Enable cuDNN benchmark and TF32 for faster training on supported hardware."""
+def _configure_torch_performance(config: dict | None = None) -> None:
+    """Configure torch backends. Deterministic mode (repro.deterministic, default True)
+    disables cuDNN benchmark/TF32 for reproducible runs; otherwise enable fast paths."""
+    from src.utils.repro import enable_deterministic_mode, is_deterministic
+    if is_deterministic(config):
+        enable_deterministic_mode()
+        return
     if hasattr(torch.backends, "cudnn"):
         torch.backends.cudnn.benchmark = True
     if hasattr(torch.backends, "cuda") and hasattr(torch.backends.cuda, "matmul"):
@@ -27,6 +32,23 @@ from src.models.ranking_surrogate_losses import (
     weighted_spearman_surrogate_loss,
 )
 from src.utils.repro import set_seeds
+
+
+def _maybe_compile(model: nn.Module) -> nn.Module:
+    """torch.compile when supported. Skipped on Windows (inductor needs Triton) and when
+    the torch install path contains spaces: inductor's C++ linker command does not quote
+    paths, so e.g. '.../Advanced Machine Learning/...' becomes bogus -l flags and the
+    compile fails at first forward. Training is identical without compile, just slower."""
+    if not hasattr(torch, "compile") or sys.platform == "win32":
+        return model
+    try:
+        if " " in str(Path(torch.__file__).resolve()):
+            print("torch.compile skipped: torch install path contains spaces (inductor linker limitation)")
+            return model
+        return torch.compile(model, mode="reduce-overhead")
+    except Exception as e:
+        print(f"torch.compile unavailable ({e}); continuing uncompiled")
+        return model
 
 
 def _grad_norm_for_module(module: nn.Module) -> float:
@@ -412,6 +434,20 @@ def _build_model(config: dict, device: torch.device, stat_dim_override: int | No
     ).to(device)
 
 
+def get_model_a_seeds(config: dict) -> list[int]:
+    """Seeds for Model A training. model_a.seed_averaging.n_seeds > 1 enables seed averaging
+    (seeds are base_seed, base_seed+1, ...); explicit model_a.seed_averaging.seeds wins."""
+    base_seed = int(config.get("repro", {}).get("seed", 42))
+    sa = (config.get("model_a") or {}).get("seed_averaging") or {}
+    explicit = sa.get("seeds")
+    if explicit:
+        return [int(s) for s in explicit]
+    n = int(sa.get("n_seeds", 1))
+    if not bool(sa.get("enabled", n > 1)):
+        return [base_seed]
+    return [base_seed + i for i in range(max(1, n))]
+
+
 def train_model_a_on_batches(
     config: dict,
     batches: list[dict],
@@ -420,6 +456,7 @@ def train_model_a_on_batches(
     *,
     val_batches: list[dict] | None = None,
     loss_log_path: Path | str | None = None,
+    seed: int | None = None,
 ) -> nn.Module:
     """Train Model A on given batches; return the model (do not save). For OOF fold training.
     If loss_log_path is set, append epoch,loss(,val_loss) to that CSV for inspection."""
@@ -430,14 +467,13 @@ def train_model_a_on_batches(
     loss_top_weight_power = float(training.get("loss_top_weight_power", 1.0))
     num_emb = ma.get("num_embeddings", 500)
     stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
+    set_seeds(int(seed) if seed is not None else int(config.get("repro", {}).get("seed", 42)))
     if not batches:
         model = _build_model(config, device)
         return model
-    _configure_torch_performance()
+    _configure_torch_performance(config)
     model = _build_model(config, device, stat_dim_override=stat_dim_override)
-    # Skip torch.compile on Windows: inductor requires Triton, which is Linux-only.
-    if hasattr(torch, "compile") and sys.platform != "win32":
-        model = torch.compile(model, mode="reduce-overhead")
+    model = _maybe_compile(model)
     lr = float(ma.get("learning_rate", 1e-3))
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     grad_clip_max_norm = float(ma.get("grad_clip_max_norm", 1.0))
@@ -516,10 +552,11 @@ def train_model_a(
     output_dir: str | Path,
     device: str | torch.device | None = None,
     batches: list[dict] | None = None,
+    seed: int | None = None,
 ) -> Path:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    set_seeds(config.get("repro", {}).get("seed", 42))
+    set_seeds(int(seed) if seed is not None else int(config.get("repro", {}).get("seed", 42)))
 
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -534,11 +571,9 @@ def train_model_a(
     stat_dim = int(ma.get("stat_dim", 14))
     num_emb = ma.get("num_embeddings", 500)
     stat_dim_override = int(batches[0]["player_stats"].shape[-1]) if batches else None
-    _configure_torch_performance()
+    _configure_torch_performance(config)
     model = _build_model(config, device, stat_dim_override=stat_dim_override)
-    # Skip torch.compile on Windows: inductor requires Triton, which is Linux-only.
-    if hasattr(torch, "compile") and sys.platform != "win32":
-        model = torch.compile(model, mode="reduce-overhead")
+    model = _maybe_compile(model)
     lr = float(ma.get("learning_rate", 1e-3))
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     grad_clip_max_norm = float(ma.get("grad_clip_max_norm", 1.0))
@@ -569,6 +604,8 @@ def train_model_a(
             device,
             grad_clip_max_norm=grad_clip_max_norm,
             attention_debug=attention_debug,
+            use_amp=use_amp,
+            scaler=scaler,
             loss_type=loss_type,
             loss_tau=loss_tau,
             loss_top_weight_power=loss_top_weight_power,

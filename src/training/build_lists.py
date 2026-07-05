@@ -43,12 +43,18 @@ def build_lists_for_conference_date(
     team_id_col: str = "team_id",
     date_col: str = "game_date",
     wl_col: str = "wl",
+    season_start: object | None = None,
 ) -> list[tuple[Any, ...]]:
     """
     For one (conference, as_of_date): get teams in that conference, compute standings-to-date (win-rate)
-    from tgl/games with game_date < as_of_date, sort by win_rate desc. Return list of (team_id, win_rate).
+    from tgl/games with season_start <= game_date < as_of_date, sort by win_rate desc.
+    Return list of (team_id, win_rate). Season scoping keeps win rates season-to-date
+    rather than all-franchise-history.
     """
+    from src.features.team_context import season_start_for_date
+
     ad = pd.to_datetime(as_of_date).date() if isinstance(as_of_date, str) else as_of_date
+    ss = pd.to_datetime(season_start).date() if season_start is not None else season_start_for_date(ad)
     # teams in conference: from teams or TEAM_CONFERENCE by abbreviation
     if "conference" in teams.columns and teams["conference"].notna().any():
         tc = teams[teams["conference"] == conference][team_id_col].tolist()
@@ -63,7 +69,7 @@ def build_lists_for_conference_date(
 
     tgl = tgl.copy()
     tgl[date_col] = pd.to_datetime(tgl[date_col]).dt.date
-    past = tgl[tgl[date_col] < ad]
+    past = tgl[(tgl[date_col] >= ss) & (tgl[date_col] < ad)]
     past = past[past[team_id_col].isin(tc)]
 
     if past.empty:
@@ -166,10 +172,14 @@ def build_lists(
                     games, tgl, season, season_start=ss, season_end=se,
                 )
 
+    from src.features.team_context import season_start_for_date
+
+    seasons_cfg_all = (config.get("seasons") or {}) if config else {}
     out: list[dict[str, Any]] = []
     for d in dates:
+        ss = season_start_for_date(d, seasons_cfg_all)
         for conf in conferences:
-            lst = build_lists_for_conference_date(tgl, games, teams, d, conf)
+            lst = build_lists_for_conference_date(tgl, games, teams, d, conf, season_start=ss)
             if len(lst) < 2:
                 continue
             win_rates = [x[1] for x in lst]

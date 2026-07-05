@@ -51,9 +51,10 @@ def compute_team_rolling(
         tgl["_poss"] = 100.0
     tgl["_poss"] = tgl["_poss"].replace(0, 1)
 
-    # eFG = (FGM + 0.5*FG3M)/FGA
+    # eFG = (FGM + 0.5*FG3M)/FGA; NaN when FGA missing/0 so rolling mean skips those games
     if "fgm" in tgl.columns and "fga" in tgl.columns:
-        fga = tgl["fga"].fillna(0).replace(0, 1)
+        fga = pd.to_numeric(tgl["fga"], errors="coerce")
+        fga = fga.where(fga > 0)
         tgl["eFG"] = (tgl["fgm"].fillna(0) + 0.5 * tgl["fg3m"].fillna(0)) / fga
     else:
         tgl["eFG"] = 0.5

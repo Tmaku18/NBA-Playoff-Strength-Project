@@ -68,3 +68,37 @@ class DeepSetRank(nn.Module):
         Z = pooled  # (B, D)
         score = self.scorer(Z).squeeze(-1)  # (B,)
         return score, Z, attn_w
+
+
+class DeepSetRankEnsemble(nn.Module):
+    """Seed-averaging ensemble: forward returns the mean score/Z/attention across member models.
+
+    Drop-in replacement for a single DeepSetRank in inference paths (same forward signature),
+    so multi-temp aggregation, confidence, and IG attribution work unchanged.
+    """
+
+    def __init__(self, models: list[DeepSetRank]):
+        super().__init__()
+        if not models:
+            raise ValueError("DeepSetRankEnsemble requires at least one model")
+        self.models = nn.ModuleList(models)
+
+    def forward(
+        self,
+        embedding_indices: torch.Tensor,
+        player_stats: torch.Tensor,
+        minutes: torch.Tensor,
+        key_padding_mask: torch.Tensor,
+        temperature_override: float | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        scores, zs, attns = [], [], []
+        for m in self.models:
+            s, z, a = m(embedding_indices, player_stats, minutes, key_padding_mask, temperature_override=temperature_override)
+            scores.append(s)
+            zs.append(z)
+            attns.append(a)
+        return (
+            torch.stack(scores, dim=0).mean(dim=0),
+            torch.stack(zs, dim=0).mean(dim=0),
+            torch.stack(attns, dim=0).mean(dim=0),
+        )

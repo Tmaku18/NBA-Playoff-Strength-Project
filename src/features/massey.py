@@ -14,14 +14,21 @@ def compute_massey_per_season(
     game_id_col: str = "game_id",
     pts_col: str = "pts",
     season_col: str = "season",
+    end_date: object | None = None,
+    date_col: str = "game_date",
 ) -> pd.DataFrame:
     """
     Compute Massey rating per team for one season. M_ii = games_played_i, M_ij = -n_games(i vs j), p = point diff.
     Solve Mr = p (last row = 1s for sum-to-zero). Returns DataFrame with team_id, season, massey_rating.
+    end_date: if given, only games with game_date < end_date are used (causal as-of-date rating).
     """
     if games.empty or tgl.empty:
         return pd.DataFrame(columns=[team_id_col, "season", "massey_rating"])
-    g = games[games[season_col].astype(str) == str(season)][[game_id_col, "home_team_id", "away_team_id"]].copy()
+    gsel = games[games[season_col].astype(str) == str(season)].copy()
+    if end_date is not None and date_col in gsel.columns:
+        cutoff = pd.to_datetime(end_date)
+        gsel = gsel[pd.to_datetime(gsel[date_col]) < cutoff]
+    g = gsel[[game_id_col, "home_team_id", "away_team_id"]].copy() if not gsel.empty else gsel
     if g.empty or "home_team_id" not in g.columns or "away_team_id" not in g.columns:
         return pd.DataFrame(columns=[team_id_col, "season", "massey_rating"])
     t = tgl[[game_id_col, team_id_col, pts_col]].copy()
@@ -34,25 +41,23 @@ def compute_massey_per_season(
     team_ids = sorted(set(g["home_team_id"].astype(int).tolist()) | set(g["away_team_id"].astype(int).tolist()))
     n = len(team_ids)
     tid_to_idx = {tid: i for i, tid in enumerate(team_ids)}
+    hi = g["home_team_id"].astype(int).map(tid_to_idx).to_numpy()
+    ai = g["away_team_id"].astype(int).map(tid_to_idx).to_numpy()
+    diff = (g["home_pts"].astype(float) - g["away_pts"].astype(float)).to_numpy()
     M = np.zeros((n, n))
     p_vec = np.zeros(n)
-    for _, row in g.iterrows():
-        hi = tid_to_idx[int(row["home_team_id"])]
-        ai = tid_to_idx[int(row["away_team_id"])]
-        h_pts = float(row["home_pts"])
-        a_pts = float(row["away_pts"])
-        p_vec[hi] += h_pts - a_pts
-        p_vec[ai] += a_pts - h_pts
-        M[hi, hi] += 1
-        M[ai, ai] += 1
-        M[hi, ai] -= 1
-        M[ai, hi] -= 1
+    np.add.at(p_vec, hi, diff)
+    np.add.at(p_vec, ai, -diff)
+    np.add.at(M, (hi, hi), 1.0)
+    np.add.at(M, (ai, ai), 1.0)
+    np.add.at(M, (hi, ai), -1.0)
+    np.add.at(M, (ai, hi), -1.0)
     M[-1, :] = 1
     p_vec[-1] = 0
     try:
         r = np.linalg.solve(M, p_vec)
     except np.linalg.LinAlgError:
-        r = np.zeros(n)
+        r, *_ = np.linalg.lstsq(M, p_vec, rcond=None)
     return pd.DataFrame({team_id_col: team_ids, "season": season, "massey_rating": r.tolist()})
 
 
@@ -82,15 +87,19 @@ def get_massey_as_of_dates(
             return f"{y - 1}-{str(y % 100).zfill(2)}"
         games = games.copy()
         games[season_col] = games["game_date"].apply(_game_date_to_season)
-    massey_by_season: dict[str, pd.DataFrame] = {}
+    # Causal: rating for (team, as_of) uses only that season's games before as_of.
+    massey_by_season_date: dict[tuple[str, str], pd.DataFrame] = {}
     rows = []
     for tid, as_of in team_dates:
         ad = pd.to_datetime(as_of).date() if isinstance(as_of, str) else as_of
         y, m = ad.year, ad.month
         season = f"{y - 1}-{str(y % 100).zfill(2)}" if m < 10 else f"{y}-{str((y + 1) % 100).zfill(2)}"
-        if season not in massey_by_season:
-            massey_by_season[season] = compute_massey_per_season(games, tgl, season, season_col=season_col)
-        df_season = massey_by_season[season]
+        key = (season, str(ad))
+        if key not in massey_by_season_date:
+            massey_by_season_date[key] = compute_massey_per_season(
+                games, tgl, season, season_col=season_col, end_date=ad, date_col=date_col,
+            )
+        df_season = massey_by_season_date[key]
         if df_season.empty:
             rows.append({team_id_col: tid, "as_of_date": as_of, "massey_rating": 0.0})
             continue

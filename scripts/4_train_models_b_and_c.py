@@ -168,8 +168,10 @@ def main():
     br_cfg = tsm_cfg.get("bayesian_ridge", {}) if isinstance(tsm_cfg.get("bayesian_ridge", {}), dict) else {}
 
     oof_rows = []
-    for fold in range(n_folds):
-        train_mask = df["_fold"] != fold
+    # Causal expanding-window OOF (same as script 3): validate fold f training only on
+    # earlier folds; the old scheme trained on future folds when validating early ones.
+    for fold in range(1, n_folds):
+        train_mask = df["_fold"] < fold
         val_mask = df["_fold"] == fold
         X_train = df.loc[train_mask, feat_cols].values.astype(np.float32)
         y_train = df.loc[train_mask, "y"].values.astype(np.float32)

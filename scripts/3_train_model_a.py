@@ -44,6 +44,7 @@ def _compute_batch_cache_key(config: dict, db_path: Path) -> str:
     train_seasons = training.get("train_seasons") or []
     key_data = {
         "sampler": "stratified_v2",  # bumped when list subsampling changed (E/W-balanced); invalidates pre-fix caches
+        "lists_version": "season_scoped_v3",  # build_lists win rates now season-to-date, not all-history
         "listmle_target": training.get("listmle_target"),
         "rolling_windows": tuple(rolling_windows),
         "train_seasons": tuple(sorted(train_seasons)),
@@ -170,10 +171,117 @@ def _reserve_run_id(outputs_dir: Path, config: dict) -> None:
 
 from src.data.db_loader import load_playoff_data, load_training_data
 from src.training.data_model_a import build_batches_from_db, build_batches_from_lists
-from src.training.train_model_a import predict_batches, predict_batches_with_attention, train_model_a, train_model_a_on_batches
+from src.training.train_model_a import (
+    get_model_a_seeds,
+    predict_batches,
+    predict_batches_with_attention,
+    train_model_a,
+    train_model_a_on_batches,
+)
 from src.models.confidence import confidence_from_attention
 from src.training.build_lists import build_lists
+from src.utils.repro import set_seeds
 from src.utils.split import compute_split, get_train_seasons_ordered, group_lists_by_season, write_split_info
+
+
+def _score_batches_like_inference(model, batches, device, config):
+    """Score val batches exactly the way inference scores teams.
+
+    When multi-temp attention is enabled, inference aggregates scores across attention
+    temperatures (aggregate_multi_temp_scores) and derives confidence from cross-temp
+    agreement; the old OOF path used a single temperature + attention-entropy confidence,
+    so the meta-learner was trained on scores with a different distribution than it saw
+    at inference. Returns (scores_per_batch, conf_per_batch) as lists of np arrays (K,).
+    """
+    import numpy as np
+
+    attn_cfg = (config.get("model_a") or {}).get("attention", {})
+    multi_temp = bool(attn_cfg.get("multi_temp_enabled", False))
+    temps = attn_cfg.get("temperatures", [1, 5, 10])
+    base_weights = attn_cfg.get("multi_temp_base_weights", {1: 0.85, 5: 1.0, 10: 0.7})
+    if multi_temp and temps:
+        from src.models.multi_temp_aggregation import aggregate_multi_temp_scores
+        per_temp = []
+        for t in temps:
+            sl, _ = predict_batches_with_attention(model, batches, device, attention_temperature_override=float(t))
+            per_temp.append(sl)
+        scores_out, conf_out = [], []
+        for i in range(len(batches)):
+            scores_by_temp = {int(t): per_temp[j][i][0].numpy() for j, t in enumerate(temps)}
+            k = len(next(iter(scores_by_temp.values())))
+            s_final, c_a = aggregate_multi_temp_scores(scores_by_temp, base_weights, np.ones(k))
+            scores_out.append(np.asarray(s_final, dtype=float))
+            conf_out.append(np.asarray(c_a, dtype=float))
+        return scores_out, conf_out
+    scores_list, attn_list = predict_batches_with_attention(model, batches, device)
+    conf_cfg = (config.get("model_a") or {}).get("confidence", {})
+    ent_w = float(conf_cfg.get("entropy_weight", 0.5))
+    max_w = float(conf_cfg.get("max_weight_weight", 0.5))
+    scores_out, conf_out = [], []
+    for score_tensor, attn_tensor in zip(scores_list, attn_list):
+        k = score_tensor.shape[1]
+        scores_out.append(score_tensor[0].numpy().astype(float))
+        conf_out.append(np.array([
+            confidence_from_attention(attn_tensor[0, ki, :].numpy(), entropy_weight=ent_w, max_weight_weight=max_w)
+            for ki in range(k)
+        ], dtype=float))
+    return scores_out, conf_out
+
+
+def _train_and_score_seed_avg(config, train_batches, val_batches, device, epochs, loss_log_path=None):
+    """Train one model per seed, score val batches like inference, average across seeds.
+
+    Returns (scores_per_batch, conf_per_batch, models) where models holds one trained
+    model per seed (for optional reuse).
+    """
+    import numpy as np
+
+    seeds = get_model_a_seeds(config)
+    sum_scores = None
+    sum_conf = None
+    models = []
+    for si, seed in enumerate(seeds):
+        model = train_model_a_on_batches(
+            config, train_batches, device,
+            max_epochs=epochs, val_batches=val_batches or None,
+            loss_log_path=loss_log_path if si == 0 else None,
+            seed=seed,
+        )
+        models.append(model)
+        if not val_batches:
+            continue
+        scores, conf = _score_batches_like_inference(model, val_batches, device, config)
+        if sum_scores is None:
+            sum_scores = [np.array(s, dtype=float) for s in scores]
+            sum_conf = [np.array(c, dtype=float) for c in conf]
+        else:
+            for i in range(len(scores)):
+                sum_scores[i] += scores[i]
+                sum_conf[i] += conf[i]
+    if sum_scores is None:
+        return None, None, models
+    n = float(len(seeds))
+    return [s / n for s in sum_scores], [c / n for c in sum_conf], models
+
+
+def _save_final_model_seed_avg(config, out, all_batches, device) -> Path:
+    """Train the final model once per seed and save a checkpoint that carries all seed
+    state dicts (model_states); inference averages their scores via DeepSetRankEnsemble."""
+    import torch
+
+    seeds = get_model_a_seeds(config)
+    if len(seeds) == 1:
+        return train_model_a(config, out, batches=all_batches, seed=seeds[0])
+    states = []
+    path = None
+    for seed in seeds:
+        print(f"Final model: training seed {seed} ({len(states)+1}/{len(seeds)})", flush=True)
+        path = train_model_a(config, out, batches=all_batches, seed=seed)
+        ck = torch.load(path, map_location="cpu", weights_only=False)
+        states.append(ck["model_state"])
+    torch.save({"model_state": states[0], "model_states": states, "config": config}, path)
+    print(f"Saved {path} with {len(states)} seed state dicts (seed averaging)", flush=True)
+    return path
 
 
 def _run_walk_forward(config, train_lists, games, tgl, teams, pgl, out, root, playoff_games=None, playoff_tgl=None):
@@ -228,26 +336,21 @@ def _run_walk_forward(config, train_lists, games, tgl, teams, pgl, out, root, pl
             )
 
         loss_log_path = out / "training_loss.csv" if k == n_steps else None
-        model = train_model_a_on_batches(
-            config, train_batches, device, max_epochs=epochs, val_batches=val_batches or None, loss_log_path=loss_log_path
+        scores_avg, conf_avg, models = _train_and_score_seed_avg(
+            config, train_batches, val_batches or None, device, epochs, loss_log_path=loss_log_path,
         )
-        if val_batches and val_metas:
-            conf_cfg = (config.get("model_a") or {}).get("confidence", {})
-            ent_w = float(conf_cfg.get("entropy_weight", 0.5))
-            max_w = float(conf_cfg.get("max_weight_weight", 0.5))
-            scores_list, attn_list = predict_batches_with_attention(model, val_batches, device)
-            for score_tensor, meta, attn_tensor in zip(scores_list, val_metas, attn_list):
-                K = score_tensor.shape[1]
-                for ki in range(K):
-                    attn_1d = attn_tensor[0, ki, :].numpy()
-                    conf_a = confidence_from_attention(attn_1d, entropy_weight=ent_w, max_weight_weight=max_w)
+        if val_batches and val_metas and scores_avg is not None:
+            for scores, conf, meta in zip(scores_avg, conf_avg, val_metas):
+                for ki in range(len(meta["team_ids"])):
                     oof_rows.append({
                         "team_id": meta["team_ids"][ki],
                         "as_of_date": meta["as_of_date"],
                         "conference": meta.get("conference", ""),
-                        "oof_a": float(score_tensor[0, ki].item()),
-                        "conf_a": float(conf_a),
-                        "y": meta["win_rates"][ki],
+                        "oof_a": float(scores[ki]),
+                        "conf_a": float(conf[ki]),
+                        # rel_values matches the training target (31 - final_rank when rank
+                        # targets are on); win_rates was a different scale than k-fold OOF y.
+                        "y": meta.get("rel_values", meta["win_rates"])[ki],
                     })
             print(
                 f"Walk-forward step {step}/{n_steps}: trained on seasons "
@@ -262,11 +365,15 @@ def _run_walk_forward(config, train_lists, games, tgl, teams, pgl, out, root, pl
                 flush=True,
             )
 
-        # Last step: save final model (trained on all train seasons)
+        # Last step: save final model (trained on all train seasons); carry all seed states.
         if k == n_steps:
             path = out / "best_deep_set.pt"
-            torch.save({"model_state": model.state_dict(), "config": config}, path)
-            print(f"Saved {path} (final model from walk-forward)", flush=True)
+            states = [{k2: v.detach().cpu().clone() for k2, v in m.state_dict().items()} for m in models]
+            payload = {"model_state": states[0], "config": config}
+            if len(states) > 1:
+                payload["model_states"] = states
+            torch.save(payload, path)
+            print(f"Saved {path} (final model from walk-forward, {len(states)} seed(s))", flush=True)
 
     if oof_rows:
         oof_df = pd.DataFrame(oof_rows)
@@ -286,6 +393,9 @@ def main():
     print("Script 3: loading config and DB...", flush=True)
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
+    # Seed the whole OOF path (list building, subsampling, batch construction);
+    # per-fold/per-seed training re-seeds in train_model_a_on_batches.
+    set_seeds(int((config.get("repro") or {}).get("seed", 42)))
     db_path = ROOT / config["paths"]["db"]
     if not db_path.exists():
         print("Database not found. Run scripts 1_download_raw and 2_build_db first.", file=sys.stderr)
@@ -443,47 +553,43 @@ def main():
             tmp.rename(cache_dir / f"{cache_key}.pt")
             print(f"Batch cache saved: {cache_key}.pt", flush=True)
 
-    # Split OOF lists into n_folds by time (sorted by date then conference) so validation is always in the future.
-    sorted_indices = sorted(range(len(oof_lists)), key=lambda i: (oof_lists[i]["as_of_date"], oof_lists[i].get("conference", "")))
+    # Causal expanding-window OOF: sort lists by time, cut into n_folds contiguous blocks,
+    # validate block f training ONLY on earlier blocks. The old k-fold scheme trained on
+    # future blocks when validating early ones (future leakage into OOF scores).
+    # Index over list_metas (aligned with batches): build_batches_from_lists can skip lists
+    # with empty rosters, so oof_lists indices would be misaligned with batches.
+    sorted_indices = sorted(range(len(batches)), key=lambda i: (list_metas[i]["as_of_date"], list_metas[i].get("conference", "")))
+    n_folds = min(n_folds, len(batches))
     fold_size = (len(sorted_indices) + n_folds - 1) // n_folds
     oof_rows = []
-    for fold in range(n_folds):
+    epochs = int((config.get("model_a") or {}).get("epochs", 20))
+    for fold in range(1, n_folds):
         val_start = fold * fold_size
         val_end = min((fold + 1) * fold_size, len(sorted_indices))
         val_idx = sorted_indices[val_start:val_end]
-        train_idx = [i for i in sorted_indices if i not in val_idx]
+        train_idx = sorted_indices[:val_start]
         train_batches = [batches[i] for i in train_idx]
         val_batches = [batches[i] for i in val_idx]
         val_metas = [list_metas[i] for i in val_idx]
         if not train_batches or not val_batches:
             continue
-        epochs = int((config.get("model_a") or {}).get("epochs", 20))
-        model = train_model_a_on_batches(
-            config,
-            train_batches,
-            device,
-            max_epochs=epochs,
-            val_batches=val_batches,
+        scores_avg, conf_avg, _ = _train_and_score_seed_avg(
+            config, train_batches, val_batches, device, epochs,
         )
-        conf_cfg = (config.get("model_a") or {}).get("confidence", {})
-        ent_w = float(conf_cfg.get("entropy_weight", 0.5))
-        max_w = float(conf_cfg.get("max_weight_weight", 0.5))
-        scores_list, attn_list = predict_batches_with_attention(model, val_batches, device)
-        for score_tensor, meta, attn_tensor in zip(scores_list, val_metas, attn_list):
-            K = score_tensor.shape[1]
-            for k in range(K):
+        if scores_avg is None:
+            continue
+        for scores, conf, meta in zip(scores_avg, conf_avg, val_metas):
+            for k in range(len(meta["team_ids"])):
                 y_val = meta.get("rel_values", meta["win_rates"])[k]
-                attn_1d = attn_tensor[0, k, :].numpy()
-                conf_a = confidence_from_attention(attn_1d, entropy_weight=ent_w, max_weight_weight=max_w)
                 oof_rows.append({
                     "team_id": meta["team_ids"][k],
                     "as_of_date": meta["as_of_date"],
                     "conference": meta.get("conference", ""),
-                    "oof_a": float(score_tensor[0, k].item()),
-                    "conf_a": float(conf_a),
+                    "oof_a": float(scores[k]),
+                    "conf_a": float(conf[k]),
                     "y": y_val,
                 })
-        print(f"Fold {fold+1}/{n_folds} OOF collected {len(val_batches)} lists")
+        print(f"Fold {fold+1}/{n_folds} OOF collected {len(val_batches)} lists (expanding-window, trained on {len(train_batches)})")
 
     if oof_rows:
         oof_df = pd.DataFrame(oof_rows)
@@ -507,7 +613,7 @@ def main():
                 games, tgl, teams, pgl, config,
                 playoff_games=playoff_games, playoff_tgl=playoff_tgl,
             )
-    path = train_model_a(config, out, batches=all_batches)
+    path = _save_final_model_seed_avg(config, out, all_batches, device)
     print(f"Saved {path}")
 
 
