@@ -3,14 +3,14 @@
 What this does:
 - Loads raw parquet/csv files from data/raw/ into a DuckDB database.
 - Includes both regular season and playoff data.
-- Skips rebuild if raw file hashes are unchanged and DB already exists.
+- Skips work when raw file hashes are unchanged and DB already exists.
+- Incrementally updates only seasons whose raw files changed (no full wipe).
 - Updates data/manifest.json with processed DB hash and raw hashes.
 
 Run after script 1. Required before training (scripts 3, 4, etc.)."""
 from __future__ import annotations
 
-import hashlib
-import json
+import sys
 from pathlib import Path
 
 import yaml
@@ -18,51 +18,17 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _hash_if_exists(path: Path) -> str | None:
-    """Return SHA256 hex digest of file if it exists, else None."""
-    if path.exists():
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-    return None
-
-
-def _current_raw_hashes(raw_dir: Path, seasons: list[str]) -> dict[str, str]:
-    """Compute hashes for all raw files (regular + playoff) to detect changes."""
-    out: dict[str, str] = {}
-    for season in seasons:
-        y1, y2 = season.split("-")[0], season.split("-")[1]
-        for stem, ext in [
-            ("team_logs", "parquet"), ("player_logs", "parquet"),
-            ("playoffs_team_logs", "parquet"), ("playoffs_player_logs", "parquet"),
-        ]:
-            for suffix in (".parquet", ".csv"):
-                path = raw_dir / f"{stem}_{y1}_{y2}{suffix}"
-                h = _hash_if_exists(path)
-                if h is not None:
-                    out[path.name] = h
-    return out
-
-
-def _build_db_config_fingerprint(cfg: dict) -> str:
-    """Fingerprint config parts that affect DB build scope.
-
-    If this changes (e.g. seasons list changes), we should rebuild even when raw files
-    are otherwise unchanged.
-    """
-    paths_cfg = cfg.get("paths", {}) or {}
-    payload = {
-        "seasons": cfg.get("seasons", {}) or {},
-        "paths": {
-            "raw": str(paths_cfg.get("raw", "")),
-            "db": str(paths_cfg.get("db", "")),
-        },
-    }
-    js = json.dumps(payload, sort_keys=True, default=str)
-    return hashlib.sha256(js.encode("utf-8")).hexdigest()
-
-
 def main():
-    import sys
     sys.path.insert(0, str(ROOT))
+
+    from src.data.db import get_connection
+    from src.data.db_loader import db_has_regular_games, load_playoff_into_db, load_raw_into_db
+    from src.data.manifest_utils import (
+        compute_raw_hashes,
+        load_manifest,
+        seasons_with_changed_raw,
+        update_manifest_after_build,
+    )
 
     with open(ROOT / "config" / "defaults.yaml", "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
@@ -73,55 +39,62 @@ def main():
     if not db_path.is_absolute():
         db_path = ROOT / db_path
     seasons = list(cfg.get("seasons", {}).keys())
-    skip_if_exists = cfg.get("build_db", {}).get("skip_if_exists", False)
+    force_full = bool(cfg.get("build_db", {}).get("force_full_rebuild", False))
 
     manifest_path = ROOT / "data" / "manifest.json"
-    manifest = {}
-    if manifest_path.exists():
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
-
-    # Skip rebuild if raw files unchanged and DB exists
-    current_raw = _current_raw_hashes(raw_dir, seasons)
+    manifest = load_manifest(manifest_path)
     stored_raw = manifest.get("raw") or {}
-    raw_unchanged = current_raw == stored_raw and len(current_raw) > 0
-    current_cfg_fp = _build_db_config_fingerprint(cfg)
-    stored_cfg_fp = manifest.get("build_db_config_fingerprint")
-    config_unchanged = stored_cfg_fp == current_cfg_fp
-    if raw_unchanged and config_unchanged and db_path.exists():
-        print("Raw files unchanged; skipping DB rebuild.")
+    current_raw = compute_raw_hashes(raw_dir, seasons)
+
+    changed_seasons = seasons_with_changed_raw(current_raw, stored_raw, seasons)
+    db_exists = db_path.exists()
+
+    if db_exists and not force_full and not changed_seasons:
+        con = get_connection(db_path, read_only=True)
+        try:
+            has_data = db_has_regular_games(con)
+        finally:
+            con.close()
+        if has_data:
+            print("Raw files unchanged; skipping DB rebuild.", flush=True)
+            update_manifest_after_build(
+                manifest_path,
+                raw_hashes=current_raw,
+                db_path=db_path,
+                root=ROOT,
+            )
+            return
+        print("DB file exists but is empty; rebuilding all seasons.", flush=True)
+        changed_seasons = seasons
+    elif db_exists and not force_full and changed_seasons:
+        print(
+            f"Incremental DB update for {len(changed_seasons)} season(s): {', '.join(changed_seasons)}",
+            flush=True,
+        )
+        load_raw_into_db(raw_dir, db_path, seasons=changed_seasons, incremental=True)
+        load_playoff_into_db(raw_dir, db_path, seasons=changed_seasons, incremental=True)
+        update_manifest_after_build(
+            manifest_path,
+            raw_hashes=current_raw,
+            db_path=db_path,
+            root=ROOT,
+        )
+        print(f"Updated {db_path}, refreshed {manifest_path}", flush=True)
         return
-    if db_path.exists() and raw_unchanged and not config_unchanged:
-        print("Config changed since last DB build; forcing DB rebuild.", flush=True)
-
-    from src.data.db_loader import load_playoff_into_db, load_raw_into_db
-
-    if skip_if_exists and db_path.exists() and raw_unchanged and config_unchanged:
-        print(f"Skipping main build (DB exists and build_db.skip_if_exists=true): {db_path}")
-        load_playoff_into_db(raw_dir, db_path, seasons=seasons)
+    elif not db_exists:
+        print(f"Building new DB for {len(seasons)} season(s)...", flush=True)
     else:
-        load_raw_into_db(raw_dir, db_path, seasons=seasons)
-        load_playoff_into_db(raw_dir, db_path, seasons=seasons)
+        print("force_full_rebuild=true; rebuilding all seasons from scratch.", flush=True)
 
-    manifest_path = ROOT / "data" / "manifest.json"
-    manifest = {}
-    if manifest_path.exists():
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            manifest = json.load(f)
-    # Update manifest: store hash of the DB file and preserve or recompute raw file hashes.
-    if db_path.exists():
-        manifest["processed"] = hashlib.sha256(db_path.read_bytes()).hexdigest()
-    # Save hashes used for skip logic and config fingerprint used to detect build-scope changes.
-    manifest["raw"] = current_raw
-    manifest["build_db_config_fingerprint"] = current_cfg_fp
-    try:
-        manifest["db_path"] = str(db_path.relative_to(ROOT))
-    except ValueError:
-        manifest["db_path"] = str(db_path)
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, indent=2)
-    print(f"Built {db_path}, updated {manifest_path}")
+    load_raw_into_db(raw_dir, db_path, seasons=seasons, incremental=False)
+    load_playoff_into_db(raw_dir, db_path, seasons=seasons, incremental=False)
+    update_manifest_after_build(
+        manifest_path,
+        raw_hashes=current_raw,
+        db_path=db_path,
+        root=ROOT,
+    )
+    print(f"Built {db_path}, updated {manifest_path}", flush=True)
 
 
 if __name__ == "__main__":

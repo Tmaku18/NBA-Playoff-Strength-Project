@@ -12,11 +12,10 @@
 # Improvement 3 (top-weighted loss) is the separate config 8_spearman_improved_topweighted.yaml.
 # Improvement 4 (flag ablation) is: python -m scripts.sweep_hparams --phase flags --config config/8_spearman_improved.yaml --n-jobs 3
 #
-# Run (WSL, GPU):
-#   cd "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project"
-#   export PYTHONPATH="$PWD" OMP_NUM_THREADS=18 MKL_NUM_THREADS=18
-#   python -m scripts.run_pipeline_from_model_a --config config/8_spearman_improved.yaml \
-#     --outputs output/8_spearman_surrogate/improved_07-05/outputs
+# Run (WSL, GPU) — production config writes to improved_07-06/outputs:
+#   python -m scripts.run_pipeline_from_model_a --config config/8_spearman_improved.yaml
+#
+# Production best run: improved_07-06/outputs/run_026_07-06_0937 (see output/8_spearman_surrogate/improved_07-06/ANALYSIS_03.md)
 
 seasons:
   2014-15:
@@ -56,10 +55,10 @@ seasons:
     start: '2025-10-01'
     end: '2026-04-15'
 paths:
-  db: data/processed/nba_build_run.duckdb
+  db: data/processed/nba_build.duckdb
   raw: data/raw
   processed: data/processed
-  outputs: output/8_spearman_surrogate/improved_02-27/outputs
+  outputs: output/8_spearman_surrogate/improved_07-06/outputs
   batch_cache: data/processed/batch_cache
   feature_cache: data/processed/feature_cache
 build_db:
@@ -161,6 +160,7 @@ training:
   test_seasons:
   - 2023-24
   - 2024-25
+  - 2025-26
   validation_seasons:
   - 2023-24
   holdout_seasons:
@@ -197,11 +197,11 @@ sos_srs:
   data_path: data/raw/Team_Records.csv
   enabled: false
 team_rolling:
-  enabled: true  # flag ablation winner (sweep 20260703_151849 combo_0003)
+  enabled: false  # tested in improved_07-05: no ensemble gain under fair eval (see ANALYSIS_03.md)
 injury:
   data_path: data/raw/injury_reports
   minutes_heuristic: proportional
-  enabled: true  # flag ablation winner (sweep 20260703_151849 combo_0003)
+  enabled: false  # tested in improved_07-05: no ensemble gain under fair eval (see ANALYSIS_03.md)
 motivation:
   late_season_games: 15
   playoff_wins_threshold: 42

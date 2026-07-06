@@ -16,7 +16,9 @@ This project builds a **Multi-Modal Stacking Ensemble** to predict NBA **True Te
 | Role | Output | Description |
 |------|--------|-------------|
 | **Baseline** | **6_baseline** | Phase 1 outcome runs (ListMLE, playoff_outcome, rolling [15,30]; configs from 4_listmle). Reference for all comparisons. |
-| **Best (fair eval)** | **8_spearman_surrogate / improved_07-03** | **Pipeline deep-dive retrain** (Jul 2026): season-scoped features, causal OOF, seed averaging, rank-transform meta, fair eval (6 checkpoints). **Pooled ensemble Spearman 0.750**, Model B 0.760. See **`output/8_spearman_surrogate/improved_07-03/ANALYSIS_02.md`**. |
+| **Best (fair eval)** | **8_spearman_surrogate / improved_07-06** | **Production best** (Jul 2026): full retrain after 30-team franchise-metadata fix (`src/data/team_meta.py`). Pooled ensemble Spearman **0.789**, NDCG@4 **0.620**, MAE **3.73** (6 checkpoints, `eos_final_rank`, 30 teams). Champions: 2023-24 Boston ✓, 2024-25 OKC ✓. See **`output/8_spearman_surrogate/improved_07-06/ANALYSIS_03.md`**. |
+| **Prior fair eval** | **8_spearman_surrogate / improved_07-03** | Pipeline deep-dive retrain (Jul 2026): season-scoped features, causal OOF, seed averaging, rank-transform meta, fair eval (6 checkpoints). Pooled ensemble Spearman **0.750**, Model B **0.760**. Superseded by **improved_07-06**. See **`output/8_spearman_surrogate/improved_07-03/ANALYSIS_02.md`**. |
+| **Flag test (negative)** | **8_spearman_surrogate / improved_07-05** | `team_rolling` + `injury` enabled; **no ensemble gain** under fair eval (Spearman 0.746). See **`output/8_spearman_surrogate/improved_07-05/ANALYSIS_03.md`**. Flags reverted in config. |
 | **Best (legacy sweep)** | **8_spearman_surrogate / combo_0033** | Spearman-surrogate loss, playoff_outcome, 40 Optuna trials. Best on **old** eval (single snapshot, corrupted features, unfair standings baseline). Superseded for production conclusions by **improved_07-03** under fair eval. |
 | **MAP run** | **14_map_run** | MAP branch model tested (mixed): stronger top-focused NDCG/champion placement, weaker Spearman/rank error than 8_spearman_surrogate. Config: `config/outputs14_map_run.yaml`. See [docs/OUTPUTS14_MAP_ANALYSIS.md](docs/OUTPUTS14_MAP_ANALYSIS.md), [docs/OUTPUTS14_MAP_RUN.md](docs/OUTPUTS14_MAP_RUN.md). |
 | **RMSE surrogate** | **13_rmse_surrogate** | **rank_rmse_surrogate** sweep; same setup as 8_spearman_surrogate, different loss. Config: `config/outputs13_sweep_rmse_surrogate.yaml`; compare to 8_spearman_surrogate. |
@@ -33,17 +35,20 @@ Each output folder has a **`MODEL.md`** that describes the model that produced t
 
 Full lineup and run commands: **[docs/MODEL_LINEUP_AND_NEXT_STEPS.md](docs/MODEL_LINEUP_AND_NEXT_STEPS.md)**. Official best configs: **[docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md](docs/OFFICIAL_BEST_CONFIGS_AND_ANALYSIS.md)** and **[docs/OUTPUTS8_SWEEP_ANALYSIS_02-17.md](docs/OUTPUTS8_SWEEP_ANALYSIS_02-17.md)**. MAP findings: **[docs/OUTPUTS14_MAP_ANALYSIS.md](docs/OUTPUTS14_MAP_ANALYSIS.md)**. **Current-state analysis and best-model ranking (Feb 27, 2026):** **[docs/PROJECT_STATE_AND_BEST_MODELS_02-27.md](docs/PROJECT_STATE_AND_BEST_MODELS_02-27.md)**.
 
-**Pipeline deep-dive (Jul 2026):** Fixed feature corruption, leakage, OOF validity, and evaluation fairness. First validated retrain: **`output/8_spearman_surrogate/improved_07-03/`** — pooled Spearman **0.750** (6 checkpoints, fair standings baseline). Full write-up: **[output/8_spearman_surrogate/improved_07-03/ANALYSIS_02.md](output/8_spearman_surrogate/improved_07-03/ANALYSIS_02.md)**. Config: **`config/8_spearman_improved.yaml`** (`team_rolling` + `injury` enabled for next run → `improved_07-05`).
+**Pipeline deep-dive (Jul 2026):** Fixed feature corruption, leakage, OOF validity, evaluation fairness, and a **30-team coverage bug** (historical franchise abbreviations in `teams` table dropped renamed teams from conference lists; fixed via `src/data/team_meta.py`). **Production best:** **`output/8_spearman_surrogate/improved_07-06/`** — run **`run_026_07-06_0937`**: pooled Spearman **0.789**, NDCG@4 **0.620**, MAE **3.73** (6 checkpoints, 30 teams, `eos_final_rank`). Write-up: **[ANALYSIS_03.md](output/8_spearman_surrogate/improved_07-06/ANALYSIS_03.md)**. Prior fair-eval best **`improved_07-03`** (Spearman 0.750): **[ANALYSIS_02.md](output/8_spearman_surrogate/improved_07-03/ANALYSIS_02.md)**. Flag follow-up **`improved_07-05`** (rolling + injury) did not beat 07-03 — **[ANALYSIS_03.md](output/8_spearman_surrogate/improved_07-05/ANALYSIS_03.md)**. Config: **`config/8_spearman_improved.yaml`** (`team_rolling` / `injury` **off**; `paths.outputs` → `improved_07-06/outputs`).
+
+**Suggested next experiments:** top-weighted loss (`config/8_spearman_improved_topweighted.yaml`), West-conference error analysis, 2025-26 champion/top-4 calibration.
 
 ```bash
-# WSL — full retrain (RTX 4060; torch.compile auto-skipped when path has spaces)
+# WSL — retrain production config (RTX 4060; torch.compile auto-skipped when path has spaces)
 cd "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project"
 export PYTHONPATH="$PWD"
 export OMP_NUM_THREADS=18
 export MKL_NUM_THREADS=18
-python -m scripts.run_pipeline_from_model_a --config config/8_spearman_improved.yaml \
-  --outputs output/8_spearman_surrogate/improved_07-05/outputs
+python -m scripts.run_pipeline_from_model_a --config config/8_spearman_improved.yaml
 ```
+
+Outputs land in `output/8_spearman_surrogate/improved_07-06/outputs/` (new `run_NNN_MM-DD_HHMM` per run). **2025-26 predictions and eval:** [docs/PREDICTIONS_2025-26.md](docs/PREDICTIONS_2025-26.md).
 
 **Legacy production defaults (4_listmle):** (1) **Standings** — `config/defaults.yaml` (Phase 3 fine NDCG@16 combo 18): listmle_target `final_rank` (playoff standings); combo path `output/4_listmle/sweeps/phase3_fine_ndcg16_final_rank/combo_0018/config.yaml`. (2) **Playoff-outcome** — `config/defaults_playoff_outcome.yaml` (Phase 5 combo 2): listmle_target `playoff_outcome`; use `--config config/defaults_playoff_outcome.yaml` for pipeline or inference. **Latest production run (4_listmle):** run_026 — ensemble NDCG@10 0.485, Spearman 0.477, playoff Spearman 0.467, NDCG@16 0.527 (eval: eos_final_rank; 141 train / 36 test dates). **ListMLE outcome vs standings:** In **output/5_listmle/** we compared training Model A (ListMLE) on `playoff_outcome` vs `final_rank` (standings); when evaluated on playoff outcome, **standings-trained** ListMLE matched or beat outcome-trained (e.g. ndcg_standing: Spearman 0.529, playoff Spearman 0.531 vs ndcg_outcome 0.491 / 0.475). See **`output/0_outputs/ANALYSIS.md`** for run_026 details. **Run 021/022** are baseline full-pipeline runs (output/2_listmle). **Sweep strategy:** Run separate Optuna sweeps with `--objective spearman`, `--objective ndcg4`, `--objective ndcg16`, `--objective playoff_spearman`, or `--objective rank_rmse`, then compare best configs. **output/4_listmle/** is the default production root (run_025, run_026); **output/5_listmle/** holds outcome vs standings comparison. See **`output/4_listmle/sweeps/SWEEP_PHASE1_ANALYSIS.md`**, **`docs/SWEEP_ANALYSIS.md`**, and **`output/2_listmle/run_022/RESULTS_AND_OUTPUTS_EXPLAINED.md`** for sweep and metric definitions.
 
@@ -83,7 +88,7 @@ python -m scripts.run_pipeline_from_model_a --config config/8_spearman_improved.
 - **Basketball-Reference:** **fallback** for SOS/SRS when Kaggle unavailable.
 - **Proxy SOS:** If both are unavailable, compute from internal DB (e.g. opponent win-rate) and document.
 
-**Storage:** DuckDB preferred (regular-season + separate playoff tables: `playoff_games`, `playoff_team_game_logs`, `playoff_player_game_logs`).
+**Storage:** DuckDB preferred (regular-season + separate playoff tables: `playoff_games`, `playoff_team_game_logs`, `playoff_player_game_logs`). The `teams` table uses canonical franchise metadata from `src/data/team_meta.py` (modern abbreviation, name, conference by stable `team_id`) so relocated/rebranded franchises are not dropped from conference lists.
 
 **RAPTOR (FiveThirtyEight):** Optional. Place `modern_RAPTOR_by_team.csv` or `historical_RAPTOR_by_player.csv` in `docs/` or `data/`. Enable with `raptor.enabled: true` in config. Adds `raptor_offense_sum_top5` and `raptor_defense_sum_top5` to Model B team context. Download: `python -m scripts.1c_download_raptor` or from [GitHub](https://github.com/fivethirtyeight/data/tree/master/nba-raptor).
 

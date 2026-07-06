@@ -164,6 +164,7 @@ paths:
   feature_cache: data/processed/feature_cache
 build_db:
   skip_if_exists: true
+  force_full_rebuild: false  # set true to wipe and reload all seasons from raw
 repro:
   seed: 42
   deterministic: true  # bit-reproducible torch (cudnn deterministic, no TF32, CUBLAS workspace)
@@ -282,6 +283,7 @@ training:
   test_seasons:
   - 2023-24
   - 2024-25
+  - 2025-26
   validation_seasons:
   - 2023-24
   holdout_seasons:

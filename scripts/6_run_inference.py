@@ -8,7 +8,6 @@ What this does:
 
 Run after scripts 3, 4, 4b. Required before evaluation (script 5)."""
 import argparse
-import re
 import sys
 from pathlib import Path
 
@@ -18,22 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from src.inference.predict import run_inference
-
-
-def _next_run_id(outputs_dir: Path, run_id_base: int | None = None) -> str:
-    """Auto-increment: find existing run_NNN dirs, return run_{max+1:03d}.
-    If outputs dir has no run_* subdirs and run_id_base N is set, return run_{N:03d} (e.g. run_019)."""
-    outputs_dir = Path(outputs_dir)
-    pattern = re.compile(r"^run_(\d+)$", re.I)
-    numbers = []
-    if outputs_dir.exists():
-        for p in outputs_dir.iterdir():
-            if p.is_dir() and pattern.match(p.name):
-                numbers.append(int(pattern.match(p.name).group(1)))
-    if not numbers and run_id_base is not None:
-        return f"run_{run_id_base:03d}"
-    next_n = max(numbers, default=0) + 1
-    return f"run_{next_n:03d}"
+from src.utils.run_id import RUN_ID_PATTERN, next_run_id
 
 
 def main():
@@ -55,12 +39,12 @@ def main():
         current_run_file = out / ".current_run"
         if current_run_file.exists():
             run_id = current_run_file.read_text(encoding="utf-8").strip()
-            if run_id and re.match(r"^run_\d+$", run_id, re.I):
+            if run_id and RUN_ID_PATTERN.match(run_id):
                 pass  # use reserved run_id
             else:
-                run_id = _next_run_id(out, run_id_base=run_id_base)
+                run_id = next_run_id(out, run_id_base=run_id_base)
         else:
-            run_id = _next_run_id(out, run_id_base=run_id_base)
+            run_id = next_run_id(out, run_id_base=run_id_base)
     else:
         run_id = str(run_id).strip()
     try:

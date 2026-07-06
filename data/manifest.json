@@ -199,12 +199,16 @@
     "team_logs_2024_25.parquet": "6d0fdceb61e938f004ad57b39fedd8d4b6a197294495e23cc1e93d09c56cd708",
     "player_logs_2024_25.parquet": "6b13c34ecb143e66d671c088dde49e6d510e5a2fb39c31fb061d7a9d77206d2b",
     "playoffs_team_logs_2024_25.parquet": "ae2a93c9bfca1061c62da71e0c564f9dae91762e8aeeb2ef0eacb477acc9267d",
-    "playoffs_player_logs_2024_25.parquet": "37d3cb5f778cc9b0ccf417f5357fc5d345f1d93d91a2b180ceacd4d8e8c298a7"
+    "playoffs_player_logs_2024_25.parquet": "37d3cb5f778cc9b0ccf417f5357fc5d345f1d93d91a2b180ceacd4d8e8c298a7",
+    "team_logs_2025_26.parquet": "14a392db0acca2aba7ae041241350d88333903237bb6e5ba14555fa1cf34610a",
+    "player_logs_2025_26.parquet": "c4a9d68e647941cbd768f943ab7d45b74d5d705c7e270d04838de834205bd62a",
+    "playoffs_team_logs_2025_26.parquet": "7d9a950efc8150501d01864cfba18044bb2085214642996b55fc9b7a8e96e61b",
+    "playoffs_player_logs_2025_26.parquet": "40aa01ffaa762483f71b7d40815926e13ad031a844ade01afb90977ba5252824"
   },
   "timestamps": {
-    "download": "1771874260.5591273"
+    "download": "1783309667.811264"
   },
-  "processed": "289618ee3a9041dd86a93c4d0215c89a31964bc60ef9e715b2767bf590edca7f",
-  "build_db_config_fingerprint": "b4d0c4fc65c3e9c8e54646c534aab3fe3429721154e5738247212dbb087d0cfd",
-  "db_path": "C:/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/data/processed/nba_build.duckdb"
+  "processed": "3cd1ebc901de20fa0c335610b13518592674dadee22156c956b356607447cac5",
+  "db_path": "C:/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project/data/processed/nba_build.duckdb",
+  "build_db_config_fingerprint": "5553349f4c81e305da0e0ea3b93716c257ff32d278b97d72062fc882ae241376"
 }

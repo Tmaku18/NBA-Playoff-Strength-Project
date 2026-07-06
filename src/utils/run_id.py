@@ -1,6 +1,35 @@
-"""Resolve run directories (run_NNN or run_NNN_MM-DD) under an outputs dir."""
+"""Resolve run directories (run_NNN or run_NNN_MM-DD_HHMM) under an outputs dir."""
+from __future__ import annotations
+
 import re
+from datetime import datetime
 from pathlib import Path
+
+RUN_ID_PATTERN = re.compile(r"^run_(\d+)(?:_.+)?$", re.I)
+
+
+def next_run_id(outputs_dir: Path, run_id_base: int | None = None) -> str:
+    """Return the next run folder name: ``run_NNN_MM-DD_HHMM``.
+
+    The numeric part increments from existing ``run_*`` dirs; when none exist and
+    ``run_id_base`` is set, that base is used (e.g. 25 -> run_025). The timestamp
+    suffix makes each pipeline invocation unique even in fresh output roots.
+    """
+    outputs_dir = Path(outputs_dir)
+    numbers: list[int] = []
+    if outputs_dir.exists():
+        for p in outputs_dir.iterdir():
+            if not p.is_dir():
+                continue
+            m = RUN_ID_PATTERN.match(p.name)
+            if m:
+                numbers.append(int(m.group(1)))
+    if not numbers and run_id_base is not None:
+        n = run_id_base
+    else:
+        n = max(numbers, default=0) + 1
+    stamp = datetime.now().strftime("%m-%d_%H%M")
+    return f"run_{n:03d}_{stamp}"
 
 
 def latest_run_id(outputs_dir: Path) -> str | None:

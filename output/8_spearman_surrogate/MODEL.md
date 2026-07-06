@@ -2,11 +2,11 @@
 
 **Folder name:** `outputs8_spearman_surrogate` (rename from `outputs8` to match; see [OUTPUT_FOLDER_NAMING.md](../docs/OUTPUT_FOLDER_NAMING.md).)
 
-**Role:** **Official best** for playoff-outcome evaluation. Spearman-surrogate loss (not ListMLE), 40 Optuna trials, `listmle_target: playoff_outcome`, rolling [10,30]. Best Spearman 0.777 (combo_0033), best playoff_spearman 0.854 (combo_0038), best rank_mae/rank_rmse (combo_0033), best NDCG@30 (combo_0032).
+**Role:** **Official best** for playoff-outcome evaluation under fair eval (Jul 2026: **`improved_07-06`**). Spearman-surrogate loss, `listmle_target: playoff_outcome`, rolling [10,30]. Legacy sweep best: Spearman 0.777 (combo_0033), playoff_spearman 0.854 (combo_0038) on **old** eval setup.
 
 **Model:** **Spearman-surrogate** loss for Model A (soft rank correlation objective) + Model B (XGB) + stacking. Sweep batch 20260217_042955 under `outputs8/sweeps/20260217_042955/combo_*/`. No standing rank as input in this sweep (stat_dim 21 or baseline feature set).
 
-**Difference from outputs7:** outputs7 = ListMLE sweep; outputs8 = **Spearman-surrogate** sweep (same Optuna setup, different loss). outputs8 beats outputs7 on every primary metric (Spearman, playoff_spearman, rank_mae, rank_rmse, NDCG@30). This is the **production best** until RMSE-surrogate or other experiments are run and compared.
+**Difference from outputs7:** outputs7 = ListMLE sweep; outputs8 = **Spearman-surrogate** sweep (same Optuna setup, different loss). outputs8 beats outputs7 on every primary metric on the **legacy** eval. **Production conclusions** use **`improved_07-06`** (fair eval, 30 teams, pooled Spearman 0.789).
 
 **Run in WSL (from project root):**
 ```bash
@@ -47,4 +47,53 @@ First full retrain after correcting feature corruption, leakage, OOF/stacking va
 
 **Analysis:** [improved_07-03/ANALYSIS_02.md](improved_07-03/ANALYSIS_02.md)
 
-**Next run:** `team_rolling` + `injury` enabled in config (flag-ablation winners) → `output/8_spearman_surrogate/improved_07-05/outputs`. See README for WSL command.
+**Production best** under fair eval. Config: `team_rolling: false`, `injury: false`. Superseded for production by **`improved_07-06`** (Jul 2026).
+
+---
+
+## Production best (`improved_07-06`, Jul 2026)
+
+Full retrain after fixing the **30-team coverage bug**: raw logs stored historical franchise abbreviations (e.g. SEA, VAN, NYN) with `conference: NULL`, so `build_lists` dropped 11 renamed teams (OKC, BKN, GSW, etc.). Fixed in `src/data/team_meta.py` + `db_loader.py` (canonical metadata keyed by `team_id`).
+
+**Run:** `improved_07-06/outputs/run_026_07-06_0937`  
+**Config:** `config/8_spearman_improved.yaml` (`paths.outputs` → `improved_07-06/outputs`)
+
+**Results (pooled 6 checkpoints, 30 teams, `eos_final_rank`):**
+
+| Metric | improved_07-03 | **improved_07-06** |
+|--------|----------------|---------------------|
+| Ensemble Spearman | 0.750 | **0.789** |
+| NDCG@4 | 0.258 | **0.620** |
+| Ensemble MAE | 4.10 | **3.73** |
+| Model B Spearman | 0.760 | 0.778 |
+| Model A Spearman | 0.547 | **0.643** |
+
+**Champion picks (final):** 2023-24 Boston ✓ | 2024-25 OKC ✓ | 2025-26 NYK #8 (miss)
+
+**Invalid run:** `run_025_07-06_0141` (19 teams — pre-fix; do not use for reporting).
+
+**Analysis:** [improved_07-06/ANALYSIS_03.md](improved_07-06/ANALYSIS_03.md) · [improved_07-06/ANALYSIS_02.md](improved_07-06/ANALYSIS_02.md) (incomplete post-fix status) · [improved_07-06/ANALYSIS_01.md](improved_07-06/ANALYSIS_01.md) (invalid run_025)
+
+**WSL retrain:**
+```bash
+export PYTHONPATH="$PWD"
+export OMP_NUM_THREADS=18
+export MKL_NUM_THREADS=18
+python -m scripts.run_pipeline_from_model_a --config config/8_spearman_improved.yaml
+```
+
+---
+
+## Flag follow-up (`improved_07-05`, Jul 2026)
+
+Retrain with **`team_rolling: true`** + **`injury: true`** (flag-ablation winners on old eval).
+
+| Metric | improved_07-03 | improved_07-05 |
+|--------|------------------|----------------|
+| Ensemble Spearman | **0.750** | 0.746 |
+| Model B Spearman | 0.760 | **0.769** |
+| Ensemble MAE (fair) | **4.10** | 4.14 |
+
+No ensemble improvement under fair pooled eval; flags reverted. **Analysis:** [improved_07-05/ANALYSIS_03.md](improved_07-05/ANALYSIS_03.md)
+
+**Next levers:** top-weighted Spearman loss (`8_spearman_improved_topweighted.yaml`), West conference, champion/top-4 metrics.

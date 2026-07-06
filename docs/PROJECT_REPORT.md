@@ -66,5 +66,27 @@ Sweeps (e.g. Optuna) vary hyperparameters and objectives (spearman, ndcg4, ndcg1
 - **Confidence-weighted ensemble options:** `docs/CONFIDENCE_WEIGHTED_ENSEMBLE_OPTIONS.md`
 - **Sweep and metrics:** `docs/SWEEP_ANALYSIS.md`, `output/4_listmle/sweeps/SWEEP_PHASE1_ANALYSIS.md`
 - **Attention analysis:** `docs/ANALYSIS_OF_ATTENTION_WEIGHTS.md`
+- **Production best (Jul 2026):** `output/8_spearman_surrogate/improved_07-06/ANALYSIS_03.md`
+- **2025-26 predictions:** `docs/PREDICTIONS_2025-26.md`
 
-This report summarizes the reasoning and methodology up to the introduction of the confidence-weighted 4-input meta-learner; detailed run and sweep results live in the outputs and analysis documents above.
+---
+
+## 7. Latest results (production best, Jul 2026)
+
+**Run:** `output/8_spearman_surrogate/improved_07-06/outputs/run_026_07-06_0937`  
+**Config:** `config/8_spearman_improved.yaml` (Spearman-surrogate Model A + XGBoost Model B + RidgeCV stacking)
+
+| Metric | Value |
+|--------|-------|
+| Pooled ensemble Spearman | **0.789** |
+| NDCG@4 (Conference Finals) | **0.620** |
+| Rank MAE vs playoff outcome | **3.73** |
+| Test seasons | 2023-24, 2024-25, 2025-26 (6 checkpoints) |
+
+**Champion identification (ensemble, final snapshots):** 2023-24 Boston ✓ · 2024-25 Oklahoma City ✓ · 2025-26 New York #8 (actual champion; model favored OKC/SA).
+
+**Model roles:** Model B (XGBoost, Spearman 0.778) provides the strongest tabular signal; Model A (Deep Set, Spearman 0.643) adds roster context; RidgeCV stacking improves NDCG@4 over B alone (0.620 vs 0.522).
+
+**Data fix:** Franchise metadata (`src/data/team_meta.py`) ensures all 30 teams appear in conference-date lists (prior runs dropped 11 renamed franchises).
+
+This report summarizes methodology through the confidence-weighted meta-learner; detailed run and sweep results live in the outputs and analysis documents above.

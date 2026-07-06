@@ -8,6 +8,7 @@ import pandas as pd
 
 from .db import get_connection
 from .db_schema import create_schema
+from .team_meta import TEAM_META
 
 
 def _read_raw(path: Path) -> pd.DataFrame:
@@ -59,27 +60,53 @@ def _norm(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns=lambda c: str(c).strip().upper() if isinstance(c, str) else c)
 
 
-def load_raw_into_db(
-    raw_dir: str | Path,
-    db_path: str | Path,
-    seasons: list[str] | None = None,
-) -> None:
-    """
-    Load team and player logs from raw_dir into DuckDB.
-    Builds games from team MATCHUP; creates teams, players, games, team_game_logs, player_game_logs.
-    Uses ON CONFLICT for idempotent inserts.
-    """
-    raw_dir = Path(raw_dir)
-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+def _season_from_stem(stem: str) -> str | None:
+    m = re.search(r"(\d{4})_(\d{2})", stem)
+    return f"{m.group(1)}-{m.group(2)}" if m else None
 
-    con = get_connection(db_path)
-    create_schema(con)
 
-    # Delete in FK order: playoff child tables first (they reference players/teams/games), then main tables
+def _delete_regular_seasons(con, seasons: list[str]) -> None:
+    """Remove regular-season rows for the given seasons only (keeps other years in DB)."""
+    for season in seasons:
+        con.execute(
+            """
+            DELETE FROM player_game_logs
+            WHERE game_id IN (SELECT game_id FROM games WHERE season = ?)
+            """,
+            [season],
+        )
+        con.execute(
+            """
+            DELETE FROM team_game_logs
+            WHERE game_id IN (SELECT game_id FROM games WHERE season = ?)
+            """,
+            [season],
+        )
+        con.execute("DELETE FROM games WHERE season = ?", [season])
+
+
+def _delete_playoff_seasons(con, seasons: list[str]) -> None:
+    """Remove playoff rows for the given seasons only."""
+    for season in seasons:
+        con.execute(
+            """
+            DELETE FROM playoff_player_game_logs
+            WHERE game_id IN (SELECT game_id FROM playoff_games WHERE season = ?)
+            """,
+            [season],
+        )
+        con.execute(
+            """
+            DELETE FROM playoff_team_game_logs
+            WHERE game_id IN (SELECT game_id FROM playoff_games WHERE season = ?)
+            """,
+            [season],
+        )
+        con.execute("DELETE FROM playoff_games WHERE season = ?", [season])
+
+
+def _delete_all_regular(con) -> None:
     for t in (
-        "playoff_player_game_logs",
-        "playoff_team_game_logs",
-        "playoff_games",
         "player_game_logs",
         "team_game_logs",
         "games",
@@ -89,11 +116,53 @@ def load_raw_into_db(
         try:
             con.execute(f"DELETE FROM {t}")
         except Exception:
-            pass  # table may not exist yet
+            pass
 
-    def _season_from_stem(stem: str) -> str | None:
-        m = re.search(r"(\d{4})_(\d{2})", stem)
-        return f"{m.group(1)}-{m.group(2)}" if m else None
+
+def _delete_all_playoff(con) -> None:
+    for t in ("playoff_player_game_logs", "playoff_team_game_logs", "playoff_games"):
+        try:
+            con.execute(f"DELETE FROM {t}")
+        except Exception:
+            pass
+
+
+def db_has_regular_games(con) -> bool:
+    try:
+        n = con.execute("SELECT COUNT(*) FROM games").fetchone()[0]
+        return int(n) > 0
+    except Exception:
+        return False
+
+
+def load_raw_into_db(
+    raw_dir: str | Path,
+    db_path: str | Path,
+    seasons: list[str] | None = None,
+    *,
+    incremental: bool = False,
+) -> None:
+    """
+    Load team and player logs from raw_dir into DuckDB.
+    Builds games from team MATCHUP; creates teams, players, games, team_game_logs, player_game_logs.
+    Uses ON CONFLICT for idempotent inserts.
+
+    When incremental=True, only deletes/reloads the seasons passed in ``seasons`` (other years stay).
+    When incremental=False, wipes all regular-season tables and reloads ``seasons`` (or all raw files).
+    """
+    raw_dir = Path(raw_dir)
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+
+    con = get_connection(db_path)
+    create_schema(con)
+
+    if incremental:
+        if not seasons:
+            con.close()
+            return
+        _delete_regular_seasons(con, seasons)
+    else:
+        _delete_all_regular(con)
 
     team_paths = sorted(raw_dir.glob("team_logs_*.parquet")) + sorted(raw_dir.glob("team_logs_*.csv"))
     player_paths = sorted(raw_dir.glob("player_logs_*.parquet")) + sorted(raw_dir.glob("player_logs_*.csv"))
@@ -120,9 +189,17 @@ def load_raw_into_db(
     if all_teams:
         teams_df = pd.concat(all_teams, ignore_index=True).drop_duplicates(subset=["TEAM_ID"])
         for _, r in teams_df.iterrows():
+            tid = int(r["TEAM_ID"])
+            meta = TEAM_META.get(tid)
+            # Prefer canonical modern abbreviation/name/conference (keyed by the
+            # stable team_id) so relocated/renamed franchises get the correct
+            # conference; fall back to the raw log values only if unknown.
+            abbrev = meta[0] if meta else str(r.get("TEAM_ABBREVIATION", ""))
+            name = meta[1] if meta else str(r.get("TEAM_NAME", ""))
+            conference = meta[2] if meta else None
             con.execute(
-                "INSERT INTO teams (team_id, abbreviation, name, conference) VALUES (?, ?, ?, ?) ON CONFLICT (team_id) DO UPDATE SET abbreviation=excluded.abbreviation, name=excluded.name",
-                [int(r["TEAM_ID"]), str(r.get("TEAM_ABBREVIATION", "")), str(r.get("TEAM_NAME", "")), None],
+                "INSERT INTO teams (team_id, abbreviation, name, conference) VALUES (?, ?, ?, ?) ON CONFLICT (team_id) DO UPDATE SET abbreviation=excluded.abbreviation, name=excluded.name, conference=excluded.conference",
+                [tid, abbrev, name, conference],
             )
 
     # 2) Games + team_game_logs from team rows
@@ -232,26 +309,27 @@ def load_playoff_into_db(
     raw_dir: str | Path,
     db_path: str | Path,
     seasons: list[str] | None = None,
+    *,
+    incremental: bool = False,
 ) -> None:
     """
     Load playoff team and player logs from raw_dir into DuckDB playoff_* tables.
     Expects teams to already exist (run load_raw_into_db first).
     File naming: playoffs_team_logs_{y1}_{y2}.parquet, playoffs_player_logs_{y1}_{y2}.parquet.
+
+    When incremental=True, only deletes/reloads playoff data for ``seasons``.
     """
-
-    def _season_from_stem(stem: str) -> str | None:
-        m = re.search(r"(\d{4})_(\d{2})", stem)
-        return f"{m.group(1)}-{m.group(2)}" if m else None
-
     raw_dir = Path(raw_dir)
     con = get_connection(db_path)
     create_schema(con)
 
-    for t in ("playoff_player_game_logs", "playoff_team_game_logs", "playoff_games"):
-        try:
-            con.execute(f"DELETE FROM {t}")
-        except Exception:
-            pass
+    if incremental:
+        if not seasons:
+            con.close()
+            return
+        _delete_playoff_seasons(con, seasons)
+    else:
+        _delete_all_playoff(con)
 
     team_paths = sorted(raw_dir.glob("playoffs_team_logs_*.parquet")) + sorted(raw_dir.glob("playoffs_team_logs_*.csv"))
     player_paths = sorted(raw_dir.glob("playoffs_player_logs_*.parquet")) + sorted(raw_dir.glob("playoffs_player_logs_*.csv"))

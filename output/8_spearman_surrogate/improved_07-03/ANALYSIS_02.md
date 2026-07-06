@@ -1,6 +1,6 @@
 # Analysis 02 — Pipeline deep-dive retrain (`improved_07-03`)
 
-**Run:** `output/8_spearman_surrogate/improved_07-03/outputs/run_025`  
+**Run:** `output/8_spearman_surrogate/improved_07-03/outputs/run_025_07-03_2349`  
 **Config:** `config/8_spearman_improved.yaml` (post deep-dive fixes; `team_rolling` and `injury` still **off** in this run)  
 **Eval:** Pooled across **6 checkpoints** (2 test seasons × 3 as-of dates); fair standings baseline (`standings_to_date_rank`); EOS source `eos_final_rank`.
 
@@ -20,7 +20,7 @@ Flag ablation (sweep `20260703_151849`) identifies **`team_rolling=true` + `inju
 |-----|------------|-------------------|---------|---------|------------------------|
 | **improved_07-03** | 6 checkpoints pooled | **0.750** | 0.547 | **0.760** | **3.97** (standings-to-date) |
 | improved_02-27 / run_026 | Last season snapshot | 0.524 | 0.566 | 0.522 | 3.13 (EOS standings — unfair) |
-| improved_02-27 / run_025 | Last season snapshot | 0.563 | 0.760* | 0.070* | 3.13 (unfair) |
+| improved_02-27 / run_025_07-03_0451 | Last season snapshot | 0.563 | 0.760* | 0.070* | 3.13 (unfair) |
 | combo_0033 (Feb sweep) | Single snapshot | ~0.80 | — | — | 3.13 (unfair + corrupted features) |
 
 \* run_025 Model B at 0.07 was the `standing_rank_norm` tautology bug; Model A at 0.76 was inflated by all-franchise-history feature corruption.
@@ -105,25 +105,17 @@ Bootstrap vs standings (ensemble): p=0.85 — not significant.
 
 ## Next run
 
-**Config:** `config/8_spearman_improved.yaml` (`team_rolling: true`, `injury: true`)  
-**Output:** `output/8_spearman_surrogate/improved_07-05/outputs`
+**Production:** keep `improved_07-03` artifacts; config flags `team_rolling` / `injury` **off**.
 
-```bash
-cd "/mnt/c/Users/tmaku/OneDrive/Documents/GSU/Advanced Machine Learning/NBA Playoff Strentgh Project"
-export PYTHONPATH="$PWD"
-export OMP_NUM_THREADS=18
-export MKL_NUM_THREADS=18
-python -m scripts.run_pipeline_from_model_a --config config/8_spearman_improved.yaml \
-  --outputs output/8_spearman_surrogate/improved_07-05/outputs
-```
+**Completed follow-up:** `improved_07-05` (rolling + injury) — no ensemble gain; see [improved_07-05/ANALYSIS_03.md](../improved_07-05/ANALYSIS_03.md).
 
-Compare `improved_07-05` to this run using the same pooled 6-checkpoint eval — not single-season snapshots.
+**Suggested experiments:** `config/8_spearman_improved_topweighted.yaml`, West-conference analysis, champion/top-4 calibration.
 
 ---
 
 ## Artifacts
 
-- `outputs/run_025/eval_report.json` — full pooled metrics
-- `outputs/run_025/eval_report_<season>.json` — per-checkpoint reports
-- `outputs/run_025/ANALYSIS_01.md` — auto-generated eval summary (script 5)
+- `outputs/run_025_07-03_2349/eval_report.json` — full pooled metrics
+- `outputs/run_025_07-03_2349/eval_report_<season>.json` — per-checkpoint reports
+- `outputs/run_025_07-03_2349/ANALYSIS_01.md` — auto-generated eval summary (script 5)
 - `outputs/ridgecv_meta*.joblib` — 3-column rank-transform metas

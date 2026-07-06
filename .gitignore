@@ -33,6 +33,9 @@ output/8_spearman_surrogate/improved_07-03/*
 !output/8_spearman_surrogate/improved_07-05/
 output/8_spearman_surrogate/improved_07-05/*
 !output/8_spearman_surrogate/improved_07-05/ANALYSIS*.md
+!output/8_spearman_surrogate/improved_07-06/
+output/8_spearman_surrogate/improved_07-06/*
+!output/8_spearman_surrogate/improved_07-06/ANALYSIS*.md
 !output/8_spearman_surrogate/sweeps/
 output/8_spearman_surrogate/sweeps/*
 !output/8_spearman_surrogate/sweeps/20260217_042955/
